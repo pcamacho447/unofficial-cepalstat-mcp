@@ -1,9 +1,12 @@
 """Command Line Interface for CEPALSTAT."""
 
 import argparse
+from datetime import date
+import re
 import sys
 from typing import Sequence
 
+from statscepal.bitacora import AntiBiasValidator, BitacoraRecipe, BitacoraStore
 from statscepal.client import CepalStatClient
 from statscepal.exceptions import CepalStatError
 from statscepal.extractor import DataExtractor
@@ -40,6 +43,38 @@ def main(args: Sequence[str] | None = None) -> int:
     fetch_parser.add_argument("--members", help="Comma-separated member IDs")
     fetch_parser.add_argument("--csv", help="Save output to CSV file")
 
+    # bitacora
+    bitacora_parser = subparsers.add_parser(
+        "bitacora", help="Manage and query certified Bitácora recipes"
+    )
+    bitacora_subparsers = bitacora_parser.add_subparsers(
+        dest="bitacora_command", help="Bitácora action to execute"
+    )
+
+    # bitacora lookup
+    lookup_parser = bitacora_subparsers.add_parser(
+        "lookup", help="Search recipes by query, country, or tag"
+    )
+    lookup_parser.add_argument("query", nargs="?", default="", help="Search query")
+    lookup_parser.add_argument("--country", help="Filter by country or ISO3")
+    lookup_parser.add_argument("--tag", help="Filter by tag")
+
+    # bitacora list
+    bitacora_subparsers.add_parser("list", help="List all certified recipes")
+
+    # bitacora sync
+    bitacora_subparsers.add_parser("sync", help="Rebuild the SQLite index from markdown files")
+
+    # bitacora add
+    add_parser = bitacora_subparsers.add_parser(
+        "add", help="Add and certify a new recipe for an indicator"
+    )
+    add_parser.add_argument("indicator_id", type=int, help="Indicator ID")
+    add_parser.add_argument("--country", required=True, help="Country name or ISO3")
+    add_parser.add_argument("--members", help="Comma-separated member IDs")
+    add_parser.add_argument("--tags", help="Comma-separated tags")
+    add_parser.add_argument("--id", help="Optional custom recipe ID")
+
     try:
         parsed = parser.parse_args(args)
     except SystemExit as exc:
@@ -48,6 +83,121 @@ def main(args: Sequence[str] | None = None) -> int:
     if not parsed.command:
         parser.print_help()
         return 0
+
+    if parsed.command == "bitacora":
+        if not parsed.bitacora_command:
+            bitacora_parser.print_help()
+            return 0
+
+        store = BitacoraStore()
+
+        if parsed.bitacora_command == "list":
+            recipes = store.list_recipes()
+            if not recipes:
+                print("No certified recipes found in Bitácora.")
+                return 0
+            print(f"Certified recipes ({len(recipes)}):")
+            for r in recipes:
+                tags_str = f" [tags: {', '.join(r.tags)}]" if r.tags else ""
+                print(f"  [{r.id}] {r.indicator_name} - {r.country} (Indicator {r.indicator_id}){tags_str}")
+            return 0
+
+        if parsed.bitacora_command == "lookup":
+            recipes = store.lookup(
+                query=parsed.query,
+                country=parsed.country,
+                tag=parsed.tag,
+            )
+            if not recipes:
+                print("No recipes found matching query.")
+                return 0
+            print(f"Found {len(recipes)} recipes:")
+            for r in recipes:
+                tags_str = f" [tags: {', '.join(r.tags)}]" if r.tags else ""
+                print(f"  [{r.id}] {r.indicator_name} - {r.country} (Indicator {r.indicator_id}){tags_str}")
+            return 0
+
+        if parsed.bitacora_command == "sync":
+            count = store.sync()
+            print(f"Bitácora index synchronized. {count} recipes indexed.")
+            return 0
+
+        if parsed.bitacora_command == "add":
+            member_ids: list[int] | None = None
+            if parsed.members:
+                try:
+                    member_ids = [
+                        int(m.strip()) for m in parsed.members.split(",") if m.strip()
+                    ]
+                except ValueError:
+                    print(
+                        f"Error: Invalid member IDs '{parsed.members}'. Must be comma-separated integers.",
+                        file=sys.stderr,
+                    )
+                    return 1
+
+            tags = (
+                [t.strip() for t in parsed.tags.split(",") if t.strip()]
+                if parsed.tags
+                else []
+            )
+
+            try:
+                with CepalStatClient() as client:
+                    extractor = DataExtractor(client)
+                    meta = extractor.get_metadata(parsed.indicator_id)
+                    if not meta:
+                        print(f"Indicator {parsed.indicator_id} not found.", file=sys.stderr)
+                        return 1
+
+                    df = extractor.get_dataframe(
+                        parsed.indicator_id, members=member_ids, decode_labels=True
+                    )
+
+                    quality, antibias = AntiBiasValidator.audit(df, metadata=meta)
+
+                    country_slug = re.sub(
+                        r"[^a-zA-Z0-9]+", "-", parsed.country.strip().lower()
+                    ).strip("-")
+                    recipe_id = parsed.id or f"recipe-{country_slug}-{parsed.indicator_id}"
+
+                    members_code = f", members={member_ids}" if member_ids else ""
+                    python_code = (
+                        f"from statscepal import CepalStatClient, DataExtractor\n\n"
+                        f"with CepalStatClient() as client:\n"
+                        f"    extractor = DataExtractor(client)\n"
+                        f"    df = extractor.get_dataframe({parsed.indicator_id}{members_code}, decode_labels=True)"
+                    )
+
+                    recipe = BitacoraRecipe(
+                        id=recipe_id,
+                        indicator_id=parsed.indicator_id,
+                        indicator_name=meta.get(
+                            "indicator_name", f"Indicator {parsed.indicator_id}"
+                        ),
+                        country=parsed.country,
+                        country_iso3=parsed.country.upper() if len(parsed.country) == 3 else "",
+                        theme=meta.get("area", ""),
+                        unit=meta.get("unit", ""),
+                        member_ids=member_ids or [],
+                        python_code=python_code,
+                        status="certified",
+                        date_certified=date.today().isoformat(),
+                        tags=tags,
+                        quality_report=quality,
+                        antibias=antibias,
+                    )
+
+                    saved_path = store.save_recipe(recipe)
+                    print(f"Certified recipe saved to {saved_path} (ID: {recipe.id})")
+                    if antibias.warnings:
+                        print(f"Warnings ({len(antibias.warnings)}):")
+                        for w in antibias.warnings:
+                            print(f"  - {w}")
+                    return 0
+            except CepalStatError as err:
+                print(f"CEPALSTAT Error: {err}", file=sys.stderr)
+                return 1
 
     try:
         with CepalStatClient() as client:
