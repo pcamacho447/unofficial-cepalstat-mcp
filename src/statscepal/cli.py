@@ -294,9 +294,29 @@ def main(args: Sequence[str] | None = None) -> int:
             print(f"Catalog exported successfully to {out_path} (format: {format_to_use}).")
             return 0
 
+    if parsed.command == "search":
+        catalog_store = CatalogStore()
+        if catalog_store.is_built():
+            results = catalog_store.search(parsed.query, limit=parsed.limit)
+            if not results:
+                print(f"No indicators found matching '{parsed.query}'.")
+                return 0
+            count = len(results)
+            limit = min(count, parsed.limit)
+            print(f"Found {count} indicators (showing top {limit}):")
+            for item in results[:limit]:
+                print(f"  [{item.indicator_id}] {item.name}")
+                if item.full_path:
+                    print(f"      Path: {item.full_path}")
+            return 0
+
     try:
         with CepalStatClient() as client:
             if parsed.command == "search":
+                print(
+                    "(Tip: Run 'statscepal catalog build' to enable fast offline search)",
+                    file=sys.stderr,
+                )
                 tree = ThematicTree(client)
                 results = tree.search(parsed.query)
                 if not results:
