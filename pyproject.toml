@@ -30,3 +30,7 @@ packages = ["src/statscepal"]
 [tool.pytest.ini_options]
 pythonpath = ["src"]
 testpaths = ["tests"]
+markers = [
+    "integration: live API integration tests",
+]
+
