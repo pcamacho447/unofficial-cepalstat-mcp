@@ -44,6 +44,9 @@ def test_skill_structure_and_frontmatter():
     assert "anti-sesgo" in skill_content.lower() or "anti-bias" in skill_content.lower(), (
         "SKILL.md must mention anti-bias or anti-sesgo"
     )
+    assert "catalog search" in skill_content.lower() or "catalog" in skill_content.lower(), (
+        "SKILL.md must mention catalog or catalog search for offline indicator discovery"
+    )
 
     # Verify dimensions reference content
     dim_content = dimensions_file.read_text(encoding="utf-8")
@@ -53,3 +56,13 @@ def test_skill_structure_and_frontmatter():
     assert "dim_29117" in dim_content
     assert "Años__ESTANDAR" in dim_content
     assert "29190" in dim_content  # 2020
+
+
+def test_subagent_structure():
+    project_root = Path(__file__).resolve().parent.parent
+    subagent_file = project_root / ".agents" / "subagents" / "cepalstat-analyst.md"
+    assert subagent_file.exists(), f"Subagent file does not exist at {subagent_file}"
+    content = subagent_file.read_text(encoding="utf-8")
+    assert "statscepal catalog search" in content
+    assert "statscepal catalog stats" in content
+    assert "statscepal search" in content

@@ -65,17 +65,44 @@ if recipes:
 
 ---
 
-### Step 1: Search and Discover Indicators
-Find the indicator ID by keyword search across the thematic tree hierarchy.
+### Step 1: Search and Discover Indicators (Master Catalog & Offline Search)
+Find the indicator ID by keyword search across the master catalog or thematic tree hierarchy.
+
+**Offline Master Indicator Catalog (~2,000 Indicators):**
+The master catalog indexes ~2,000 indicators in a local SQLite database, categorized across Demográficos, Económicos, Ambientales, and Temas transversales.
+- **Fast Offline Search:** `statscepal search` operates offline using the local SQLite index of ~2,000 indicators with zero network requests and sub-millisecond response times.
+- **Explicit Catalog Search:** `statscepal catalog search <query>` provides dedicated catalog queries with optional thematic area filtering (`--theme`) and limit (`--limit`).
+- **Catalog Statistics:** `statscepal catalog stats` displays indicator totals and distribution across thematic areas.
 
 **Using CLI:**
 ```bash
+# Standard search (operates offline using local SQLite index of ~2,000 indicators)
 statscepal search "pobreza" --limit 10
 statscepal search "poblacion"
+
+# Dedicated master catalog search (supports optional --theme and --limit)
+statscepal catalog search "desempleo"
+statscepal catalog search "pib" --theme "Económicos" --limit 10
+
+# Master catalog statistics
+statscepal catalog stats
 ```
 
 **Using Python Client:**
 ```python
+# Offline master catalog search
+from statscepal.catalog import CatalogStore
+
+catalog = CatalogStore()
+results = catalog.search("desempleo", limit=5)
+for item in results:
+    print(f"[{item.indicator_id}] {item.name} - Path: {item.full_path}")
+
+# Check catalog statistics
+stats = catalog.get_stats()
+print(f"Total indicators: {stats.total_indicators}")
+
+# Online thematic tree search fallback
 from statscepal import CepalStatClient, ThematicTree
 
 with CepalStatClient() as client:
@@ -203,6 +230,14 @@ The command automatically audits data quality and demographic/geographic anti-bi
 - `tree = ThematicTree(client)`
 - `tree.get_tree(force_refresh=False) -> list[ThematicNode]`
 - `tree.search(keyword) -> list[IndicatorSearchResult]`
+
+### `CatalogStore`
+- `store = CatalogStore(db_path=None)`
+- `store.search(query="", theme=None, limit=20) -> list[CatalogIndicator]`
+- `store.get_stats() -> CatalogStats`
+- `store.is_built() -> bool`
+- `store.build(force=False) -> int`
+- `store.export(filepath, format=None) -> Path`
 
 ### `DimensionManager`
 - `manager = DimensionManager(client)`

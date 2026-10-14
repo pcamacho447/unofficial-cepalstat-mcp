@@ -10,6 +10,12 @@ from statscepal.cli import main
 from statscepal.thematic_tree import IndicatorItem
 
 
+@pytest.fixture(autouse=True)
+def mock_catalog_not_built(mocker):
+    """Ensure test_cli tests online/fallback behavior by default."""
+    mocker.patch("statscepal.cli.CatalogStore.is_built", return_value=False)
+
+
 def test_cli_help(capsys):
     """Test statscepal --help exits with 0 and prints help message."""
     ret = main(["--help"])
