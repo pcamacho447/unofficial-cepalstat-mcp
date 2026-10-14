@@ -8,6 +8,7 @@ from statscepal.exceptions import (
     CepalStatError,
     CepalStatNetworkError,
 )
+from statscepal.thematic_tree import IndicatorItem, ThematicTree
 
 __all__ = [
     "__version__",
@@ -15,4 +16,6 @@ __all__ = [
     "CepalStatError",
     "CepalStatNetworkError",
     "CepalStatAPIError",
+    "IndicatorItem",
+    "ThematicTree",
 ]
