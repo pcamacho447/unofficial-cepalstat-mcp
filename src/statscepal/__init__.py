@@ -9,6 +9,7 @@ from statscepal.exceptions import (
     CepalStatNetworkError,
 )
 from statscepal.dimensions import Dimension, DimensionManager, Member
+from statscepal.extractor import DataExtractor
 from statscepal.thematic_tree import IndicatorItem, ThematicTree
 
 __all__ = [
@@ -17,6 +18,7 @@ __all__ = [
     "CepalStatError",
     "CepalStatNetworkError",
     "CepalStatAPIError",
+    "DataExtractor",
     "Dimension",
     "DimensionManager",
     "IndicatorItem",
