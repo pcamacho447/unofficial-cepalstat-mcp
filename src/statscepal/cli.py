@@ -6,6 +6,9 @@ import re
 import sys
 from typing import Sequence
 
+import pandas as pd
+
+from statscepal.analysis import DecouplingAnalyzer
 from statscepal.bitacora import AntiBiasValidator, BitacoraRecipe, BitacoraStore
 from statscepal.client import CepalStatClient
 from statscepal.exceptions import CepalStatError
@@ -75,6 +78,26 @@ def main(args: Sequence[str] | None = None) -> int:
     add_parser.add_argument("--tags", help="Comma-separated tags")
     add_parser.add_argument("--id", help="Optional custom recipe ID")
 
+    # analyze
+    analyze_parser = subparsers.add_parser("analyze", help="Analytical workflows")
+    analyze_subparsers = analyze_parser.add_subparsers(
+        dest="analyze_command", help="Analysis action"
+    )
+
+    # analyze desacople
+    desacople_parser = analyze_subparsers.add_parser(
+        "desacople", help="Run Growth vs Wellbeing Decoupling analysis"
+    )
+    desacople_parser.add_argument(
+        "--countries",
+        default="Argentina,Chile,Colombia,México,Perú,Uruguay",
+        help="Comma-separated list of countries (default: Argentina,Chile,Colombia,México,Perú,Uruguay)",
+    )
+    desacople_parser.add_argument(
+        "--output",
+        help="Optional path to export results as CSV",
+    )
+
     try:
         parsed = parser.parse_args(args)
     except SystemExit as exc:
@@ -83,6 +106,11 @@ def main(args: Sequence[str] | None = None) -> int:
     if not parsed.command:
         parser.print_help()
         return 0
+
+    if parsed.command == "analyze":
+        if not parsed.analyze_command:
+            analyze_parser.print_help()
+            return 0
 
     if parsed.command == "bitacora":
         if not parsed.bitacora_command:
@@ -257,6 +285,48 @@ def main(args: Sequence[str] | None = None) -> int:
                 else:
                     print(df.to_string(index=False))
                 return 0
+
+            if parsed.command == "analyze":
+                if parsed.analyze_command == "desacople":
+                    countries = [
+                        c.strip() for c in parsed.countries.split(",") if c.strip()
+                    ]
+                    periods = [
+                        ("P1: 2015-2019", 2015, 2019),
+                        ("P2: 2021-2023", 2021, 2023),
+                    ]
+                    extractor = DataExtractor(client=client)
+                    analyzer = DecouplingAnalyzer(extractor=extractor)
+                    dataset = analyzer.analyze_countries(
+                        countries=countries, periods=periods
+                    )
+
+                    rows = []
+                    for r in dataset.records:
+                        rows.append(
+                            {
+                                "País": r.country,
+                                "Periodo": r.period_label,
+                                "Δ PIB pc (%)": r.gdp_pc_growth_mean,
+                                "Δ Pob. Tot (pp)": r.poverty_total_change_pp,
+                                "Δ Pob. Ext (pp)": r.poverty_extreme_change_pp,
+                                "Δ Sal. Real (%)": r.real_min_wage_change_pct,
+                                "Δ Gini": r.gini_change,
+                                "Elasticidad": r.social_elasticity,
+                                "Cuadrante": r.quadrant,
+                            }
+                        )
+                    df_table = pd.DataFrame(rows)
+                    if not df_table.empty:
+                        print(df_table.to_string(index=False))
+                    else:
+                        print("No records found.")
+
+                    if parsed.output:
+                        df_table.to_csv(parsed.output, index=False)
+                        print(f"Saved {len(df_table)} rows to {parsed.output}")
+
+                    return 0
 
     except CepalStatError as err:
         print(f"CEPALSTAT Error: {err}", file=sys.stderr)
