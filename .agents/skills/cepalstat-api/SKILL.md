@@ -14,16 +14,56 @@ This skill guides agents in discovering, querying, and analyzing official statis
 - **Supported Formats:** JSON (default), CSV, Excel, SDMX-ML
 - **Supported Languages:** Spanish (`es`, default), English (`en`)
 - **Dimensions Reference:** [dimensions-reference.md](references/dimensions-reference.md) for standard country and year member IDs
+- **Protocol:** "Bitácora First" — always check certified recipes before making exploratory API calls to optimize token usage and eliminate bias.
 
 ---
 
-## 3-Step Query Workflow
+## Query Workflow: "Bitácora First" Protocol
 
-CEPALSTAT indicators are multidimensional cubes (Country x Year x Breakdown). Querying data requires a three-step progression:
+CEPALSTAT indicators are multidimensional cubes (Country x Year x Breakdown). To minimize API latency, maximize token optimization, and eliminate demographic or geographic bias, follow the Bitácora First query workflow:
 
 ```
-[1. Search Indicator]  -->  [2. Resolve Dimensions & Members]  -->  [3. Fetch Records / DataFrame]
+[Step 0: Bitácora Lookup] ──(Recipe found)──> [Reuse Certified Member IDs & Code]
+           │
+      (Not found)
+           ▼
+[Step 1: Search Indicator] ──> [Step 2: Resolve Dimensions] ──> [Step 3: Fetch Data] ──> [Step 4: Certify Recipe]
 ```
+
+---
+
+### Step 0: Bitácora Primero (Token Optimization & Anti-Sesgo)
+Before performing any exploratory queries against the CEPALSTAT API, check the local Bitácora of certified recipes:
+- **Run lookup first:** `statscepal bitacora lookup "<query>" --country "<pais>"`
+- **Token Optimization:** Reusing a certified recipe avoids exploratory API queries, saving thousands of LLM tokens and accelerating response times.
+- **Anti-Bias / Anti-Sesgo:** Certified recipes include audit metrics (quality, geographic coverage, demographic breakdown) to eliminate hallucinated member IDs and representation bias.
+
+**Using CLI:**
+```bash
+statscepal bitacora lookup "pobreza" --country "Chile"
+statscepal bitacora lookup "desempleo"
+statscepal bitacora list
+```
+
+**Using Python:**
+```python
+from statscepal.bitacora import BitacoraStore
+
+store = BitacoraStore()
+recipes = store.lookup(query="pobreza", country="Chile")
+if recipes:
+    recipe = recipes[0]
+    print(f"Certified Recipe: {recipe.indicator_name} (ID: {recipe.indicator_id})")
+    print(f"Members: {recipe.member_ids}")
+    # Reuse certified code snippet directly
+    print(recipe.python_code)
+```
+
+**Decision Rule:**
+- **If a certified recipe exists:** Immediately reuse the certified member IDs and code snippet (avoids full API exploration and eliminates hallucination/bias risk).
+- **If not found:** Execute standard API search (Steps 1-3).
+
+---
 
 ### Step 1: Search and Discover Indicators
 Find the indicator ID by keyword search across the thematic tree hierarchy.
@@ -132,6 +172,26 @@ GET https://api-cepalstat.cepal.org/cepalstat/api/v1/indicator/{indicator_id}/re
 
 ---
 
+### Step 4: Certify New Recipes (Save to Bitácora)
+Once a new indicator query has been successfully explored and verified via Steps 1-3, certify it into the local Bitácora so future agents and workflows can reuse it directly without token overhead or bias risks:
+
+**Using CLI:**
+```bash
+statscepal bitacora add <id> --country <c> --tags <t1,t2>
+```
+Examples:
+```bash
+# Certify with specific member IDs and tags
+statscepal bitacora add 4788 --country "Chile" --members 224,29190 --tags "pobreza,nacional"
+
+# Auto-audit and certify indicator
+statscepal bitacora add 5011 --country "Brasil" --tags "empleo,desempleo"
+```
+
+The command automatically audits data quality and demographic/geographic anti-bias metrics, generates a reproducible Python code snippet, and saves the certified recipe to markdown and the SQLite lookup index.
+
+---
+
 ## Python SDK Reference (`statscepal`)
 
 ### `CepalStatClient`
@@ -154,6 +214,17 @@ GET https://api-cepalstat.cepal.org/cepalstat/api/v1/indicator/{indicator_id}/re
 - `extractor.get_metadata(indicator_id) -> dict[str, Any]`
 - `extractor.get_records(indicator_id, members=None) -> list[dict[str, Any]]`
 - `extractor.get_dataframe(indicator_id, members=None, decode_labels=True) -> pd.DataFrame`
+
+### `BitacoraStore`
+- `store = BitacoraStore(recipes_dir=None, db_path=None)`
+- `store.lookup(query="", country=None, tag=None) -> list[BitacoraRecipe]`
+- `store.list_recipes() -> list[BitacoraRecipe]`
+- `store.save_recipe(recipe: BitacoraRecipe) -> Path`
+- `store.sync() -> int`
+
+### `AntiBiasValidator`
+- `quality, antibias = AntiBiasValidator.audit(df, metadata=meta)`
+- Returns `QualityMetrics` and `AntiBiasReport` with bias audit checks (geographic, demographic, null rates).
 
 ---
 

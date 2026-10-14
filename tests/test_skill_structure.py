@@ -37,6 +37,13 @@ def test_skill_structure_and_frontmatter():
     assert "https://api-cepalstat.cepal.org" in skill_content, "SKILL.md must mention the base API URL"
     assert "statscepal" in skill_content, "SKILL.md must mention statscepal"
     assert "CepalStatClient" in skill_content, "SKILL.md must reference CepalStatClient"
+    assert "bitacora lookup" in skill_content or "Bitácora First" in skill_content, (
+        "SKILL.md must specify 'bitacora lookup' or 'Bitácora First' in its query workflow"
+    )
+    assert "token" in skill_content.lower(), "SKILL.md must mention token optimization"
+    assert "anti-sesgo" in skill_content.lower() or "anti-bias" in skill_content.lower(), (
+        "SKILL.md must mention anti-bias or anti-sesgo"
+    )
 
     # Verify dimensions reference content
     dim_content = dimensions_file.read_text(encoding="utf-8")
