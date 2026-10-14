@@ -2,11 +2,13 @@
 
 import argparse
 from datetime import date
+from pathlib import Path
 import re
 import sys
 from typing import Sequence
 
 from statscepal.bitacora import AntiBiasValidator, BitacoraRecipe, BitacoraStore
+from statscepal.catalog import CatalogStore
 from statscepal.client import CepalStatClient
 from statscepal.exceptions import CepalStatError
 from statscepal.extractor import DataExtractor
@@ -74,6 +76,44 @@ def main(args: Sequence[str] | None = None) -> int:
     add_parser.add_argument("--members", help="Comma-separated member IDs")
     add_parser.add_argument("--tags", help="Comma-separated tags")
     add_parser.add_argument("--id", help="Optional custom recipe ID")
+
+    # catalog
+    catalog_parser = subparsers.add_parser(
+        "catalog", help="Manage and query the master indicator catalog"
+    )
+    catalog_subparsers = catalog_parser.add_subparsers(
+        dest="catalog_command", help="Catalog action to execute"
+    )
+
+    # catalog build
+    build_parser = catalog_subparsers.add_parser(
+        "build", help="Build or update the master indicator catalog from CEPALSTAT"
+    )
+    build_parser.add_argument(
+        "--force", action="store_true", help="Force rebuild from remote thematic tree"
+    )
+
+    # catalog stats
+    catalog_subparsers.add_parser("stats", help="Display catalog summary statistics")
+
+    # catalog search
+    search_cat_parser = catalog_subparsers.add_parser(
+        "search", help="Search indicators in the master catalog"
+    )
+    search_cat_parser.add_argument("query", nargs="?", default="", help="Search query")
+    search_cat_parser.add_argument("--theme", help="Filter by thematic area")
+    search_cat_parser.add_argument(
+        "--limit", type=int, default=20, help="Max results to display (default: 20)"
+    )
+
+    # catalog export
+    export_parser = catalog_subparsers.add_parser(
+        "export", help="Export the catalog to JSON or CSV"
+    )
+    export_parser.add_argument("filepath", help="Output file path (.json or .csv)")
+    export_parser.add_argument(
+        "--format", choices=["json", "csv"], default=None, help="Export format (json or csv)"
+    )
 
     try:
         parsed = parser.parse_args(args)
@@ -198,6 +238,61 @@ def main(args: Sequence[str] | None = None) -> int:
             except CepalStatError as err:
                 print(f"CEPALSTAT Error: {err}", file=sys.stderr)
                 return 1
+
+    if parsed.command == "catalog":
+        if not parsed.catalog_command:
+            catalog_parser.print_help()
+            return 0
+
+        store = CatalogStore()
+
+        if parsed.catalog_command == "build":
+            try:
+                count = store.build(force=parsed.force)
+                print(f"Catalog built successfully with {count} indicators.")
+                return 0
+            except CepalStatError as err:
+                print(f"CEPALSTAT Error: {err}", file=sys.stderr)
+                return 1
+
+        if parsed.catalog_command == "stats":
+            stats = store.get_stats()
+            print("=== Master Indicator Catalog Statistics ===")
+            print(f"Total indicators: {stats.total_indicators}")
+            print(f"Thematic areas: {stats.themes_count}")
+            print(f"Areas: {stats.areas_count}")
+            if stats.by_theme:
+                print("Indicators by theme:")
+                for theme, count in stats.by_theme.items():
+                    print(f"  - {theme}: {count}")
+            return 0
+
+        if parsed.catalog_command == "search":
+            results = store.search(
+                query=parsed.query,
+                theme=parsed.theme,
+                limit=parsed.limit,
+            )
+            if not results:
+                print(f"No indicators found matching '{parsed.query}'.")
+                return 0
+            print(f"Found {len(results)} indicators:")
+            for item in results:
+                print(f"  [{item.indicator_id}] {item.name}")
+                if item.full_path:
+                    print(f"      Path: {item.full_path}")
+            return 0
+
+        if parsed.catalog_command == "export":
+            filepath = parsed.filepath
+            format_to_use = parsed.format
+            if not format_to_use:
+                ext = Path(filepath).suffix.lower()
+                format_to_use = "csv" if ext == ".csv" else "json"
+
+            out_path = store.export(filepath, format=format_to_use)
+            print(f"Catalog exported successfully to {out_path} (format: {format_to_use}).")
+            return 0
 
     try:
         with CepalStatClient() as client:
