@@ -1,7 +1,7 @@
 # statscepal: Cliente Python, Bitácoras Anti-Sesgo y Agentes para UN CEPALSTAT
 
 [![Python Version](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/)
-[![Status](https://img.shields.io/badge/tests-69%20passed-brightgreen.svg)]()
+[![Status](https://img.shields.io/badge/tests-92%20passed-brightgreen.svg)]()
 [![API Source](https://img.shields.io/badge/CEPALSTAT-Open%20Data-orange.svg)](https://statistics.cepal.org/portal/cepalstat/open-data.html?lang=es)
 
 `statscepal` es un ecosistema completo en Python y un conjunto de herramientas para agentes de Inteligencia Artificial diseñado para interactuar con la **API de Datos Abiertos de la Comisión Económica para América Latina y el Caribe (UN CEPAL / ECLAC)**.
@@ -69,8 +69,8 @@ uv sync --extra dev
 ### 1. Búsqueda y Extracción Básica
 
 ```bash
-# Buscar indicadores en el árbol temático
-uv run statscepal search "poblacion" --limit 5
+# Búsqueda instantánea offline en el Catálogo Maestro (0 tokens de red, < 2ms)
+uv run statscepal search "pobreza" --limit 5
 
 # Ver metadatos y definición oficial del indicador 4788
 uv run statscepal info 4788
@@ -82,7 +82,23 @@ uv run statscepal fetch 4788 --members 224,29190
 uv run statscepal fetch 4788 --members 224,29190 --csv salida_chile.csv
 ```
 
-### 2. Gestión de Bitácoras ("Bitácora Primero")
+### 2. Catálogo Maestro de Indicadores (2,070 Indicadores)
+
+```bash
+# Descargar e indexar los 2,070 indicadores en SQLite local
+uv run statscepal catalog build
+
+# Ver estadísticas por temas y áreas (Demografía, Economía, ODS, etc.)
+uv run statscepal catalog stats
+
+# Búsqueda filtrada por tema específico
+uv run statscepal catalog search "PIB" --theme "Económicos" --limit 10
+
+# Exportar el catálogo completo a JSON o CSV
+uv run statscepal catalog export --output catalogo_cepal.csv --format csv
+```
+
+### 3. Gestión de Bitácoras ("Bitácora Primero")
 
 ```bash
 # Listar todas las recetas certificadas
