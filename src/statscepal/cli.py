@@ -25,6 +25,12 @@ def main(args: Sequence[str] | None = None) -> int:
     Returns:
         Exit code: 0 for success, non-zero for errors.
     """
+    if hasattr(sys.stdout, "reconfigure"):
+        try:
+            sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+        except Exception:
+            pass
+
     parser = argparse.ArgumentParser(
         prog="statscepal",
         description="CEPALSTAT Open Data CLI tool for Latin America and Caribbean statistics.",
