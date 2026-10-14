@@ -59,11 +59,27 @@ bitacoras/
 3. **Certificación**: Si los datos son consistentes y tienen metadatos válidos, se genera la ficha Markdown con frontmatter YAML y estado `status: "certified"`.
 4. **Indexación**: La receta se registra en `.statscepal_cache.db` para que las futuras búsquedas de cualquier agente sean instantáneas.
 
+### 3.3. Relación entre Catálogo Maestro y Bitácoras
+Es fundamental distinguir las dos capas del sistema:
+- **Catálogo Maestro (`statscepal catalog`)**: Contiene el índice de los **2,070 indicadores oficiales** de la CEPAL estructurados en SQLite local (`.statscepal_cache.db`). Sirve para **descubrimiento instantáneo** (en < 2 ms y 0 tokens de red): saber qué indicadores existen, cuál es su `indicator_id`, su tema y su área oficial.
+- **Bitácoras (`statscepal bitacora`)**: Contienen las **recetas analíticas certificadas**. No solo guardan el nombre del indicador, sino los códigos de miembros validados (ej. Chile = 224, Año 2020 = 29190), el código Python reproducible, las alertas de escala y la auditoría estadística del `AntiBiasValidator`.
+
 ---
 
 ## 4. Guía para Incorporar Nuevos Países e Indicadores
 
-### Paso 1: Consultar los Códigos de País y Año
+### Paso 1: Descubrir Indicadores en el Catálogo Maestro Offline
+Antes de consultar la red, busca en el catálogo local de 2,070 indicadores:
+```bash
+# Ver estadísticas generales
+uv run statscepal catalog stats
+
+# Búsqueda filtrada por tema (ej. Mercado Laboral / Desempleo)
+uv run statscepal catalog search "desempleo" --theme "Económicos"
+# Resultado: Indicador 2427 (Tasa de desocupación abierta)
+```
+
+### Paso 2: Consultar los Códigos de País y Año
 Consulta la guía de referencia en [`.agents/skills/cepalstat-api/references/dimensions-reference.md`](file:///C:/papx/statscepal/.agents/skills/cepalstat-api/references/dimensions-reference.md):
 - **Chile**: `224`
 - **México**: `238`
@@ -71,12 +87,6 @@ Consulta la guía de referencia en [`.agents/skills/cepalstat-api/references/dim
 - **Argentina**: `218`
 - **Colombia**: `225`
 - **Perú**: `242`
-
-### Paso 2: Buscar el Indicador Deseado
-```bash
-uv run statscepal search "desempleo"
-# Ejemplo: Indicador 2427 (Tasa de desocupación abierta)
-```
 
 ### Paso 3: Extraer y Certificar en la Bitácora
 ```bash
