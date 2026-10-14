@@ -10,3 +10,12 @@ build/
 htmlcov/
 *.db
 .statscepal_cache.db
+
+# BMAD (Building Modern Apps Decisively)
+_bmad-output/
+_bmad/config.user.toml
+
+# Jupyter & Superpowers
+.ipynb_checkpoints/
+.superpowers/
+
