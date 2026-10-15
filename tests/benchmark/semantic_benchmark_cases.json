@@ -1,0 +1,321 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "CEPALSTAT Semantic Resolution Benchmark Cases",
+  "version": "1.0.0",
+  "description": "Validation dataset of 25 canonical test cases covering conceptual equivalence, dimensional compatibility, empirical availability, regionalisms, and justified abstention.",
+  "cases": [
+    {
+      "case_id": "POV-01",
+      "query": "Pobreza total en Brasil en 2021",
+      "category": "DIRECT_CANONICAL",
+      "expected_status": "RESOLVED",
+      "expected_indicator_id": 3328,
+      "expected_measure": "INCIDENCIA_PORCENTUAL",
+      "required_country": "BRA",
+      "required_year": 2021,
+      "required_facets": {
+        "area": "NACIONAL",
+        "severidad": "POBREZA_TOTAL"
+      },
+      "allow_swap": false,
+      "temporal_check": {
+        "year": 2021,
+        "expected_status": "OBSERVATION_EXISTING"
+      }
+    },
+    {
+      "case_id": "POV-02",
+      "query": "¿Cuál fue la pobreza de las mujeres jóvenes rurales en Brasil en 2021?",
+      "category": "FACET_DRIVEN_SWAP",
+      "expected_status": "RESOLVED",
+      "expected_indicator_id": 3341,
+      "swapped_from": 3328,
+      "relationship_used": "breakdown_of",
+      "required_country": "BRA",
+      "required_year": 2021,
+      "required_facets": {
+        "sexo": "FEMENINO",
+        "edad": "JUVENTUD",
+        "area": "RURAL"
+      },
+      "allow_swap": true,
+      "temporal_check": {
+        "year": 2021,
+        "expected_status": "OBSERVATION_EXISTING"
+      }
+    },
+    {
+      "case_id": "POV-03",
+      "query": "Pobreza femenina en Brasil",
+      "category": "AMBIGUOUS_MEASURE_PROPOSAL",
+      "expected_status": "ALTERNATIVE_PROPOSED",
+      "expected_indicator_id": 3341,
+      "competing_indicator_id": 3330,
+      "competing_relationship": "alternative_measure",
+      "required_country": "BRA",
+      "must_include_suggestion": true,
+      "suggestion_contains": "Índice de feminidad"
+    },
+    {
+      "case_id": "POV-04",
+      "query": "Pobreza rural en México 2020",
+      "category": "MEMBER_FILTER_NO_SWAP",
+      "expected_status": "RESOLVED",
+      "expected_indicator_id": 3328,
+      "required_country": "MEX",
+      "required_year": 2020,
+      "required_facets": {
+        "area": "RURAL"
+      },
+      "allow_swap": false,
+      "temporal_check": {
+        "year": 2020,
+        "expected_status": "OBSERVATION_EXISTING"
+      }
+    },
+    {
+      "case_id": "POV-05",
+      "query": "Pobreza extrema en Perú 2021",
+      "category": "MEMBER_FILTER_NO_SWAP",
+      "expected_status": "RESOLVED",
+      "expected_indicator_id": 3328,
+      "required_country": "PER",
+      "required_year": 2021,
+      "required_facets": {
+        "severidad": "POBREZA_EXTREMA"
+      },
+      "allow_swap": false
+    },
+    {
+      "case_id": "EMP-01",
+      "query": "Tasa de desocupación en Uruguay en 2022",
+      "category": "DIRECT_CANONICAL",
+      "expected_status": "RESOLVED",
+      "expected_indicator_id": 127,
+      "required_country": "URY",
+      "required_year": 2022,
+      "required_facets": {
+        "sexo": "TOTAL"
+      },
+      "allow_swap": false
+    },
+    {
+      "case_id": "EMP-02",
+      "query": "Tasa de desocupación juvenil de 15 a 24 años en Colombia 2021",
+      "category": "FACET_DRIVEN_SWAP",
+      "expected_status": "RESOLVED",
+      "expected_indicator_id": 5097,
+      "swapped_from": 127,
+      "relationship_used": "breakdown_of",
+      "required_country": "COL",
+      "required_year": 2021,
+      "required_facets": {
+        "edad": "JUVENTUD"
+      },
+      "allow_swap": true
+    },
+    {
+      "case_id": "EMP-03",
+      "query": "Desempleo femenino en Argentina 2022",
+      "category": "MEMBER_FILTER_NO_SWAP",
+      "expected_status": "RESOLVED",
+      "expected_indicator_id": 127,
+      "required_country": "ARG",
+      "required_year": 2022,
+      "required_facets": {
+        "sexo": "FEMENINO"
+      },
+      "allow_swap": false
+    },
+    {
+      "case_id": "EMP-04",
+      "query": "Desempleo urbano en Uruguay",
+      "category": "AMBIGUOUS_MEASURE_PROPOSAL",
+      "expected_status": "ALTERNATIVE_PROPOSED",
+      "expected_indicator_id": 127,
+      "competing_indicator_id": 119,
+      "competing_relationship": "alternative_measure",
+      "required_country": "URY",
+      "must_include_suggestion": true
+    },
+    {
+      "case_id": "MACRO-01",
+      "query": "PIB anual a precios constantes en México 2020",
+      "category": "DIRECT_CANONICAL",
+      "expected_status": "RESOLVED",
+      "expected_indicator_id": 2203,
+      "required_country": "MEX",
+      "required_year": 2020,
+      "allow_swap": false
+    },
+    {
+      "case_id": "MACRO-02",
+      "query": "Salario mínimo real en Colombia 2021",
+      "category": "DIRECT_CANONICAL",
+      "expected_status": "RESOLVED",
+      "expected_indicator_id": 340,
+      "required_country": "COL",
+      "required_year": 2021,
+      "allow_swap": false
+    },
+    {
+      "case_id": "MACRO-03",
+      "query": "Índice de Gini en Costa Rica 2022",
+      "category": "DIRECT_CANONICAL",
+      "expected_status": "RESOLVED",
+      "expected_indicator_id": 3289,
+      "required_country": "CRI",
+      "required_year": 2022,
+      "allow_swap": false
+    },
+    {
+      "case_id": "MACRO-04",
+      "query": "Inflación de alimentos en Colombia 2022",
+      "category": "DIRECT_CANONICAL",
+      "expected_status": "RESOLVED",
+      "expected_indicator_id": 2929,
+      "required_country": "COL",
+      "required_year": 2022,
+      "allow_swap": false
+    },
+    {
+      "case_id": "REG-01",
+      "query": "Desempleo de los pibes en Argentina 2021",
+      "category": "REGIONALISM_NORMALIZATION",
+      "expected_status": "RESOLVED",
+      "expected_indicator_id": 5097,
+      "swapped_from": 127,
+      "relationship_used": "breakdown_of",
+      "required_country": "ARG",
+      "required_year": 2021,
+      "required_facets": {
+        "edad": "JUVENTUD"
+      },
+      "allow_swap": true
+    },
+    {
+      "case_id": "REG-02",
+      "query": "Pobreza de las pibas en el campo en Brasil 2021",
+      "category": "REGIONALISM_NORMALIZATION",
+      "expected_status": "RESOLVED",
+      "expected_indicator_id": 3341,
+      "swapped_from": 3328,
+      "relationship_used": "breakdown_of",
+      "required_country": "BRA",
+      "required_year": 2021,
+      "required_facets": {
+        "sexo": "FEMENINO",
+        "area": "RURAL"
+      },
+      "allow_swap": true
+    },
+    {
+      "case_id": "REG-03",
+      "query": "Pobreza en la tercera edad en Chile 2022",
+      "category": "REGIONALISM_NORMALIZATION",
+      "expected_status": "RESOLVED",
+      "expected_indicator_id": 3341,
+      "swapped_from": 3328,
+      "relationship_used": "breakdown_of",
+      "required_country": "CHL",
+      "required_year": 2022,
+      "required_facets": {
+        "edad": "ADULTOS_MAYORES"
+      },
+      "allow_swap": true
+    },
+    {
+      "case_id": "REG-04",
+      "query": "Carestía de comida en Colombia 2022",
+      "category": "REGIONALISM_NORMALIZATION",
+      "expected_status": "RESOLVED",
+      "expected_indicator_id": 2929,
+      "required_country": "COL",
+      "required_year": 2022,
+      "allow_swap": false
+    },
+    {
+      "case_id": "TEMP-01",
+      "query": "Tasa de pobreza de Chile en 2021",
+      "category": "TEMPORAL_UNOBSERVED_ANCHOR",
+      "expected_status": "RESOLVED_WITH_ANCHORS",
+      "expected_indicator_id": 3328,
+      "required_country": "CHL",
+      "temporal_check": {
+        "year": 2021,
+        "expected_status": "PERIOD_UNOBSERVED",
+        "expected_previous_anchor": 2020,
+        "expected_next_anchor": 2022
+      },
+      "forbid_interpolation": true
+    },
+    {
+      "case_id": "TEMP-02",
+      "query": "Pobreza en México en 2021",
+      "category": "TEMPORAL_UNOBSERVED_ANCHOR",
+      "expected_status": "RESOLVED_WITH_ANCHORS",
+      "expected_indicator_id": 3328,
+      "required_country": "MEX",
+      "temporal_check": {
+        "year": 2021,
+        "expected_status": "PERIOD_UNOBSERVED",
+        "expected_previous_anchor": 2020,
+        "expected_next_anchor": 2022
+      },
+      "forbid_interpolation": true
+    },
+    {
+      "case_id": "TEMP-03",
+      "query": "Tasa de pobreza en Brasil en 2021",
+      "category": "TEMPORAL_CONTINUOUS",
+      "expected_status": "RESOLVED",
+      "expected_indicator_id": 3328,
+      "required_country": "BRA",
+      "temporal_check": {
+        "year": 2021,
+        "expected_status": "OBSERVATION_EXISTING"
+      }
+    },
+    {
+      "case_id": "ABSTAIN-01",
+      "query": "Pobreza monetaria informal por quintiles en Uruguay",
+      "category": "UNSUPPORTED_FACET_ABSTAIN",
+      "expected_status": "ABSTAINED",
+      "abstention_reason": "UNSUPPORTED_FACET",
+      "unsupported_facet": "FORMALIDAD_LABORAL",
+      "must_ask_clarification": true
+    },
+    {
+      "case_id": "ABSTAIN-02",
+      "query": "Tasa de desempleo lunar en 2021",
+      "category": "UNKNOWN_CONCEPT_ABSTAIN",
+      "expected_status": "ABSTAINED",
+      "abstention_reason": "LOW_CONCEPTUAL_RELEVANCE",
+      "must_ask_clarification": true
+    },
+    {
+      "case_id": "ABSTAIN-03",
+      "query": "Brecha salarial entre astronautas en Chile",
+      "category": "UNSUPPORTED_FACET_ABSTAIN",
+      "expected_status": "ABSTAINED",
+      "abstention_reason": "UNSUPPORTED_SECTOR",
+      "must_ask_clarification": true
+    },
+    {
+      "case_id": "ABSTAIN-04",
+      "query": "Pobreza en Argentina en el año 1810",
+      "category": "OUT_OF_BOUNDS_TIME_ABSTAIN",
+      "expected_status": "ABSTAINED",
+      "abstention_reason": "PERIOD_OUT_OF_RANGE",
+      "must_ask_clarification": true
+    },
+    {
+      "case_id": "ABSTAIN-05",
+      "query": "Gini trimestral de Brasil",
+      "category": "UNSUPPORTED_FREQUENCY_ABSTAIN",
+      "expected_status": "ABSTAINED",
+      "abstention_reason": "UNSUPPORTED_FREQUENCY",
+      "must_ask_clarification": true
+    }
+  ]
+}
