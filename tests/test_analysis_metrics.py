@@ -3,11 +3,13 @@ from statscepal.analysis import (
     classify_quadrant,
     compute_decoupling_score,
     compute_elasticity,
+    compute_food_wage_gap,
 )
 from statscepal.analysis.metrics import (
     classify_quadrant as classify_quadrant_direct,
     compute_decoupling_score as compute_decoupling_score_direct,
     compute_elasticity as compute_elasticity_direct,
+    compute_food_wage_gap as compute_food_wage_gap_direct,
 )
 
 
@@ -79,7 +81,28 @@ def test_compute_decoupling_score():
     assert extreme_low == 0.0
 
 
+def test_compute_food_wage_gap():
+    # Normal cases: wage growth - food inflation
+    # Real wage grew 5.0%, food inflation 3.5% -> gap = +1.5 pp
+    assert compute_food_wage_gap(wage_change_pct=5.0, food_inflation_pct=3.5) == 1.5
+
+    # Real wage fell -10.7%, food inflation 15.4% -> gap = -26.1 pp
+    assert compute_food_wage_gap(wage_change_pct=-10.7, food_inflation_pct=15.4) == -26.1
+
+    # Real wage grew 12.0%, food inflation 15.0% -> gap = -3.0 pp
+    assert compute_food_wage_gap(wage_change_pct=12.0, food_inflation_pct=15.0) == -3.0
+
+    # None cases
+    assert compute_food_wage_gap(wage_change_pct=None, food_inflation_pct=5.0) is None
+    assert compute_food_wage_gap(wage_change_pct=5.0, food_inflation_pct=None) is None
+    assert compute_food_wage_gap(wage_change_pct=None, food_inflation_pct=None) is None
+
+    # Rounding check
+    assert compute_food_wage_gap(wage_change_pct=5.234, food_inflation_pct=3.10) == 2.13
+
+
 def test_exports_identical():
     assert compute_elasticity is compute_elasticity_direct
     assert classify_quadrant is classify_quadrant_direct
     assert compute_decoupling_score is compute_decoupling_score_direct
+    assert compute_food_wage_gap is compute_food_wage_gap_direct

@@ -74,3 +74,18 @@ def compute_decoupling_score(
         score += min(max(wage_change_pct * 0.5, -15.0), 15.0)
 
     return max(0.0, min(100.0, round(score, 1)))
+
+
+def compute_food_wage_gap(
+    wage_change_pct: Optional[float],
+    food_inflation_pct: Optional[float],
+) -> Optional[float]:
+    """Calculate purchasing power wage-food gap: Δ% Wage - % Food Inflation.
+
+    Returns None if either value is None.
+    Returns float rounded to 2 decimal places.
+    """
+    if wage_change_pct is None or food_inflation_pct is None:
+        return None
+    return round(float(round(wage_change_pct, 2)) - float(food_inflation_pct), 2)
+
