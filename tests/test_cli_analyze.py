@@ -32,6 +32,7 @@ def test_cli_analyze_desacople_help(capsys):
     captured = capsys.readouterr()
     assert "--countries" in captured.out
     assert "--output" in captured.out
+    assert "--econometrics" in captured.out
 
 
 @patch("statscepal.cli.DecouplingAnalyzer")
@@ -50,6 +51,8 @@ def test_cli_analyze_desacople(mock_client, mock_extractor, mock_analyzer, capsy
                 poverty_extreme_change_pp=-0.3,
                 real_min_wage_change_pct=5.2,
                 gini_change=-0.003,
+                food_inflation_mean_pct=3.4,
+                food_wage_gap_pct=1.8,
                 social_elasticity=-5.0,
                 quadrant="Crecimiento Virtuoso",
             )
@@ -63,6 +66,8 @@ def test_cli_analyze_desacople(mock_client, mock_extractor, mock_analyzer, capsy
     assert "Chile" in captured.out
     assert "Crecimiento Virtuoso" in captured.out
     assert "Δ PIB pc (%)" in captured.out
+    assert "Infl. Alim (%)" in captured.out
+    assert "Brecha Sal/Alim (%)" in captured.out
     mock_analyzer.return_value.analyze_countries.assert_called_once_with(
         countries=["Chile"],
         periods=[("P1: 2015-2019", 2015, 2019), ("P2: 2021-2023", 2021, 2023)],
@@ -132,9 +137,125 @@ def test_cli_analyze_desacople_output_csv(
     content = csv_file.read_text(encoding="utf-8")
     assert "País" in content
     assert "Chile" in content
+    assert "Infl. Alim (%)" in content
+    assert "Brecha Sal/Alim (%)" in content
     assert "Crecimiento Virtuoso" in content
     captured = capsys.readouterr()
     assert f"Saved 1 rows to {csv_file}" in captured.out
+
+
+@patch("statscepal.cli.DecouplingAnalyzer")
+@patch("statscepal.cli.DataExtractor")
+@patch("statscepal.cli.CepalStatClient")
+def test_cli_analyze_desacople_econometrics(
+    mock_client, mock_extractor, mock_analyzer, capsys
+):
+    from statscepal.analysis.models import RegressionModelSummary
+
+    mock_instance = MagicMock()
+    mock_dataset = DecouplingDataset(
+        records=[
+            CountryPeriodMetric(
+                country="Chile",
+                period_label="P1",
+                years_range="2015-2017",
+                gdp_pc_growth_mean=0.5,
+                poverty_total_change_pp=-2.5,
+                poverty_extreme_change_pp=-0.3,
+                real_min_wage_change_pct=5.2,
+                gini_change=-0.003,
+                food_inflation_mean_pct=3.4,
+                food_wage_gap_pct=1.8,
+                social_elasticity=-5.0,
+                quadrant="Crecimiento Virtuoso",
+            )
+        ]
+    )
+    mock_instance.analyze_countries.return_value = mock_dataset
+    mock_summary = RegressionModelSummary(
+        r_squared=0.6543,
+        r_squared_adj=0.5432,
+        coefficients={
+            "const": 0.1234,
+            "gdp_pc_growth_mean": -0.4567,
+            "real_min_wage_change_pct": -0.2100,
+            "food_inflation_mean_pct": 0.3456,
+        },
+        p_values={
+            "const": 0.0500,
+            "gdp_pc_growth_mean": 0.0120,
+            "real_min_wage_change_pct": 0.0340,
+            "food_inflation_mean_pct": 0.0080,
+        },
+        std_errors={
+            "const": 0.0600,
+            "gdp_pc_growth_mean": 0.1200,
+            "real_min_wage_change_pct": 0.0900,
+            "food_inflation_mean_pct": 0.1100,
+        },
+        confidence_intervals={
+            "const": (-0.0100, 0.2500),
+            "gdp_pc_growth_mean": (-0.7100, -0.2000),
+            "real_min_wage_change_pct": (-0.4000, -0.0200),
+            "food_inflation_mean_pct": (0.1100, 0.5800),
+        },
+        n_obs=12,
+        f_pvalue=0.0021,
+    )
+    mock_instance.run_econometric_regression.return_value = mock_summary
+    mock_analyzer.return_value = mock_instance
+
+    exit_code = main(["analyze", "desacople", "--countries", "Chile", "--econometrics"])
+    assert exit_code == 0
+    mock_instance.run_econometric_regression.assert_called_once_with(mock_dataset)
+    captured = capsys.readouterr()
+    assert "CEPALSTAT ECONOMETRIC REGRESSION SUMMARY (OLS)" in captured.out
+    assert "Dep. Variable: Δ Pobreza Total (pp)" in captured.out
+    assert "N = 12" in captured.out
+    assert "R² = 0.6543" in captured.out
+    assert "Adj. R² = 0.5432" in captured.out
+    assert "F-statistic p-value: 0.0021" in captured.out
+    assert "Variable" in captured.out
+    assert "Coef." in captured.out
+    assert "Std.Err." in captured.out
+    assert "p-value" in captured.out
+    assert "[95% Conf. Interval]" in captured.out
+    assert "food_inflation_mean_pct" in captured.out
+    assert "0.3456" in captured.out
+
+
+@patch("statscepal.cli.DecouplingAnalyzer")
+@patch("statscepal.cli.DataExtractor")
+@patch("statscepal.cli.CepalStatClient")
+def test_cli_analyze_desacople_without_econometrics(
+    mock_client, mock_extractor, mock_analyzer, capsys
+):
+    mock_instance = MagicMock()
+    mock_instance.analyze_countries.return_value = DecouplingDataset(
+        records=[
+            CountryPeriodMetric(
+                country="Chile",
+                period_label="P1",
+                years_range="2015-2017",
+                gdp_pc_growth_mean=0.5,
+                poverty_total_change_pp=-2.5,
+                poverty_extreme_change_pp=-0.3,
+                real_min_wage_change_pct=5.2,
+                gini_change=-0.003,
+                food_inflation_mean_pct=3.4,
+                food_wage_gap_pct=1.8,
+                social_elasticity=-5.0,
+                quadrant="Crecimiento Virtuoso",
+            )
+        ]
+    )
+    mock_analyzer.return_value = mock_instance
+
+    exit_code = main(["analyze", "desacople", "--countries", "Chile"])
+    assert exit_code == 0
+    mock_instance.run_econometric_regression.assert_not_called()
+    captured = capsys.readouterr()
+    assert "CEPALSTAT ECONOMETRIC REGRESSION SUMMARY (OLS)" not in captured.out
 
 
 @patch("statscepal.cli.DecouplingAnalyzer")

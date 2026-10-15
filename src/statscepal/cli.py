@@ -143,6 +143,11 @@ def main(args: Sequence[str] | None = None) -> int:
         "--output",
         help="Optional path to export results as CSV",
     )
+    desacople_parser.add_argument(
+        "--econometrics",
+        action="store_true",
+        help="Run and display OLS multivariate regression summary",
+    )
 
     try:
         parsed = parser.parse_args(args)
@@ -432,6 +437,8 @@ def main(args: Sequence[str] | None = None) -> int:
                                 "Δ Pob. Tot (pp)": r.poverty_total_change_pp,
                                 "Δ Pob. Ext (pp)": r.poverty_extreme_change_pp,
                                 "Δ Sal. Real (%)": r.real_min_wage_change_pct,
+                                "Infl. Alim (%)": r.food_inflation_mean_pct,
+                                "Brecha Sal/Alim (%)": r.food_wage_gap_pct,
                                 "Δ Gini": r.gini_change,
                                 "Elasticidad": r.social_elasticity,
                                 "Cuadrante": r.quadrant,
@@ -442,6 +449,27 @@ def main(args: Sequence[str] | None = None) -> int:
                         print(df_table.to_string(index=False))
                     else:
                         print("No records found.")
+
+                    if parsed.econometrics:
+                        summary = analyzer.run_econometric_regression(dataset)
+                        print("=" * 70)
+                        print("CEPALSTAT ECONOMETRIC REGRESSION SUMMARY (OLS)")
+                        print(
+                            f"Dep. Variable: Δ Pobreza Total (pp) | N = {summary.n_obs} | "
+                            f"R² = {summary.r_squared} (Adj. R² = {summary.r_squared_adj})"
+                        )
+                        print(f"F-statistic p-value: {summary.f_pvalue}")
+                        print("-" * 70)
+                        print("Variable              Coef.      Std.Err.   p-value    [95% Conf. Interval]")
+                        print("-" * 70)
+                        for var_name, coef in summary.coefficients.items():
+                            std_err = summary.std_errors.get(var_name, 0.0)
+                            pval = summary.p_values.get(var_name, 1.0)
+                            ci = summary.confidence_intervals.get(var_name, (0.0, 0.0))
+                            print(
+                                f"{var_name:<21} {coef:>10.4f} {std_err:>10.4f} {pval:>10.4f}    [{ci[0]:.4f}, {ci[1]:.4f}]"
+                            )
+                        print("=" * 70)
 
                     if parsed.output:
                         df_table.to_csv(parsed.output, index=False)
