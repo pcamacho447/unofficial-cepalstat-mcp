@@ -15,6 +15,11 @@ from statscepal.catalog import CatalogStore
 from statscepal.client import CepalStatClient
 from statscepal.exceptions import CepalStatError
 from statscepal.extractor import DataExtractor
+from statscepal.semantic import (
+    SemanticDataFetcher,
+    SemanticRegistry,
+    SemanticResolutionEngine,
+)
 from statscepal.thematic_tree import ThematicTree
 
 
@@ -147,6 +152,32 @@ def main(args: Sequence[str] | None = None) -> int:
         "--econometrics",
         action="store_true",
         help="Run and display OLS multivariate regression summary",
+    )
+
+    # semantic
+    semantic_parser = subparsers.add_parser(
+        "semantic", help="CEPALSTAT Semantic Intent Disambiguation Engine diagnostics"
+    )
+    semantic_subparsers = semantic_parser.add_subparsers(
+        dest="semantic_command", help="Semantic action to execute"
+    )
+
+    # semantic resolve
+    resolve_parser = semantic_subparsers.add_parser(
+        "resolve", help="Resolve natural language statistical query"
+    )
+    resolve_parser.add_argument("query", help="Statistical query to resolve")
+    resolve_parser.add_argument(
+        "--fetch",
+        action="store_true",
+        default=False,
+        help="Fetch empirical observation from CEPALSTAT",
+    )
+    resolve_parser.add_argument(
+        "--json",
+        action="store_true",
+        default=False,
+        help="Output full SemanticResolutionResponse as JSON",
     )
 
     try:
@@ -332,6 +363,119 @@ def main(args: Sequence[str] | None = None) -> int:
             out_path = store.export(filepath, format=format_to_use)
             print(f"Catalog exported successfully to {out_path} (format: {format_to_use}).")
             return 0
+
+    if parsed.command == "semantic":
+        if not parsed.semantic_command:
+            semantic_parser.print_help()
+            return 0
+
+        if parsed.semantic_command == "resolve":
+            store = CatalogStore()
+            registry = SemanticRegistry(store=store)
+            engine = SemanticResolutionEngine(registry=registry)
+
+            try:
+                res = engine.resolve_query(parsed.query)
+
+                if parsed.fetch:
+                    fetcher = SemanticDataFetcher()
+                    fetcher.fetch_resolved_data(res)
+
+                if parsed.json:
+                    print(res.model_dump_json(indent=2))
+                    return 0
+
+                print("=" * 70)
+                print("CEPALSTAT Semantic Resolution Engine")
+                print("=" * 70)
+                print(f"Query:     {res.query}")
+                print(f"Status:    {res.status.value}")
+
+                if res.selected_candidate:
+                    sc = res.selected_candidate
+                    print(
+                        f"Indicator: {sc.indicator_id} - {sc.name} (Measure: {sc.measure_type}, Unit: {sc.unit})"
+                    )
+                    print(f"Score:     {sc.relevance_score}")
+                else:
+                    if res.abstention_reason:
+                        print(f"Reason:    {res.abstention_reason}")
+                    if res.conversational_hint:
+                        print(f"Hint:      {res.conversational_hint}")
+
+                if res.temporal_info:
+                    ti = res.temporal_info
+                    prev_str = (
+                        ti.previous_anchor_year
+                        if ti.previous_anchor_year is not None
+                        else "None"
+                    )
+                    next_str = (
+                        ti.next_anchor_year
+                        if ti.next_anchor_year is not None
+                        else "None"
+                    )
+                    print(
+                        f"Temporal:  {ti.temporal_status.value} (Anchors: Prev={prev_str}, Next={next_str})"
+                    )
+                    if ti.disclaimer:
+                        print(f"Notice:    {ti.disclaimer}")
+                else:
+                    print("Temporal:  N/A")
+
+                country_name = res.applied_filters.country_name or "N/A"
+                country_code = res.applied_filters.country_code or "N/A"
+                print(f"Country:   {country_name} ({country_code})")
+                print(f"Year:      {res.applied_filters.year or 'N/A'}")
+
+                facets_str = (
+                    ", ".join(f"{k}={v}" for k, v in res.applied_filters.facets.items())
+                    if res.applied_filters.facets
+                    else "None"
+                )
+                print(f"Facets:    {facets_str}")
+
+                if res.applied_filters.dimensions:
+                    dim_parts = []
+                    for d in res.applied_filters.dimensions:
+                        if d.member_id is not None:
+                            dim_parts.append(
+                                f"{d.dim_name}={d.member_name} (ID: {d.member_id})"
+                            )
+                        else:
+                            dim_parts.append(f"{d.dim_name}={d.member_name}")
+                    filters_str = ", ".join(dim_parts)
+                else:
+                    filters_str = "None"
+                print(f"Filters:   {filters_str}")
+
+                if res.alternatives:
+                    print("Alternatives:")
+                    for alt in res.alternatives:
+                        print(
+                            f"  - [{alt.indicator_id}] {alt.name} ({alt.relationship.value})"
+                        )
+
+                if parsed.fetch:
+                    print("-" * 70)
+                    print("Empirical Observation:")
+                    emp = res.empirical_data or {}
+                    if emp.get("observation_exists"):
+                        val = emp.get("value")
+                        unit = emp.get("unit", "")
+                        unit_str = f" {unit}" if unit else ""
+                        print(f"Value:     {val}{unit_str}")
+                        print(f"Year:      {emp.get('year')}")
+                        print(f"Notes:     {emp.get('notes', '')}")
+                    else:
+                        reason = emp.get("reason", "No observation available")
+                        print(f"Status:    Unavailable ({reason})")
+
+                print("=" * 70)
+                return 0
+            except CepalStatError as err:
+                print(f"CEPALSTAT Error: {err}", file=sys.stderr)
+                return 1
 
     if parsed.command == "search":
         catalog_store = CatalogStore()
