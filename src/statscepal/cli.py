@@ -179,6 +179,14 @@ def main(args: Sequence[str] | None = None) -> int:
         default=False,
         help="Output full SemanticResolutionResponse as JSON",
     )
+    resolve_parser.add_argument(
+        "--explain",
+        "--verbose",
+        "-v",
+        action="store_true",
+        default=False,
+        help="Display step-by-step reasoning trace and decision audit logs",
+    )
 
     try:
         parsed = parser.parse_args(args)
@@ -470,6 +478,12 @@ def main(args: Sequence[str] | None = None) -> int:
                     else:
                         reason = emp.get("reason", "No observation available")
                         print(f"Status:    Unavailable ({reason})")
+
+                if parsed.explain and res.execution_trace:
+                    print("-" * 70)
+                    print("Execution Trace & Decision Audit Logs:")
+                    for trace_line in res.execution_trace:
+                        print(f"  {trace_line}")
 
                 print("=" * 70)
                 return 0

@@ -108,6 +108,7 @@ class SemanticResolutionResponse(BaseModel):
     unsupported_facet: str | None = None
     conversational_hint: str | None = None
     empirical_data: dict[str, Any] | None = Field(default=None, description="Observation payload fetched from CEPALSTAT")
+    execution_trace: list[str] = Field(default_factory=list, description="Step-by-step reasoning trace")
     latency_ms: float = 0.0
 
 

@@ -46,57 +46,74 @@ class SemanticResolutionEngine:
             facets=intent.facets,
         )
 
+        trace: list[str] = [
+            f"[Stage 1: Intent Parsing] Query: '{query_str}'",
+            f"  - Geography: {intent.country_name or 'N/A'} ({intent.country_code or 'N/A'}), Year: {intent.year or 'N/A'}, Freq: {getattr(intent, 'frequency', 'ANUAL')}",
+            f"  - Root Concept: '{intent.root_concept or 'None'}'",
+            f"  - Normalized Facets: {intent.facets if intent.facets else 'None'}",
+        ]
+
         # ----------------------------------------------------
         # Stage 1 & 2: Hard Abstention Checks (Guaranteed Safety)
         # ----------------------------------------------------
         if intent.unknown_concept:
             latency = (time.perf_counter() - t0) * 1000.0
+            trace.append("[Stage 2: Hard Abstention] REJECTED: Phenomenon not in CEPALSTAT scope (LOW_CONCEPTUAL_RELEVANCE).")
             return SemanticResolutionResponse(
                 status=ResolutionStatus.ABSTAINED,
                 query=query_str,
                 abstention_reason="LOW_CONCEPTUAL_RELEVANCE",
                 conversational_hint="No se identificó un fenómeno socioeconómico cubierto por el catálogo de CEPALSTAT.",
+                execution_trace=trace,
                 latency_ms=latency,
             )
 
         if intent.unsupported_facet:
             latency = (time.perf_counter() - t0) * 1000.0
+            trace.append(f"[Stage 2: Hard Abstention] REJECTED: Facet '{intent.unsupported_facet}' not supported for this indicator.")
             return SemanticResolutionResponse(
                 status=ResolutionStatus.ABSTAINED,
                 query=query_str,
                 abstention_reason=intent.unsupported_facet,
                 unsupported_facet=intent.unsupported_facet,
                 conversational_hint=f"CEPALSTAT no dispone de desagregación para '{intent.unsupported_facet}' en este indicador.",
+                execution_trace=trace,
                 latency_ms=latency,
             )
 
         if intent.period_out_of_range:
             latency = (time.perf_counter() - t0) * 1000.0
+            trace.append(f"[Stage 2: Hard Abstention] REJECTED: Year {intent.year} out of historical range.")
             return SemanticResolutionResponse(
                 status=ResolutionStatus.ABSTAINED,
                 query=query_str,
                 abstention_reason="PERIOD_OUT_OF_RANGE",
                 conversational_hint=f"El año solicitado ({intent.year}) está fuera del rango histórico de CEPALSTAT.",
+                execution_trace=trace,
                 latency_ms=latency,
             )
 
         if intent.unsupported_frequency:
             latency = (time.perf_counter() - t0) * 1000.0
+            trace.append(f"[Stage 2: Hard Abstention] REJECTED: Requested frequency '{getattr(intent, 'frequency', 'UNSUPPORTED')}' not published for series.")
             return SemanticResolutionResponse(
                 status=ResolutionStatus.ABSTAINED,
                 query=query_str,
                 abstention_reason="UNSUPPORTED_FREQUENCY",
                 conversational_hint="La periodicidad solicitada no se encuentra disponible para esta serie oficial en CEPALSTAT.",
+                execution_trace=trace,
                 latency_ms=latency,
             )
 
         if not intent.root_concept:
             latency = (time.perf_counter() - t0) * 1000.0
+            trace.append("[Stage 2: Hard Abstention] REJECTED: No root concept recognized.")
             return SemanticResolutionResponse(
                 status=ResolutionStatus.ABSTAINED,
                 query=query_str,
                 abstention_reason="LOW_CONCEPTUAL_RELEVANCE",
                 conversational_hint="No se identificó un fenómeno socioeconómico cubierto por el catálogo de CEPALSTAT.",
+                execution_trace=trace,
                 latency_ms=latency,
             )
 
@@ -106,12 +123,17 @@ class SemanticResolutionEngine:
         canonical_id = self.registry.get_canonical_default(intent.root_concept)
         if not canonical_id:
             latency = (time.perf_counter() - t0) * 1000.0
+            trace.append("[Stage 3: Candidate Selection] REJECTED: No canonical indicator for root concept.")
             return SemanticResolutionResponse(
                 status=ResolutionStatus.ABSTAINED,
                 query=query_str,
                 abstention_reason="NO_CANONICAL_INDICATOR",
+                execution_trace=trace,
                 latency_ms=latency,
             )
+
+        trace.append(f"[Stage 2: Hard Abstention] PASSED: Root concept '{intent.root_concept}' recognized, facets valid.")
+        trace.append(f"[Stage 3: Candidate Selection] Canonical indicator candidate: ID {canonical_id}")
 
         # Handle Ambiguous Measure Proposal upfront
         if intent.is_ambiguous_measure:
@@ -161,6 +183,7 @@ class SemanticResolutionEngine:
                 )
                 applied_filters.dimensions = matched_dims
 
+            trace.append(f"[Stage 3: Ambiguity Check] Ambiguous measure proposed: Primary ID {primary_id}, Alternatives={[a.indicator_id for a in alternatives]}")
             latency = (time.perf_counter() - t0) * 1000.0
             return SemanticResolutionResponse(
                 status=ResolutionStatus.ALTERNATIVE_PROPOSED,
@@ -174,6 +197,7 @@ class SemanticResolutionEngine:
                     if intent.ambiguous_candidate == "FEMININITY_INDEX"
                     else "Se seleccionó la tasa nacional armonizada (ID 127). Nota: también está disponible la serie urbana (ID 119)."
                 ),
+                execution_trace=trace,
                 latency_ms=latency,
             )
 
@@ -211,6 +235,7 @@ class SemanticResolutionEngine:
                 unhandled_facets = unhandled_facets | set(crit_def_unhandled)
 
         if unhandled_facets:
+            trace.append(f"[Stage 4: Dimensional Gate] Canonical ID {canonical_id} lacks facets: {sorted(unhandled_facets)}. Traversing knowledge graph for 'breakdown_of' swap...")
             # Need to find candidate with breakdown_of relationship that supports all facets
             found_swap = False
             for cand_id, rel in default_meta.relationships.items():
@@ -230,21 +255,27 @@ class SemanticResolutionEngine:
                             swapped_from = canonical_id
                             swap_relationship = rel
                             found_swap = True
+                            cand_name = cand_meta.name if cand_meta else ""
+                            trace.append(f"  - Swapped to ID {cand_id} ('{cand_name}') via 'breakdown_of' (supports required facets)")
                             break
                     elif cand_meta and requested_facet_keys.issubset(cand_meta.supported_facets):
                         target_indicator_id = cand_id
                         swapped_from = canonical_id
                         swap_relationship = rel
                         found_swap = True
+                        cand_name = cand_meta.name if cand_meta else ""
+                        trace.append(f"  - Swapped to ID {cand_id} ('{cand_name}') via 'breakdown_of' (supports required facets)")
                         break
 
             if not found_swap:
                 latency = (time.perf_counter() - t0) * 1000.0
+                trace.append(f"  - REJECTED: No valid conmutation supports facet '{list(unhandled_facets)[0]}'.")
                 return SemanticResolutionResponse(
                     status=ResolutionStatus.ABSTAINED,
                     query=query_str,
                     abstention_reason="UNSUPPORTED_FACET",
                     unsupported_facet=list(unhandled_facets)[0],
+                    execution_trace=trace,
                     latency_ms=latency,
                 )
 
@@ -258,17 +289,21 @@ class SemanticResolutionEngine:
                 target_indicator_id, target_dims, intent.facets
             )
             applied_filters.dimensions = matched_dims
+            for f in matched_dims:
+                trace.append(f"[Stage 4: Member Matcher] Bound dimension '{f.dim_name}' (ID: {f.dim_id}) -> Member '{f.member_name}' (ID: {f.member_id})")
             critical_unhandled = [
                 f for f in unhandled
                 if intent.facets.get(f) not in {"POBREZA_TOTAL", "TOTAL", "NACIONAL"}
             ]
             if critical_unhandled:
                 latency = (time.perf_counter() - t0) * 1000.0
+                trace.append(f"[Stage 4: Member Matcher] REJECTED: Unhandled facet '{critical_unhandled[0]}'")
                 return SemanticResolutionResponse(
                     status=ResolutionStatus.ABSTAINED,
                     query=query_str,
                     abstention_reason="UNSUPPORTED_FACET",
                     unsupported_facet=critical_unhandled[0],
+                    execution_trace=trace,
                     latency_ms=latency,
                 )
 
@@ -299,9 +334,11 @@ class SemanticResolutionEngine:
                 intent.country_code,
                 intent.year,
             )
+            trace.append(f"[Stage 5: Temporal Audit] Country={intent.country_code}, Year={intent.year} -> Status={temp_status.value} (Anchors: Prev={prev_anchor}, Next={next_anchor})")
 
             if temp_status == TemporalAvailabilityStatus.PERIOD_UNOBSERVED:
                 status = ResolutionStatus.RESOLVED_WITH_ANCHORS
+                trace.append(f"  - Sampling notice: Gap in survey schedule for {intent.country_name} in {intent.year}. Interpolation strictly forbidden.")
                 temporal_info = TemporalAnchorInfo(
                     requested_year=intent.year,
                     temporal_status=temp_status,
@@ -320,6 +357,7 @@ class SemanticResolutionEngine:
                     forbid_interpolation=True,
                 )
 
+        trace.append(f"[Resolution Result] SUCCESS: Selected ID {target_indicator_id} ('{selected.name}') with score {selected.relevance_score}. Status={status.value}")
         latency = (time.perf_counter() - t0) * 1000.0
         return SemanticResolutionResponse(
             status=status,
@@ -327,5 +365,6 @@ class SemanticResolutionEngine:
             selected_candidate=selected,
             applied_filters=applied_filters,
             temporal_info=temporal_info,
+            execution_trace=trace,
             latency_ms=latency,
         )

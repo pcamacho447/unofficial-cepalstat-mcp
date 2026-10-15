@@ -64,6 +64,7 @@ class ParsedIntent(BaseModel):
     unknown_concept: bool = False
     period_out_of_range: bool = False
     unsupported_frequency: bool = False
+    frequency: str = "ANUAL"
 
 
 class QueryParser:
@@ -86,9 +87,13 @@ class QueryParser:
 
         if "diaria" in clean or "diario" in clean:
             intent.unsupported_frequency = True
-
-        if "mensual" in clean and "pobreza" in clean:
-            intent.unsupported_frequency = True
+            intent.frequency = "DIARIA"
+        elif "trimestral" in clean or "trimestre" in clean:
+            intent.frequency = "TRIMESTRAL"
+        elif "mensual" in clean:
+            intent.frequency = "MENSUAL"
+            if "pobreza" in clean:
+                intent.unsupported_frequency = True
 
         # 2. Extract Year
         year_match = re.search(r"\b(1\d{3}|20\d{2})\b", query)

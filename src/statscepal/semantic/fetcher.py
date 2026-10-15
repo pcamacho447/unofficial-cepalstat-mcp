@@ -259,4 +259,12 @@ class SemanticDataFetcher:
             }
 
         response.empirical_data = payload
+        if payload.get("observation_exists"):
+            response.execution_trace.append(
+                f"[Stage 6: Empirical Extraction] Observation found: {payload['value']} {payload.get('unit', '')} for {payload.get('country')} ({payload.get('year')})"
+            )
+        else:
+            response.execution_trace.append(
+                f"[Stage 6: Empirical Extraction] Observation unavailable: {payload.get('reason')}"
+            )
         return payload
