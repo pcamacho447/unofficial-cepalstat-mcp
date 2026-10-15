@@ -118,6 +118,16 @@ class CatalogStore:
                     PRIMARY KEY (indicator_id, country_code, year)
                 )
             """)
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS indicator_metadata (
+                    indicator_id INTEGER PRIMARY KEY,
+                    name TEXT NOT NULL,
+                    concept TEXT,
+                    measure_type TEXT,
+                    unit TEXT,
+                    supported_facets TEXT
+                )
+            """)
 
     def is_built(self) -> bool:
         """Check if the catalog has been populated."""
@@ -392,4 +402,74 @@ class CatalogStore:
             if not row:
                 return None
             return (row["status"], row["prev_anchor"], row["next_anchor"])
+
+    def get_target_indicators(self, indicator_a: int, rel_type: str) -> list[int]:
+        """Get all target indicators related to indicator_a by a specific relationship type."""
+        with self._get_connection() as conn:
+            rows = conn.execute(
+                "SELECT indicator_b FROM indicator_relationships WHERE indicator_a = ? AND lower(rel_type) = ?",
+                (indicator_a, rel_type.lower()),
+            ).fetchall()
+            return [row["indicator_b"] for row in rows]
+
+    def store_indicator_metadata(
+        self,
+        indicator_id: int,
+        name: str,
+        concept: str,
+        measure_type: str,
+        unit: str,
+        supported_facets: set[str] | list[str] | None = None,
+    ) -> None:
+        """Store indicator metadata including measure type, unit and facets."""
+        facets_str = ",".join(sorted(supported_facets)) if supported_facets else ""
+        with self._get_connection() as conn:
+            conn.execute(
+                """
+                INSERT OR REPLACE INTO indicator_metadata
+                (indicator_id, name, concept, measure_type, unit, supported_facets)
+                VALUES (?, ?, ?, ?, ?, ?)
+                """,
+                (indicator_id, name, concept, measure_type, unit, facets_str),
+            )
+
+    def get_indicator_metadata(self, indicator_id: int) -> dict[str, Any] | None:
+        """Retrieve indicator metadata from SQLite."""
+        with self._get_connection() as conn:
+            row = conn.execute(
+                "SELECT indicator_id, name, concept, measure_type, unit, supported_facets FROM indicator_metadata WHERE indicator_id = ?",
+                (indicator_id,),
+            ).fetchone()
+            if not row:
+                return None
+            facets = set(row["supported_facets"].split(",")) if row["supported_facets"] else set()
+            return {
+                "indicator_id": row["indicator_id"],
+                "name": row["name"],
+                "concept": row["concept"],
+                "measure_type": row["measure_type"],
+                "unit": row["unit"],
+                "supported_facets": facets,
+            }
+
+    def populate_official_indicators(self) -> None:
+        """Seed SQLite semantic tables with the 25 official CEPALSTAT indicators, dimensions, and relationships."""
+        from statscepal.semantic.registry import DEFAULT_OFFICIAL_DIMENSIONS, VERTICAL_SLICE_INDICATORS
+
+        self.init_semantic_tables()
+        for ind_id, meta in VERTICAL_SLICE_INDICATORS.items():
+            self.store_indicator_metadata(
+                indicator_id=meta.indicator_id,
+                name=meta.name,
+                concept=meta.concept,
+                measure_type=meta.measure_type,
+                unit=meta.unit,
+                supported_facets=meta.supported_facets,
+            )
+            for target_id, rel in meta.relationships.items():
+                rel_str = rel.value if hasattr(rel, "value") else str(rel)
+                self.store_relationship(meta.indicator_id, target_id, rel_str)
+
+        for ind_id, dims in DEFAULT_OFFICIAL_DIMENSIONS.items():
+            self.store_indicator_dimensions(ind_id, dims)
 
