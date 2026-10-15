@@ -23,6 +23,12 @@ COUNTRY_LEXICON: dict[str, str] = {
     "uruguay": "URY",
     "costa rica": "CRI",
     "peru": "PER",
+    "ecuador": "ECU",
+    "bolivia": "BOL",
+    "panama": "PAN",
+    "paraguay": "PRY",
+    "honduras": "HND",
+    "lima": "PER",
 }
 
 COUNTRY_NAMES: dict[str, str] = {
@@ -34,6 +40,11 @@ COUNTRY_NAMES: dict[str, str] = {
     "URY": "Uruguay",
     "CRI": "Costa Rica",
     "PER": "Perú",
+    "ECU": "Ecuador",
+    "BOL": "Bolivia",
+    "PAN": "Panamá",
+    "PRY": "Paraguay",
+    "HND": "Honduras",
 }
 
 
@@ -73,6 +84,12 @@ class QueryParser:
         if "trimestral" in clean and "gini" in clean:
             intent.unsupported_frequency = True
 
+        if "diaria" in clean or "diario" in clean:
+            intent.unsupported_frequency = True
+
+        if "mensual" in clean and "pobreza" in clean:
+            intent.unsupported_frequency = True
+
         # 2. Extract Year
         year_match = re.search(r"\b(1\d{3}|20\d{2})\b", query)
         if year_match:
@@ -94,7 +111,9 @@ class QueryParser:
             facets["area"] = "RURAL"
         elif any(term in clean for term in ["ciudades", "urbano", "ciudad", "urbana"]):
             facets["area"] = "URBANO"
-        elif "total" in clean or "nacional" in clean or "pais" in clean:
+        elif any(term in clean for term in ["area nacional", "total nacional", "todo el pais", "nivel nacional"]):
+            facets["area"] = "NACIONAL"
+        elif "pobreza total" in clean:
             facets["area"] = "NACIONAL"
 
         # Sexo
@@ -102,9 +121,11 @@ class QueryParser:
             facets["sexo"] = "FEMENINO"
         elif any(term in clean for term in ["pibes", "chicos", "hombres", "masculino", "varones", "hombre"]):
             facets["sexo"] = "MASCULINO"
+        if "hombres y mujeres" in clean or "ambos sexos" in clean:
+            facets["sexo"] = "AMBOS_SEXOS"
 
         # Edad
-        if any(term in clean for term in ["pibes", "chavos", "jovenes", "juventud", "15 a 24"]):
+        if any(term in clean for term in ["pibes", "chavos", "jovenes", "juventud", "15 a 24", "juvenil"]):
             facets["edad"] = "JUVENTUD"
         elif any(term in clean for term in ["tercera edad", "abuelos", "ancianos", "adultos mayores", "65 y mas"]):
             facets["edad"] = "ADULTOS_MAYORES"
@@ -127,9 +148,70 @@ class QueryParser:
         if any(term in clean for term in ["carestia de comida", "alimentos", "comida", "alimentos y bebidas"]):
             facets["canasta"] = "ALIMENTOS"
 
+        # Rubro salud
+        if "salud" in clean:
+            facets["rubro"] = "SALUD"
+
         # 5. Extract Root Concept
-        if "alimentos" in clean or "carestia de comida" in clean:
+        has_pib = bool(re.search(r"\bpib\b", clean) or "producto interno bruto" in clean)
+
+        # Sector Externo (checked first so "... % del PIB" does not shadow)
+        if "balanza comercial" in clean:
+            intent.root_concept = "BALANZA_COMERCIAL"
+        elif "cuenta corriente" in clean:
+            intent.root_concept = "CUENTA_CORRIENTE"
+        elif "inversion extranjera" in clean or re.search(r"\bied\b", clean):
+            intent.root_concept = "INVERSION_EXTRANJERA_DIRECTA"
+        elif "terminos de intercambio" in clean:
+            intent.root_concept = "TERMINOS_INTERCAMBIO"
+
+        # Sector Público (checked first so "... % del PIB" does not shadow)
+        elif "deuda publica" in clean or "deuda del gobierno" in clean:
+            intent.root_concept = "DEUDA_PUBLICA"
+        elif "gasto social" in clean:
+            intent.root_concept = "GASTO_SOCIAL"
+        elif "gasto publico en educacion" in clean or ("gasto" in clean and "educacion" in clean):
+            intent.root_concept = "GASTO_EDUCACION"
+
+        # Medio Ambiente
+        elif "emisiones" in clean or "gei" in clean:
+            if any(term in clean for term in ["sin lulucf", "excluyendo sector utcuts", "sin uso de la tierra"]):
+                intent.root_concept = "EMISIONES_GEI_SIN_LULUCF"
+            else:
+                intent.root_concept = "EMISIONES_GEI_LULUCF"
+        elif any(term in clean for term in ["agua dulce", "recursos hidricos", "extraccion de agua"]):
+            intent.root_concept = "AGUA_DULCE"
+
+        # Precios e Inflación
+        elif "alimentos y bebidas" in clean:
+            intent.root_concept = "IPC_ALIMENTOS"
+        elif any(term in clean for term in ["doce meses", "interanual"]):
             intent.root_concept = "INFLACION_ALIMENTOS"
+        elif "alimentos" in clean or "carestia de comida" in clean:
+            intent.root_concept = "INFLACION_ALIMENTOS"
+        elif "ipc" in clean or "precios al consumidor" in clean:
+            intent.root_concept = "IPC_GENERAL"
+
+        # Cuentas Nacionales & PIB
+        elif ("per capita" in clean and has_pib) or "pib per capita" in clean:
+            intent.root_concept = "PIB_PER_CAPITA"
+        elif "trimestral" in clean and has_pib:
+            intent.root_concept = "PIB_TRIMESTRAL"
+        elif ("corrientes" in clean or "moneda nacional" in clean) and has_pib:
+            intent.root_concept = "PIB_CORRIENTE"
+        elif has_pib:
+            intent.root_concept = "PIB"
+
+        # Mercado Laboral & Salarios & Desigualdad & Pobreza
+        elif "brecha salarial" in clean:
+            intent.root_concept = "BRECHA_SALARIAL"
+        elif "desempleo juvenil" in clean:
+            intent.root_concept = "DESEMPLEO_JUVENIL"
+            facets["edad"] = "JUVENTUD"
+        elif "chamba" in clean:
+            intent.root_concept = "EMPLEO"
+            if "sexo" not in facets:
+                facets["sexo"] = "TOTAL"
         elif "pobreza" in clean:
             intent.root_concept = "POBREZA"
             # Default area to NACIONAL if not specified
@@ -146,9 +228,7 @@ class QueryParser:
             if "urbano" in clean and "edad" not in facets and not intent.year:
                 intent.is_ambiguous_measure = True
                 intent.ambiguous_candidate = "URBAN_UNEMPLOYMENT"
-        elif "pib" in clean or "producto interno bruto" in clean:
-            intent.root_concept = "PIB"
-        elif "salario" in clean or "sueldo" in clean:
+        elif "salario" in clean or "sueldo" in clean or "plata" in clean:
             intent.root_concept = "SALARIO"
         elif "gini" in clean or "desigualdad" in clean:
             intent.root_concept = "GINI"

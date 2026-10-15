@@ -86,7 +86,7 @@ class SemanticResolutionEngine:
                 status=ResolutionStatus.ABSTAINED,
                 query=query_str,
                 abstention_reason="UNSUPPORTED_FREQUENCY",
-                conversational_hint="El indicador de Gini solo se calcula en frecuencia anual en encuestas de hogares.",
+                conversational_hint="La periodicidad solicitada no se encuentra disponible para esta serie oficial en CEPALSTAT.",
                 latency_ms=latency,
             )
 
@@ -186,8 +186,16 @@ class SemanticResolutionEngine:
         assert default_meta is not None
 
         requested_facet_keys = set(intent.facets.keys())
-        # Filter out severidad or area if default already handles them
+        # Filter out default aggregate facet values
         unhandled_facets = requested_facet_keys - default_meta.supported_facets
+        for facet_k, default_v in [
+            ("area", "NACIONAL"),
+            ("severidad", "POBREZA_TOTAL"),
+            ("sexo", "TOTAL"),
+            ("sexo", "AMBOS_SEXOS"),
+        ]:
+            if intent.facets.get(facet_k) == default_v:
+                unhandled_facets.discard(facet_k)
 
         # Check concrete dimensions if present for default indicator
         default_dims = self.registry.get_dimensions(canonical_id)

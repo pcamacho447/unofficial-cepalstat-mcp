@@ -316,6 +316,264 @@
       "expected_status": "ABSTAINED",
       "abstention_reason": "UNSUPPORTED_FREQUENCY",
       "must_ask_clarification": true
+    },
+    {
+      "case_id": "SE-026",
+      "query": "PIB a precios constantes en dólares en Colombia en 2022",
+      "category": "DIRECT_CANONICAL",
+      "expected_status": "RESOLVED",
+      "expected_indicator_id": 2203,
+      "required_country": "COL",
+      "required_year": 2022,
+      "allow_swap": false
+    },
+    {
+      "case_id": "SE-027",
+      "query": "PIB a precios corrientes en moneda nacional en Perú en 2021",
+      "category": "DIRECT_CANONICAL",
+      "expected_status": "RESOLVED",
+      "expected_indicator_id": 2204,
+      "required_country": "PER",
+      "required_year": 2021,
+      "allow_swap": false
+    },
+    {
+      "case_id": "SE-028",
+      "query": "PIB per cápita a precios constantes en México en 2020",
+      "category": "DIRECT_CANONICAL",
+      "expected_status": "RESOLVED",
+      "expected_indicator_id": 2206,
+      "required_country": "MEX",
+      "required_year": 2020,
+      "allow_swap": false
+    },
+    {
+      "case_id": "SE-029",
+      "query": "Crecimiento trimestral del PIB de Chile en 2023",
+      "category": "DIRECT_CANONICAL",
+      "expected_status": "RESOLVED",
+      "expected_indicator_id": 2447,
+      "required_country": "CHL",
+      "required_year": 2023,
+      "allow_swap": false
+    },
+    {
+      "case_id": "SE-030",
+      "query": "Índice de precios al consumidor general en Argentina en 2023",
+      "category": "DIRECT_CANONICAL",
+      "expected_status": "RESOLVED",
+      "expected_indicator_id": 365,
+      "required_country": "ARG",
+      "required_year": 2023,
+      "allow_swap": false
+    },
+    {
+      "case_id": "SE-031",
+      "query": "Inflación de alimentos y bebidas en Uruguay en 2022",
+      "category": "DIRECT_CANONICAL",
+      "expected_status": "RESOLVED",
+      "expected_indicator_id": 1684,
+      "required_country": "URY",
+      "required_year": 2022,
+      "allow_swap": false
+    },
+    {
+      "case_id": "SE-032",
+      "query": "Variación interanual a doce meses del IPC en Brasil en 2021",
+      "category": "DIRECT_CANONICAL",
+      "expected_status": "RESOLVED",
+      "expected_indicator_id": 2929,
+      "required_country": "BRA",
+      "required_year": 2021,
+      "allow_swap": false
+    },
+    {
+      "case_id": "SE-033",
+      "query": "IPC de salud en Colombia en 2020",
+      "category": "DIRECT_CANONICAL",
+      "expected_status": "RESOLVED",
+      "expected_indicator_id": 365,
+      "required_country": "COL",
+      "required_year": 2020,
+      "required_facets": {
+        "rubro": "SALUD"
+      },
+      "allow_swap": false
+    },
+    {
+      "case_id": "SE-034",
+      "query": "Balanza comercial de bienes en Ecuador en 2022",
+      "category": "DIRECT_CANONICAL",
+      "expected_status": "RESOLVED",
+      "expected_indicator_id": 2949,
+      "required_country": "ECU",
+      "required_year": 2022,
+      "allow_swap": false
+    },
+    {
+      "case_id": "SE-035",
+      "query": "Saldo de la cuenta corriente como porcentaje del PIB en Costa Rica en 2021",
+      "category": "DIRECT_CANONICAL",
+      "expected_status": "RESOLVED",
+      "expected_indicator_id": 740,
+      "required_country": "CRI",
+      "required_year": 2021,
+      "allow_swap": false
+    },
+    {
+      "case_id": "SE-036",
+      "query": "Inversión extranjera directa entradas netas en México en 2022",
+      "category": "DIRECT_CANONICAL",
+      "expected_status": "RESOLVED",
+      "expected_indicator_id": 4231,
+      "required_country": "MEX",
+      "required_year": 2022,
+      "allow_swap": false
+    },
+    {
+      "case_id": "SE-037",
+      "query": "Términos de intercambio de bienes de Bolivia en 2020",
+      "category": "DIRECT_CANONICAL",
+      "expected_status": "RESOLVED",
+      "expected_indicator_id": 2954,
+      "required_country": "BOL",
+      "required_year": 2020,
+      "allow_swap": false
+    },
+    {
+      "case_id": "SE-038",
+      "query": "Deuda pública del gobierno central como porcentaje del PIB en Panamá en 2022",
+      "category": "DIRECT_CANONICAL",
+      "expected_status": "RESOLVED",
+      "expected_indicator_id": 1240,
+      "required_country": "PAN",
+      "required_year": 2022,
+      "allow_swap": false
+    },
+    {
+      "case_id": "SE-039",
+      "query": "Gasto social público total como porcentaje del PIB en Chile en 2021",
+      "category": "DIRECT_CANONICAL",
+      "expected_status": "RESOLVED",
+      "expected_indicator_id": 4405,
+      "required_country": "CHL",
+      "required_year": 2021,
+      "allow_swap": false
+    },
+    {
+      "case_id": "SE-040",
+      "query": "Gasto público en educación en Paraguay en 2019",
+      "category": "DIRECT_CANONICAL",
+      "expected_status": "RESOLVED",
+      "expected_indicator_id": 4406,
+      "required_country": "PRY",
+      "required_year": 2019,
+      "allow_swap": false
+    },
+    {
+      "case_id": "SE-041",
+      "query": "Emisiones de gases de efecto invernadero con uso de la tierra (LULUCF) en Brasil en 2020",
+      "category": "DIRECT_CANONICAL",
+      "expected_status": "RESOLVED",
+      "expected_indicator_id": 5681,
+      "required_country": "BRA",
+      "required_year": 2020,
+      "allow_swap": false
+    },
+    {
+      "case_id": "SE-042",
+      "query": "Emisiones totales de GEI excluyendo sector UTCUTS / sin LULUCF en Colombia en 2021",
+      "category": "DIRECT_CANONICAL",
+      "expected_status": "RESOLVED",
+      "expected_indicator_id": 5682,
+      "required_country": "COL",
+      "required_year": 2021,
+      "allow_swap": false
+    },
+    {
+      "case_id": "SE-043",
+      "query": "Extracción de agua dulce por habitante en Chile en 2020",
+      "category": "DIRECT_CANONICAL",
+      "expected_status": "RESOLVED",
+      "expected_indicator_id": 1318,
+      "required_country": "CHL",
+      "required_year": 2020,
+      "allow_swap": false
+    },
+    {
+      "case_id": "SE-044",
+      "query": "Plata que ganan los chavos laburantes en el campo en México 2020",
+      "category": "REGIONALISM_NORMALIZATION",
+      "expected_status": "RESOLVED",
+      "expected_indicator_id": 340,
+      "required_country": "MEX",
+      "required_year": 2020,
+      "required_facets": {
+        "area": "RURAL",
+        "edad": "JUVENTUD"
+      },
+      "allow_swap": false
+    },
+    {
+      "case_id": "SE-045",
+      "query": "Chamba informal de las pibas en Lima 2021",
+      "category": "REGIONALISM_NORMALIZATION",
+      "expected_status": "RESOLVED",
+      "expected_indicator_id": 127,
+      "required_country": "PER",
+      "required_year": 2021,
+      "required_facets": {
+        "sexo": "FEMENINO",
+        "formalidad": "INFORMAL"
+      },
+      "allow_swap": false
+    },
+    {
+      "case_id": "SE-046",
+      "query": "Desempleo juvenil en Colombia 2022",
+      "category": "REGIONALISM_NORMALIZATION",
+      "expected_status": "RESOLVED",
+      "expected_indicator_id": 3344,
+      "required_country": "COL",
+      "required_year": 2022,
+      "required_facets": {
+        "edad": "JUVENTUD"
+      },
+      "allow_swap": false
+    },
+    {
+      "case_id": "SE-047",
+      "query": "Brecha salarial entre hombres y mujeres en Uruguay 2020",
+      "category": "REGIONALISM_NORMALIZATION",
+      "expected_status": "RESOLVED",
+      "expected_indicator_id": 3333,
+      "required_country": "URY",
+      "required_year": 2020,
+      "allow_swap": false
+    },
+    {
+      "case_id": "SE-048",
+      "query": "Tasa de inflación diaria en Argentina la semana pasada",
+      "category": "UNSUPPORTED_FREQUENCY_ABSTAIN",
+      "expected_status": "ABSTAINED",
+      "abstention_reason": "UNSUPPORTED_FREQUENCY",
+      "must_ask_clarification": true
+    },
+    {
+      "case_id": "SE-049",
+      "query": "Frecuencia de donación de órganos en Honduras 2021",
+      "category": "UNKNOWN_CONCEPT_ABSTAIN",
+      "expected_status": "ABSTAINED",
+      "abstention_reason": "LOW_CONCEPTUAL_RELEVANCE",
+      "must_ask_clarification": true
+    },
+    {
+      "case_id": "SE-050",
+      "query": "Evolución de la pobreza mensual en Chile 2022",
+      "category": "UNSUPPORTED_FREQUENCY_ABSTAIN",
+      "expected_status": "ABSTAINED",
+      "abstention_reason": "UNSUPPORTED_FREQUENCY",
+      "must_ask_clarification": true
     }
   ]
 }

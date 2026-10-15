@@ -26,7 +26,7 @@ def engine() -> SemanticResolutionEngine:
 def test_benchmark_file_exists_and_loads(benchmark_file: Path):
     evaluator = BenchmarkEvaluator(cases_path=benchmark_file)
     cases = evaluator.load_cases()
-    assert len(cases) == 25
+    assert len(cases) == 50
     assert cases[0].case_id == "POV-01"
 
 
@@ -97,12 +97,12 @@ def test_full_benchmark_suite_execution(benchmark_file: Path):
     report = evaluator.evaluate()
 
     # Asserting the 7 Statistical Correctness Thresholds
-    assert report.total_cases == 25
-    assert report.passed_cases == 25, f"Failed cases: {[d.case_id for d in report.details if not d.passed]}"
+    assert report.total_cases == 50
+    assert report.passed_cases == 50, f"Failed cases: {[d.case_id for d in report.details if not d.passed]}"
     assert report.top1_accuracy_pct == 100.0
     assert report.recall_at_3_pct == 100.0
     assert report.false_substitution_rate_pct == 0.0  # Zero false swaps
     assert report.facet_precision_pct == 100.0
     assert report.temporal_status_accuracy_pct == 100.0
     assert report.justified_abstention_rate_pct == 100.0
-    assert report.p50_latency_ms < 5.0
+    assert report.p50_latency_ms < 2.0
