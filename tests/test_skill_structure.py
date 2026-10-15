@@ -66,3 +66,86 @@ def test_subagent_structure():
     assert "statscepal catalog search" in content
     assert "statscepal catalog stats" in content
     assert "statscepal search" in content
+
+
+def test_bmad_agent_econometrician_structure():
+    import tomllib
+
+    project_root = Path(__file__).resolve().parent.parent
+    agent_dir = project_root / ".agents" / "skills" / "bmad-agent-econometrician"
+    skill_file = agent_dir / "SKILL.md"
+    customize_file = agent_dir / "customize.toml"
+
+    assert skill_file.exists(), f"Skill file does not exist at {skill_file}"
+    assert customize_file.exists(), f"customize.toml does not exist at {customize_file}"
+
+    # Verify SKILL.md
+    content = skill_file.read_text(encoding="utf-8")
+    fm_match = re.match(r"^---\r?\n(.*?)\r?\n---\r?\n", content, re.DOTALL)
+    assert fm_match is not None, "SKILL.md must start with YAML frontmatter bounded by ---"
+
+    frontmatter_raw = fm_match.group(1)
+    name_match = re.search(r"^name:\s*([a-zA-Z0-9_-]+)\s*$", frontmatter_raw, re.MULTILINE)
+    assert name_match is not None
+    assert name_match.group(1) == "bmad-agent-econometrician"
+
+    desc_match = re.search(r"^description:\s*(.+)$", frontmatter_raw, re.MULTILINE)
+    assert desc_match is not None
+    desc = desc_match.group(1).strip().strip("'\"")
+    assert "ECLAC macro-structuralist econometrician" in desc
+    assert "Use when the user asks to talk to Raul or requests the CEPAL econometrician" in desc
+
+    # Persona & Activation Steps
+    assert "📈" in content
+    assert "resolve_customization.py" in content
+    assert "resolve_config.py" in content
+    assert "Adopt Persona" in content
+    assert "Raúl" in content or "Raul" in content
+
+    # Verify customize.toml
+    config = tomllib.loads(customize_file.read_text(encoding="utf-8"))
+    assert "agent" in config
+    agent = config["agent"]
+    assert agent["name"] == "Raul"
+    assert agent["code"] == "bmad-agent-econometrician"
+    assert agent["title"] == "ECLAC Econometrician"
+    assert agent["icon"] == "📈"
+    assert agent["module"] == "bmm"
+    assert agent["team"] == "software-development"
+    assert agent["role"] == "Macro-structuralist Econometrician"
+    assert "Raúl Prebisch" in agent["identity"]
+    assert "R²" in agent["communication_style"]
+    assert len(agent.get("principles", [])) >= 3
+
+
+def test_cepalstat_econometrics_skill_structure():
+    project_root = Path(__file__).resolve().parent.parent
+    skill_dir = project_root / ".agents" / "skills" / "cepalstat-econometrics"
+    skill_file = skill_dir / "SKILL.md"
+
+    assert skill_file.exists(), f"Skill file does not exist at {skill_file}"
+
+    content = skill_file.read_text(encoding="utf-8")
+    fm_match = re.match(r"^---\r?\n(.*?)\r?\n---\r?\n", content, re.DOTALL)
+    assert fm_match is not None, "SKILL.md must start with YAML frontmatter bounded by ---"
+
+    frontmatter_raw = fm_match.group(1)
+    name_match = re.search(r"^name:\s*([a-zA-Z0-9_-]+)\s*$", frontmatter_raw, re.MULTILINE)
+    assert name_match is not None
+    assert name_match.group(1) == "cepalstat-econometrics"
+
+    desc_match = re.search(r"^description:\s*(.+)$", frontmatter_raw, re.MULTILINE)
+    assert desc_match is not None
+    desc = desc_match.group(1).strip().strip("'\"")
+    assert desc.startswith("Use when")
+    assert "statsmodels" in desc or "econometrics" in desc
+
+    # Verify methodological content
+    assert "EconometricEstimator" in content
+    assert "fit_poverty_growth_model" in content
+    assert "2929" in content  # Food inflation indicator
+    assert "p-value" in content.lower() or "p_value" in content.lower()
+    assert "r-squared" in content.lower() or "r²" in content.lower() or "r_squared" in content.lower()
+    assert "elasticity" in content.lower() or "elasticidad" in content.lower()
+    assert "statsmodels" in content.lower()
+
