@@ -12,6 +12,7 @@ from statscepal.semantic.models import (
     TemporalAnchorInfo,
     TemporalAvailabilityStatus,
 )
+from statscepal.semantic.matcher import DynamicMemberMatcher
 from statscepal.semantic.parser import QueryParser
 from statscepal.semantic.registry import SemanticRegistry
 
@@ -23,9 +24,15 @@ class SemanticResolutionEngine:
         self,
         parser: QueryParser | None = None,
         registry: SemanticRegistry | None = None,
+        matcher: DynamicMemberMatcher | None = None,
     ):
         self.parser = parser or QueryParser()
         self.registry = registry or SemanticRegistry()
+        self.matcher = matcher or DynamicMemberMatcher()
+
+    def resolve_query(self, query: str) -> SemanticResolutionResponse:
+        """Resolve a natural language query string."""
+        return self.resolve(query)
 
     def resolve(self, request: SemanticQueryRequest | str) -> SemanticResolutionResponse:
         t0 = time.perf_counter()
@@ -147,6 +154,13 @@ class SemanticResolutionEngine:
                 selection_reason="Indicador primario propuesto junto con alternativas metodológicas no intercambiables.",
             )
 
+            prim_dims = self.registry.get_dimensions(primary_id)
+            if prim_dims and intent.facets:
+                _, matched_dims, _ = self.matcher.match_facets_to_dimensions(
+                    primary_id, prim_dims, intent.facets
+                )
+                applied_filters.dimensions = matched_dims
+
             latency = (time.perf_counter() - t0) * 1000.0
             return SemanticResolutionResponse(
                 status=ResolutionStatus.ALTERNATIVE_PROPOSED,
@@ -175,13 +189,41 @@ class SemanticResolutionEngine:
         # Filter out severidad or area if default already handles them
         unhandled_facets = requested_facet_keys - default_meta.supported_facets
 
+        # Check concrete dimensions if present for default indicator
+        default_dims = self.registry.get_dimensions(canonical_id)
+        if default_dims and requested_facet_keys:
+            def_ok, _, def_unhandled = self.matcher.match_facets_to_dimensions(
+                canonical_id, default_dims, intent.facets
+            )
+            crit_def_unhandled = [
+                f for f in def_unhandled
+                if intent.facets.get(f) not in {"POBREZA_TOTAL", "TOTAL", "NACIONAL"}
+            ]
+            if crit_def_unhandled:
+                unhandled_facets = unhandled_facets | set(crit_def_unhandled)
+
         if unhandled_facets:
             # Need to find candidate with breakdown_of relationship that supports all facets
             found_swap = False
             for cand_id, rel in default_meta.relationships.items():
                 if rel == RelationshipType.BREAKDOWN_OF:
                     cand_meta = self.registry.get_indicator(cand_id)
-                    if cand_meta and requested_facet_keys.issubset(cand_meta.supported_facets):
+                    cand_dims = self.registry.get_dimensions(cand_id)
+                    if cand_dims:
+                        cand_ok, _, cand_unhandled = self.matcher.match_facets_to_dimensions(
+                            cand_id, cand_dims, intent.facets
+                        )
+                        crit_cand_unhandled = [
+                            f for f in cand_unhandled
+                            if intent.facets.get(f) not in {"POBREZA_TOTAL", "TOTAL", "NACIONAL"}
+                        ]
+                        if not crit_cand_unhandled:
+                            target_indicator_id = cand_id
+                            swapped_from = canonical_id
+                            swap_relationship = rel
+                            found_swap = True
+                            break
+                    elif cand_meta and requested_facet_keys.issubset(cand_meta.supported_facets):
                         target_indicator_id = cand_id
                         swapped_from = canonical_id
                         swap_relationship = rel
@@ -200,6 +242,27 @@ class SemanticResolutionEngine:
 
         selected_meta = self.registry.get_indicator(target_indicator_id)
         assert selected_meta is not None
+
+        # Resolve dynamic dimensions and members for the chosen indicator
+        target_dims = self.registry.get_dimensions(target_indicator_id)
+        if target_dims and intent.facets:
+            success, matched_dims, unhandled = self.matcher.match_facets_to_dimensions(
+                target_indicator_id, target_dims, intent.facets
+            )
+            applied_filters.dimensions = matched_dims
+            critical_unhandled = [
+                f for f in unhandled
+                if intent.facets.get(f) not in {"POBREZA_TOTAL", "TOTAL", "NACIONAL"}
+            ]
+            if critical_unhandled:
+                latency = (time.perf_counter() - t0) * 1000.0
+                return SemanticResolutionResponse(
+                    status=ResolutionStatus.ABSTAINED,
+                    query=query_str,
+                    abstention_reason="UNSUPPORTED_FACET",
+                    unsupported_facet=critical_unhandled[0],
+                    latency_ms=latency,
+                )
 
         selected = SelectedCandidate(
             indicator_id=target_indicator_id,

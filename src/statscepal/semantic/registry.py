@@ -187,6 +187,22 @@ TEMPORAL_AVAILABILITY_MATRIX: dict[tuple[int, str, int], tuple[TemporalAvailabil
 }
 
 
+def _normalize_temporal_status(status_raw: Any) -> TemporalAvailabilityStatus:
+    if isinstance(status_raw, TemporalAvailabilityStatus):
+        return status_raw
+    if isinstance(status_raw, str):
+        cleaned = status_raw.strip().upper()
+        try:
+            return TemporalAvailabilityStatus(cleaned)
+        except (ValueError, KeyError):
+            pass
+        try:
+            return TemporalAvailabilityStatus[cleaned]
+        except (ValueError, KeyError):
+            pass
+    return TemporalAvailabilityStatus.OBSERVATION_MISSING
+
+
 class SemanticRegistry:
     """Registry managing indicator metadata, relationships, and temporal calendars."""
 
@@ -250,20 +266,13 @@ class SemanticRegistry:
             rec = self.store.get_temporal_record(indicator_id, country_code, year)
             if rec is not None:
                 status_raw, prev_a, next_a = rec
-                if isinstance(status_raw, TemporalAvailabilityStatus):
-                    status_enum = status_raw
-                else:
-                    try:
-                        status_enum = TemporalAvailabilityStatus(status_raw)
-                    except ValueError:
-                        status_enum = TemporalAvailabilityStatus[status_raw]
+                status_enum = _normalize_temporal_status(status_raw)
                 return (status_enum, prev_a, next_a)
 
         key = (indicator_id, country_code, year)
         if key in self._temporal_availability:
             rec = self._temporal_availability[key]
-            status_raw = rec[0]
-            status_enum = status_raw if isinstance(status_raw, TemporalAvailabilityStatus) else TemporalAvailabilityStatus(status_raw)
+            status_enum = _normalize_temporal_status(rec[0])
             return (status_enum, rec[1], rec[2])
 
         if key in TEMPORAL_AVAILABILITY_MATRIX:
