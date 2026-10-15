@@ -1,7 +1,7 @@
 # statscepal: Cliente Python, Bitácoras Anti-Sesgo y Agentes para UN CEPALSTAT
 
 [![Python Version](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/)
-[![Status](https://img.shields.io/badge/tests-92%20passed-brightgreen.svg)]()
+[![Status](https://img.shields.io/badge/tests-136%20passed-brightgreen.svg)]()
 [![API Source](https://img.shields.io/badge/CEPALSTAT-Open%20Data-orange.svg)](https://statistics.cepal.org/portal/cepalstat/open-data.html?lang=es)
 
 `statscepal` es un ecosistema completo en Python y un conjunto de herramientas para agentes de Inteligencia Artificial diseñado para interactuar con la **API de Datos Abiertos de la Comisión Económica para América Latina y el Caribe (UN CEPAL / ECLAC)**.
@@ -44,8 +44,12 @@ El proyecto incorpora un **sistema de bitácoras certificadas** y un **validador
 7. **Interfaz de Línea de Comandos (CLI)**:
    - Comandos sencillos: `search`, `info`, `fetch`, `bitacora lookup`, `bitacora add`, `bitacora list`, `bitacora sync`.
 
-8. **Integración con Agentes de IA (Antigravity)**:
-   - Custom Skill [`cepalstat-api`](.agents/skills/cepalstat-api/SKILL.md) con protocolo **"Bitácora Primero"**.
+8. **Suite de Skills Cuantitativos Universales para Agentes (Antigravity)**:
+   - [`cepalstat-api`](.agents/skills/cepalstat-api/SKILL.md): Protocolo "Bitácora Primero", catálogo offline y descarga de datos de CEPALSTAT.
+   - [`applied-econometrics`](.agents/skills/applied-econometrics/SKILL.md): Verificación de raíces unitarias (ADF/KPSS), cointegración vs. primeras diferencias, errores estándar robustos HC3/HAC Newey-West, modelos de panel con efectos fijos y variables instrumentales (2SLS).
+   - [`applied-statistics`](.agents/skills/applied-statistics/SKILL.md): Momentos empíricos, pruebas de normalidad, matriz paramétrica vs. no paramétrica, coeficiente de Gini $O(n \log n)$, ratio de Palma, índice HHI e intervalos bootstrap BCa.
+   - [`applied-mathematics`](.agents/skills/applied-mathematics/SKILL.md): Cálculo de tasas de crecimiento continuas ($\Delta \ln X$) y discretas, elasticidades punto y arco, número de condición matricial $\kappa(X)$, optimización con restricciones (KKT/SLSQP) y filtro de Hodrick-Prescott.
+   - [`macroeconomic-analysis`](.agents/skills/macroeconomic-analysis/SKILL.md): Consistencia de Cuentas Nacionales ($C + I + G + X - M$), términos de intercambio, ley de restricción externa de Thirlwall, pass-through de tipo de cambio a inflación (ERPT) y dinámica de sostenibilidad de deuda pública.
    - Subagentes especializados registrados: `cepalstat_analyst` y `cepalstat_expert`.
 
 ---
@@ -190,10 +194,11 @@ with CepalStatClient() as client:
 C:\papx\statscepal\
 ├── .agents/                        # Integración con Antigravity / AI Agents
 │   ├── skills/
-│   │   └── cepalstat-api/
-│   │       ├── SKILL.md            # Skill oficial Antigravity ("Bitácora Primero")
-│   │       └── references/
-│   │           └── dimensions-reference.md  # Tabla de códigos estándar (países/años)
+│   │   ├── cepalstat-api/          # Skill oficial CEPALSTAT ("Bitácora Primero")
+│   │   ├── applied-econometrics/   # Modelos de regresión, panel, raíces unitarias, HAC
+│   │   ├── applied-statistics/     # Momentos, normalidad, Gini/Palma/HHI, bootstrap
+│   │   ├── applied-mathematics/    # Elasticidades, matrices, optimización KKT, HP filter
+│   │   └── macroeconomic-analysis/ # Cuentas Nacionales, Thirlwall, pass-through, deuda
 │   └── subagents/
 │       └── cepalstat-analyst.md    # Especificación del subagente analista
 │
@@ -202,12 +207,6 @@ C:\papx\statscepal\
 │       └── chile/
 │           ├── 4788_recipe_chl_poblacion_total.md  # Ficha de población total (CELADE)
 │           └── 415_recipe_chl_pib_anual.md         # Ficha de PIB anual a precios constantes
-│
-├── docs/                           # Documentación de diseño y planes
-│   ├── specs/                      # Especificación funcional
-│   └── superpowers/
-│       ├── specs/                  # Diseños de arquitectura
-│       └── plans/                  # Planes de implementación TDD
 │
 ├── src/
 │   └── statscepal/                 # Paquete principal en Python
@@ -218,21 +217,22 @@ C:\papx\statscepal\
 │       ├── dimensions.py           # Gestor de dimensiones y miembros
 │       ├── extractor.py            # Extractor tabular y decodificador a DataFrames
 │       ├── cli.py                  # Interfaz de línea de comandos
-│       └── bitacora/               # Motor de bitácoras y calidad
-│           ├── __init__.py
-│           ├── models.py           # Modelos Pydantic (BitacoraRecipe, AntiBiasChecklist)
-│           ├── store.py            # Almacén dual Markdown + SQLite
-│           └── validator.py        # Validador estadístico anti-sesgo
+│       ├── catalog/                # Catálogo maestro de 2,070 indicadores en SQLite
+│       ├── bitacora/               # Motor de bitácoras y calidad
+│       └── analysis/               # Servicios de análisis econométrico y estadístico
 │
-├── tests/                          # Suite de pruebas automatizadas (69 tests)
+├── tests/                          # Suite de pruebas automatizadas (136 tests)
 │   ├── test_client.py
 │   ├── test_dimensions.py
 │   ├── test_extractor.py
 │   ├── test_thematic_tree.py
 │   ├── test_cli.py
+│   ├── test_catalog_cli.py
+│   ├── test_catalog_store.py
 │   ├── test_bitacora_models.py
 │   ├── test_bitacora_store.py
 │   ├── test_bitacora_cli.py
+│   ├── test_quantitative_skills.py # Validación estructural de los 4 skills universales
 │   ├── test_seed_recipes.py
 │   ├── test_validator.py
 │   ├── test_skill_structure.py
@@ -249,14 +249,14 @@ C:\papx\statscepal\
 El proyecto cuenta con una cobertura integral que incluye pruebas unitarias offline con *mocking* (`respx`) y pruebas de humo en vivo contra los servidores de la CEPAL.
 
 ```bash
-# Ejecutar toda la suite de pruebas (69 tests)
+# Ejecutar toda la suite de pruebas (136 tests)
 uv run pytest
 
 # Ejecutar pruebas excluyendo la red
 uv run pytest -m "not integration"
 
-# Ejecutar únicamente las pruebas de integración en vivo
-uv run pytest tests/test_live_smoke.py
+# Ejecutar únicamente las pruebas de los skills cuantitativos
+uv run pytest tests/test_quantitative_skills.py
 ```
 
 ---
