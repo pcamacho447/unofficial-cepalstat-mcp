@@ -65,7 +65,24 @@ def test_notebook_structure_and_syntax():
         "2015-2019",
         "2021-2023",
         "Salario Mínimo Real",
+        "plotly",
+        "statsmodels",
+        "EconometricEstimator",
+        "FOOD_INFLATION_MEMBER_MAP",
+        "Infl. Alim",
+        "Brecha Sal/Alim",
     ]
 
     for kw in required_keywords:
         assert kw in full_text, f"Notebook missing required keyword or concept: '{kw}'"
+
+    # Assert econometric regression call is present
+    assert (
+        "run_econometric_regression" in full_text or "fit_poverty_growth_model" in full_text
+    ), "Notebook missing econometric regression call"
+
+    # Assert interactive trajectory lines/traces are present
+    assert any(
+        kw in full_text for kw in ["add_shape", "add_annotation", "add_trace", "Trayectoria", "trayectoria"]
+    ), "Notebook missing interactive trajectory lines or annotations"
+
