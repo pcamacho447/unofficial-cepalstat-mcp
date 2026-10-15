@@ -120,3 +120,15 @@ El agente seguirá este flujo determinista:
    - Cita la fuente oficial (CEPAL / CELADE).
    - Multiplica correctamente por 1,000 para informar el total de habitantes.
    - Advierte que el dato demográfico de 2025 es una proyección estadística sujeta a supuestos de fecundidad y migración.
+
+---
+
+## 6. Ecosistema Open-Source y Benchmark de GitHub
+
+El proyecto cuenta con una auditoría completa del ecosistema de software libre alrededor de la API de CEPALSTAT documentada en:
+👉 [**docs/ECOSISTEMA_GITHUB_Y_BENCHMARK.md**](ECOSISTEMA_GITHUB_Y_BENCHMARK.md)
+
+### Herramientas de Auditoría Integradas:
+- **Skill [`github-repo-search`](../.agents/skills/github-repo-search/SKILL.md)**: Provee una rúbrica de salud objetiva (0–100 puntos) para calificar repositorios externos por vitalidad, adopción comunitaria, licenciamiento permisivo y rigor de ingeniería.
+- **Subagente [`github_scout`](../.agents/subagents/github-scout.md)**: Agente autónomo para explorar y evaluar repositorios en GitHub mediante el GitHub CLI (`gh`).
+

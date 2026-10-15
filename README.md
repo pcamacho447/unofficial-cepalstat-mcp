@@ -44,13 +44,15 @@ El proyecto incorpora un **sistema de bitácoras certificadas** y un **validador
 7. **Interfaz de Línea de Comandos (CLI)**:
    - Comandos sencillos: `search`, `info`, `fetch`, `bitacora lookup`, `bitacora add`, `bitacora list`, `bitacora sync`.
 
-8. **Suite de Skills Cuantitativos Universales para Agentes (Antigravity)**:
+8. **Suite de Skills Cuantitativos y de Auditoría para Agentes (Antigravity)**:
    - [`cepalstat-api`](.agents/skills/cepalstat-api/SKILL.md): Protocolo "Bitácora Primero", catálogo offline y descarga de datos de CEPALSTAT.
    - [`applied-econometrics`](.agents/skills/applied-econometrics/SKILL.md): Verificación de raíces unitarias (ADF/KPSS), cointegración vs. primeras diferencias, errores estándar robustos HC3/HAC Newey-West, modelos de panel con efectos fijos y variables instrumentales (2SLS).
    - [`applied-statistics`](.agents/skills/applied-statistics/SKILL.md): Momentos empíricos, pruebas de normalidad, matriz paramétrica vs. no paramétrica, coeficiente de Gini $O(n \log n)$, ratio de Palma, índice HHI e intervalos bootstrap BCa.
    - [`applied-mathematics`](.agents/skills/applied-mathematics/SKILL.md): Cálculo de tasas de crecimiento continuas ($\Delta \ln X$) y discretas, elasticidades punto y arco, número de condición matricial $\kappa(X)$, optimización con restricciones (KKT/SLSQP) y filtro de Hodrick-Prescott.
    - [`macroeconomic-analysis`](.agents/skills/macroeconomic-analysis/SKILL.md): Consistencia de Cuentas Nacionales ($C + I + G + X - M$), términos de intercambio, ley de restricción externa de Thirlwall, pass-through de tipo de cambio a inflación (ERPT) y dinámica de sostenibilidad de deuda pública.
-   - Subagentes especializados registrados: `cepalstat_analyst` y `cepalstat_expert`.
+   - [`github-repo-search`](.agents/skills/github-repo-search/SKILL.md): Descubrimiento y evaluación automatizada de repositorios en GitHub mediante el GitHub CLI (`gh`), con rúbrica de salud objetiva (0–100 pts) y auditoría de licencias/vitalidad.
+   - Subagentes especializados registrados: `cepalstat_analyst`, `cepalstat_expert` y `github_scout`.
+   - 📊 **[Informe y Benchmark del Ecosistema de GitHub](docs/ECOSISTEMA_GITHUB_Y_BENCHMARK.md)**: Análisis comparativo exhaustivo frente a librerías existentes (`CepalStatR`, `EcuDataMCP`, etc.).
 
 ---
 
@@ -198,15 +200,21 @@ C:\papx\statscepal\
 │   │   ├── applied-econometrics/   # Modelos de regresión, panel, raíces unitarias, HAC
 │   │   ├── applied-statistics/     # Momentos, normalidad, Gini/Palma/HHI, bootstrap
 │   │   ├── applied-mathematics/    # Elasticidades, matrices, optimización KKT, HP filter
-│   │   └── macroeconomic-analysis/ # Cuentas Nacionales, Thirlwall, pass-through, deuda
+│   │   ├── macroeconomic-analysis/ # Cuentas Nacionales, Thirlwall, pass-through, deuda
+│   │   └── github-repo-search/     # Auditoría de repositorios, salud 0-100 y búsqueda gh
 │   └── subagents/
-│       └── cepalstat-analyst.md    # Especificación del subagente analista
+│       ├── cepalstat-analyst.md    # Especificación del subagente analista de datos
+│       └── github-scout.md         # Especificación del subagente scout de GitHub
 │
 ├── bitacoras/                      # Catálogo versionable de recetas en Git
 │   └── paises/
 │       └── chile/
 │           ├── 4788_recipe_chl_poblacion_total.md  # Ficha de población total (CELADE)
 │           └── 415_recipe_chl_pib_anual.md         # Ficha de PIB anual a precios constantes
+│
+├── docs/                           # Documentación de diseño y auditorías
+│   ├── MANUAL_DE_OPERACION.md      # Manual de operación y metodología
+│   └── ECOSISTEMA_GITHUB_Y_BENCHMARK.md # Auditoría comparativa de repositorios CEPAL en GitHub
 │
 ├── src/
 │   └── statscepal/                 # Paquete principal en Python
@@ -221,7 +229,7 @@ C:\papx\statscepal\
 │       ├── bitacora/               # Motor de bitácoras y calidad
 │       └── analysis/               # Servicios de análisis econométrico y estadístico
 │
-├── tests/                          # Suite de pruebas automatizadas (136 tests)
+├── tests/                          # Suite de pruebas automatizadas (146 tests)
 │   ├── test_client.py
 │   ├── test_dimensions.py
 │   ├── test_extractor.py
@@ -233,6 +241,7 @@ C:\papx\statscepal\
 │   ├── test_bitacora_store.py
 │   ├── test_bitacora_cli.py
 │   ├── test_quantitative_skills.py # Validación estructural de los 4 skills universales
+│   ├── test_github_skills.py       # Validación de github-repo-search y github-scout
 │   ├── test_seed_recipes.py
 │   ├── test_validator.py
 │   ├── test_skill_structure.py
@@ -249,7 +258,7 @@ C:\papx\statscepal\
 El proyecto cuenta con una cobertura integral que incluye pruebas unitarias offline con *mocking* (`respx`) y pruebas de humo en vivo contra los servidores de la CEPAL.
 
 ```bash
-# Ejecutar toda la suite de pruebas (136 tests)
+# Ejecutar toda la suite de pruebas (146 tests)
 uv run pytest
 
 # Ejecutar pruebas excluyendo la red
