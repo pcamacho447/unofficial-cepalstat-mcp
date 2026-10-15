@@ -10,6 +10,7 @@ import unicodedata
 import pandas as pd
 from statscepal.catalog.models import CatalogIndicator, CatalogStats
 from statscepal.client import CepalStatClient
+from statscepal.dimensions import Dimension, Member
 from statscepal.thematic_tree import ThematicTree
 
 DEFAULT_DB_PATH = Path(".statscepal_cache.db")
@@ -70,6 +71,53 @@ class CatalogStore:
             conn.execute("CREATE INDEX IF NOT EXISTS idx_indicators_name ON master_indicators(name)")
             conn.execute("CREATE INDEX IF NOT EXISTS idx_indicators_theme ON master_indicators(theme)")
             conn.execute("CREATE INDEX IF NOT EXISTS idx_indicators_area ON master_indicators(area)")
+        self.init_semantic_tables()
+
+    def init_tables(self) -> None:
+        """Initialize all catalog and semantic database tables."""
+        self._init_db()
+        self.init_semantic_tables()
+
+    def init_semantic_tables(self) -> None:
+        """Create relational semantic metadata tables in SQLite."""
+        with self._get_connection() as conn:
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS indicator_dimensions (
+                    indicator_id INTEGER,
+                    dim_id INTEGER,
+                    dim_name TEXT,
+                    pos INTEGER,
+                    PRIMARY KEY (indicator_id, dim_id)
+                )
+            """)
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS dimension_members (
+                    indicator_id INTEGER,
+                    dim_id INTEGER,
+                    member_id INTEGER,
+                    member_name TEXT,
+                    PRIMARY KEY (indicator_id, dim_id, member_id)
+                )
+            """)
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS indicator_relationships (
+                    indicator_a INTEGER,
+                    indicator_b INTEGER,
+                    rel_type TEXT,
+                    PRIMARY KEY (indicator_a, indicator_b)
+                )
+            """)
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS temporal_availability (
+                    indicator_id INTEGER,
+                    country_code TEXT,
+                    year INTEGER,
+                    status TEXT,
+                    prev_anchor INTEGER,
+                    next_anchor INTEGER,
+                    PRIMARY KEY (indicator_id, country_code, year)
+                )
+            """)
 
     def is_built(self) -> bool:
         """Check if the catalog has been populated."""
@@ -229,3 +277,119 @@ class CatalogStore:
             df.to_json(out_path, orient="records", force_ascii=False, indent=2)
 
         return out_path
+
+    def store_indicator_dimensions(self, indicator_id: int, dimensions: list[Dimension]) -> None:
+        """Store dimensions and their members for an indicator."""
+        with self._get_connection() as conn:
+            conn.execute("DELETE FROM dimension_members WHERE indicator_id = ?", (indicator_id,))
+            conn.execute("DELETE FROM indicator_dimensions WHERE indicator_id = ?", (indicator_id,))
+            for pos, dim in enumerate(dimensions):
+                conn.execute(
+                    """
+                    INSERT OR REPLACE INTO indicator_dimensions (indicator_id, dim_id, dim_name, pos)
+                    VALUES (?, ?, ?, ?)
+                    """,
+                    (indicator_id, dim.id, dim.name, pos),
+                )
+                for member in dim.members:
+                    conn.execute(
+                        """
+                        INSERT OR REPLACE INTO dimension_members (indicator_id, dim_id, member_id, member_name)
+                        VALUES (?, ?, ?, ?)
+                        """,
+                        (indicator_id, dim.id, member.id, member.name),
+                    )
+
+    def get_indicator_dimensions(self, indicator_id: int) -> list[Dimension]:
+        """Retrieve dimensions and nested members for an indicator."""
+        with self._get_connection() as conn:
+            dim_rows = conn.execute(
+                "SELECT dim_id, dim_name, pos FROM indicator_dimensions WHERE indicator_id = ? ORDER BY pos ASC",
+                (indicator_id,),
+            ).fetchall()
+            if not dim_rows:
+                return []
+
+            member_rows = conn.execute(
+                "SELECT dim_id, member_id, member_name FROM dimension_members WHERE indicator_id = ? ORDER BY rowid ASC",
+                (indicator_id,),
+            ).fetchall()
+
+            members_by_dim: dict[int, list[Member]] = {}
+            for m_row in member_rows:
+                members_by_dim.setdefault(m_row["dim_id"], []).append(
+                    Member(id=m_row["member_id"], name=m_row["member_name"])
+                )
+
+            dimensions: list[Dimension] = []
+            for d_row in dim_rows:
+                d_id = d_row["dim_id"]
+                dimensions.append(
+                    Dimension(
+                        id=d_id,
+                        name=d_row["dim_name"],
+                        members=members_by_dim.get(d_id, []),
+                    )
+                )
+            return dimensions
+
+    def store_relationship(self, indicator_a: int, indicator_b: int, rel: str) -> None:
+        """Store a typed relationship between two indicators."""
+        with self._get_connection() as conn:
+            conn.execute(
+                """
+                INSERT OR REPLACE INTO indicator_relationships (indicator_a, indicator_b, rel_type)
+                VALUES (?, ?, ?)
+                """,
+                (indicator_a, indicator_b, rel),
+            )
+
+    def get_relationships(self, indicator_a: int) -> dict[int, str]:
+        """Get all relationships for a given indicator."""
+        with self._get_connection() as conn:
+            rows = conn.execute(
+                "SELECT indicator_b, rel_type FROM indicator_relationships WHERE indicator_a = ?",
+                (indicator_a,),
+            ).fetchall()
+            return {row["indicator_b"]: row["rel_type"] for row in rows}
+
+    def store_temporal_record(
+        self,
+        indicator_id: int,
+        country: str,
+        year: int,
+        status: str,
+        prev: int | None,
+        next: int | None,
+    ) -> None:
+        """Store an empirical temporal availability record."""
+        with self._get_connection() as conn:
+            conn.execute(
+                """
+                INSERT OR REPLACE INTO temporal_availability
+                (indicator_id, country_code, year, status, prev_anchor, next_anchor)
+                VALUES (?, ?, ?, ?, ?, ?)
+                """,
+                (indicator_id, country, year, status, prev, next),
+            )
+
+    def get_temporal_record(
+        self,
+        indicator_id: int,
+        country: str,
+        year: int,
+    ) -> tuple[str, int | None, int | None] | None:
+        """Get the temporal availability record for (indicator_id, country, year)."""
+        with self._get_connection() as conn:
+            row = conn.execute(
+                """
+                SELECT status, prev_anchor, next_anchor
+                FROM temporal_availability
+                WHERE indicator_id = ? AND country_code = ? AND year = ?
+                """,
+                (indicator_id, country, year),
+            ).fetchone()
+            if not row:
+                return None
+            return (row["status"], row["prev_anchor"], row["next_anchor"])
+
