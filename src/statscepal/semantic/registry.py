@@ -1,10 +1,16 @@
 """Metadata registry and typed relationship graph for the vertical slice."""
 
-from typing import Any
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any
+from statscepal.dimensions import Dimension
 from statscepal.semantic.models import (
     RelationshipType,
     TemporalAvailabilityStatus,
 )
+
+if TYPE_CHECKING:
+    from statscepal.catalog.store import CatalogStore
 
 
 class IndicatorMetadata:
@@ -184,13 +190,51 @@ TEMPORAL_AVAILABILITY_MATRIX: dict[tuple[int, str, int], tuple[TemporalAvailabil
 class SemanticRegistry:
     """Registry managing indicator metadata, relationships, and temporal calendars."""
 
+    def __init__(
+        self,
+        store: CatalogStore | None = None,
+        dimensions: dict[int, list[Dimension]] | None = None,
+        relationships: dict[Any, Any] | None = None,
+        temporal_availability: dict[tuple[int, str, int], tuple[Any, int | None, int | None]] | None = None,
+    ) -> None:
+        self.store = store
+        self._dimensions = dimensions or {}
+        self._relationships = relationships or {}
+        self._temporal_availability = temporal_availability or {}
+
     def get_indicator(self, indicator_id: int) -> IndicatorMetadata | None:
         return VERTICAL_SLICE_INDICATORS.get(indicator_id)
 
     def get_canonical_default(self, concept: str) -> int | None:
         return CONCEPT_CANONICAL_DEFAULTS.get(concept)
 
+    def get_dimensions(self, indicator_id: int) -> list[Dimension]:
+        if self.store is not None:
+            dims = self.store.get_indicator_dimensions(indicator_id)
+            if dims:
+                return dims
+        return self._dimensions.get(indicator_id, [])
+
     def check_relationship(self, indicator_a: int, indicator_b: int) -> RelationshipType | None:
+        if self.store is not None:
+            store_rels = self.store.get_relationships(indicator_a)
+            if indicator_b in store_rels:
+                rel_val = store_rels[indicator_b]
+                if isinstance(rel_val, RelationshipType):
+                    return rel_val
+                try:
+                    return RelationshipType(rel_val)
+                except ValueError:
+                    return RelationshipType[rel_val.upper()]
+
+        if (indicator_a, indicator_b) in self._relationships:
+            val = self._relationships[(indicator_a, indicator_b)]
+            return val if isinstance(val, RelationshipType) else RelationshipType(val)
+        if indicator_a in self._relationships and isinstance(self._relationships[indicator_a], dict):
+            if indicator_b in self._relationships[indicator_a]:
+                val = self._relationships[indicator_a][indicator_b]
+                return val if isinstance(val, RelationshipType) else RelationshipType(val)
+
         ind_a = self.get_indicator(indicator_a)
         if not ind_a:
             return None
@@ -202,9 +246,29 @@ class SemanticRegistry:
         country_code: str,
         year: int,
     ) -> tuple[TemporalAvailabilityStatus, int | None, int | None]:
+        if self.store is not None:
+            rec = self.store.get_temporal_record(indicator_id, country_code, year)
+            if rec is not None:
+                status_raw, prev_a, next_a = rec
+                if isinstance(status_raw, TemporalAvailabilityStatus):
+                    status_enum = status_raw
+                else:
+                    try:
+                        status_enum = TemporalAvailabilityStatus(status_raw)
+                    except ValueError:
+                        status_enum = TemporalAvailabilityStatus[status_raw]
+                return (status_enum, prev_a, next_a)
+
         key = (indicator_id, country_code, year)
+        if key in self._temporal_availability:
+            rec = self._temporal_availability[key]
+            status_raw = rec[0]
+            status_enum = status_raw if isinstance(status_raw, TemporalAvailabilityStatus) else TemporalAvailabilityStatus(status_raw)
+            return (status_enum, rec[1], rec[2])
+
         if key in TEMPORAL_AVAILABILITY_MATRIX:
             return TEMPORAL_AVAILABILITY_MATRIX[key]
+
         # Default: if between 2000 and 2023, assume existing
         if 2000 <= year <= 2023:
             return (TemporalAvailabilityStatus.OBSERVATION_EXISTING, None, None)
