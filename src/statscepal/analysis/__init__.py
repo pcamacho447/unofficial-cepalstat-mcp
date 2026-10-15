@@ -5,13 +5,18 @@ from statscepal.analysis.metrics import (
     compute_decoupling_score,
     compute_elasticity,
 )
-from statscepal.analysis.models import CountryPeriodMetric, DecouplingDataset
+from statscepal.analysis.models import (
+    CountryPeriodMetric,
+    DecouplingDataset,
+    RegressionModelSummary,
+)
 from statscepal.analysis.service import DecouplingAnalyzer
 
 __all__ = [
     "CountryPeriodMetric",
     "DecouplingAnalyzer",
     "DecouplingDataset",
+    "RegressionModelSummary",
     "classify_quadrant",
     "compute_decoupling_score",
     "compute_elasticity",

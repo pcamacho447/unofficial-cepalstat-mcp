@@ -10,6 +10,8 @@ dependencies = [
     "pandas>=2.2.0",
     "pyyaml>=6.0.1",
     "matplotlib>=3.8.0",
+    "statsmodels>=0.14.0",
+    "plotly>=5.20.0",
 ]
 
 [project.optional-dependencies]

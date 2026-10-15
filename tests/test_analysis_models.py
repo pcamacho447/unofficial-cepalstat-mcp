@@ -1,5 +1,9 @@
 import pytest
-from statscepal.analysis.models import CountryPeriodMetric, DecouplingDataset
+from statscepal.analysis import (
+    CountryPeriodMetric,
+    DecouplingDataset,
+    RegressionModelSummary,
+)
 
 
 def test_country_period_metric_creation():
@@ -18,6 +22,21 @@ def test_country_period_metric_creation():
     assert metric.country == "Argentina"
     assert metric.gdp_pc_growth_mean == 4.60
     assert metric.quadrant == "Crecimiento Excluyente"
+    assert metric.food_inflation_mean_pct is None
+    assert metric.food_wage_gap_pct is None
+
+
+def test_country_period_metric_food_inflation_fields():
+    metric = CountryPeriodMetric(
+        country="Colombia",
+        period_label="P2: 2021-2023",
+        years_range="2021-2023",
+        gdp_pc_growth_mean=5.10,
+        food_inflation_mean_pct=15.4,
+        food_wage_gap_pct=11.2,
+    )
+    assert metric.food_inflation_mean_pct == 15.4
+    assert metric.food_wage_gap_pct == 11.2
 
 
 def test_decoupling_dataset_creation():
@@ -36,3 +55,36 @@ def test_decoupling_dataset_creation():
     dataset = DecouplingDataset(records=[metric], metadata={"total_countries": 1})
     assert len(dataset.records) == 1
     assert dataset.records[0].country == "Chile"
+
+
+def test_regression_model_summary_defaults():
+    summary = RegressionModelSummary(r_squared=0.68)
+    assert summary.r_squared == 0.68
+    assert summary.r_squared_adj == 0.0
+    assert summary.coefficients == {}
+    assert summary.p_values == {}
+    assert summary.std_errors == {}
+    assert summary.confidence_intervals == {}
+    assert summary.n_obs == 0
+    assert summary.f_pvalue == 1.0
+
+
+def test_regression_model_summary_full():
+    summary = RegressionModelSummary(
+        r_squared=0.75,
+        r_squared_adj=0.71,
+        coefficients={"const": 1.25, "food_inflation_mean_pct": 0.42},
+        p_values={"const": 0.04, "food_inflation_mean_pct": 0.002},
+        std_errors={"const": 0.55, "food_inflation_mean_pct": 0.11},
+        confidence_intervals={
+            "const": (0.1, 2.4),
+            "food_inflation_mean_pct": (0.19, 0.65),
+        },
+        n_obs=18,
+        f_pvalue=0.001,
+    )
+    assert summary.r_squared == 0.75
+    assert summary.coefficients["food_inflation_mean_pct"] == 0.42
+    assert summary.confidence_intervals["const"] == (0.1, 2.4)
+    assert summary.n_obs == 18
+
