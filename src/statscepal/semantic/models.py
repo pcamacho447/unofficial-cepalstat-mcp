@@ -107,6 +107,7 @@ class SemanticResolutionResponse(BaseModel):
     abstention_reason: str | None = None
     unsupported_facet: str | None = None
     conversational_hint: str | None = None
+    empirical_data: dict[str, Any] | None = Field(default=None, description="Observation payload fetched from CEPALSTAT")
     latency_ms: float = 0.0
 
 

@@ -16,6 +16,7 @@ from statscepal.semantic.models import (
     TemporalAnchorInfo,
     TemporalAvailabilityStatus,
 )
+from statscepal.semantic.fetcher import SemanticDataFetcher
 from statscepal.semantic.matcher import DynamicMemberMatcher
 from statscepal.semantic.parser import QueryParser
 from statscepal.semantic.registry import SemanticRegistry
@@ -32,6 +33,7 @@ __all__ = [
     "RelationshipType",
     "ResolutionStatus",
     "SelectedCandidate",
+    "SemanticDataFetcher",
     "SemanticQueryRequest",
     "SemanticRegistry",
     "SemanticResolutionEngine",
