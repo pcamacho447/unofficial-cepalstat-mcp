@@ -21,16 +21,29 @@ from statscepal.semantic.fetcher import SemanticDataFetcher
 from statscepal.semantic.matcher import DynamicMemberMatcher
 from statscepal.semantic.parser import QueryParser
 from statscepal.semantic.registry import SemanticRegistry
+from statscepal.semantic.thesaurus import (
+    AntonymRule,
+    ExpectedSign,
+    PolarityResolution,
+    PolarityType,
+    Synset,
+    SynsetMatch,
+    Thesaurus,
+)
 
 __all__ = [
     "AlternativeCandidate",
+    "AntonymRule",
     "AppliedFilters",
     "BenchmarkCase",
     "BenchmarkEvaluator",
     "BenchmarkMetricsReport",
     "BenchmarkResult",
     "DynamicMemberMatcher",
+    "ExpectedSign",
     "MeasureType",
+    "PolarityResolution",
+    "PolarityType",
     "QueryParser",
     "RelationshipType",
     "ResolutionStatus",
@@ -40,6 +53,9 @@ __all__ = [
     "SemanticRegistry",
     "SemanticResolutionEngine",
     "SemanticResolutionResponse",
+    "Synset",
+    "SynsetMatch",
     "TemporalAnchorInfo",
     "TemporalAvailabilityStatus",
+    "Thesaurus",
 ]
