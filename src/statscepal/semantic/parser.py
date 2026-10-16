@@ -4,6 +4,13 @@ import re
 import unicodedata
 from pydantic import BaseModel, Field
 
+from statscepal.semantic.thesaurus import (
+    PolarityResolution,
+    PolarityType,
+    Thesaurus,
+    get_default_thesaurus,
+)
+
 
 def strip_accents(text: str) -> str:
     """Normalize string to lowercase and strip diacritics."""
@@ -58,6 +65,7 @@ class ParsedIntent(BaseModel):
     country_name: str | None = None
     year: int | None = None
     facets: dict[str, str] = Field(default_factory=dict)
+    polarity_info: PolarityResolution | None = None
     is_ambiguous_measure: bool = False
     ambiguous_candidate: str | None = None
     unsupported_facet: str | None = None
@@ -70,13 +78,19 @@ class ParsedIntent(BaseModel):
 class QueryParser:
     """Translates raw natural language queries into normalized conceptual intents."""
 
-    def __init__(self, catalog_profile: str = "official_25"):
+    def __init__(
+        self,
+        catalog_profile: str = "official_25",
+        thesaurus: Thesaurus | None = None,
+    ):
         self.catalog_profile = catalog_profile
+        self.thesaurus = thesaurus or get_default_thesaurus()
 
     def parse(self, query: str) -> ParsedIntent:
         clean = strip_accents(query)
         facets: dict[str, str] = {}
         intent = ParsedIntent(raw_query=query, clean_query=clean)
+        intent.polarity_info = self.thesaurus.resolve_polarity(clean)
 
         # ----------------------------------------------------
         # 1. Detection of Out-of-Scope / Unsupported cases
@@ -157,17 +171,23 @@ class QueryParser:
         # 4. Extract Facets (with Regionalisms)
         # ----------------------------------------------------
         # Area
-        if any(term in clean for term in ["el campo", "rural", "campo", "zona rural", "area rural"]):
+        area_match = self.thesaurus.match_synset("facet_area", clean)
+        if area_match:
+            facets["area"] = area_match.canonical_id
+        elif any(term in clean for term in ["el campo", "rural", "campo", "zona rural", "area rural"]):
             facets["area"] = "RURAL"
         elif any(term in clean for term in ["ciudades", "urbano", "ciudad", "urbana", "zona urbana", "area urbana", "villas"]):
             facets["area"] = "URBANO"
         elif any(term in clean for term in ["area nacional", "total nacional", "todo el pais", "nivel nacional"]):
             facets["area"] = "NACIONAL"
-        elif "pobreza total" in clean:
+        if "pobreza total" in clean and "area" not in facets:
             facets["area"] = "NACIONAL"
 
         # Sexo
-        if any(term in clean for term in ["pibas", "chicas", "mujeres", "femenina", "femenino", "mujer"]):
+        sexo_match = self.thesaurus.match_synset("facet_sexo", clean)
+        if sexo_match:
+            facets["sexo"] = sexo_match.canonical_id
+        elif any(term in clean for term in ["pibas", "chicas", "mujeres", "femenina", "femenino", "mujer"]):
             facets["sexo"] = "FEMENINO"
         elif any(term in clean for term in ["pibes", "chicos", "hombres", "masculino", "varones", "hombre"]):
             facets["sexo"] = "MASCULINO"
@@ -175,23 +195,36 @@ class QueryParser:
             facets["sexo"] = "AMBOS_SEXOS"
 
         # Edad (Check infancia before youth so 0 a 14 takes precedence)
-        if any(term in clean for term in ["ninos", "ninas", "infancia", "0 a 14", "infantil"]):
+        edad_matches = self.thesaurus.match_all_synsets("facet_edad", clean)
+        if any(m.canonical_id == "INFANCIA" for m in edad_matches):
+            facets["edad"] = "INFANCIA"
+        elif edad_matches:
+            facets["edad"] = edad_matches[0].canonical_id
+        elif any(term in clean for term in ["ninos", "ninas", "infancia", "0 a 14", "infantil"]):
             facets["edad"] = "INFANCIA"
         elif any(term in clean for term in ["cabros", "pibes", "chavos", "chavas", "jovenes", "juventud", "15 a 24", "juvenil"]):
             facets["edad"] = "JUVENTUD"
-        elif "pibas" in clean and any(term in clean for term in ["pobreza", "desempleo", "desocupacion", "paro"]):
-            facets["edad"] = "JUVENTUD"
         elif any(term in clean for term in ["tercera edad", "abuelos", "ancianos", "adultos mayores", "65 y mas"]):
             facets["edad"] = "ADULTOS_MAYORES"
+        if "pibas" in clean and any(term in clean for term in ["pobreza", "desempleo", "desocupacion", "paro"]):
+            facets["edad"] = "JUVENTUD"
 
         # Severidad de pobreza
-        if any(term in clean for term in ["extrema", "indigencia", "indigente", "miseria"]):
+        severidad_match = self.thesaurus.match_synset("facet_severidad", clean)
+        if severidad_match:
+            facets["severidad"] = severidad_match.canonical_id
+        elif any(term in clean for term in ["extrema", "indigencia", "indigente", "miseria"]):
             facets["severidad"] = "POBREZA_EXTREMA"
         elif "pobreza" in clean:
             facets["severidad"] = "POBREZA_TOTAL"
 
         # Formalidad laboral
-        if any(term in clean for term in ["en negro", "informal", "informalidad", "chamba informal"]):
+        formalidad_match = self.thesaurus.match_synset("facet_formalidad", clean)
+        if formalidad_match:
+            facets["formalidad"] = formalidad_match.canonical_id
+            if formalidad_match.canonical_id == "INFORMAL" and "pobreza" in clean:
+                intent.unsupported_facet = "FORMALIDAD_LABORAL"
+        elif any(term in clean for term in ["en negro", "informal", "informalidad", "chamba informal"]):
             facets["formalidad"] = "INFORMAL"
             if "pobreza" in clean:
                 intent.unsupported_facet = "FORMALIDAD_LABORAL"
@@ -213,7 +246,10 @@ class QueryParser:
             facets["estrato"] = "DECIL"
 
         # Canasta alimentos & rubros
-        if any(term in clean for term in ["carestia de comida", "alimentos", "comida", "alimentos y bebidas", "corrientazo", "morfi", "canasta alimentaria"]):
+        canasta_match = self.thesaurus.match_synset("facet_canasta", clean)
+        if canasta_match and canasta_match.canonical_id == "CANASTA_ALIMENTOS":
+            facets["canasta"] = "ALIMENTOS"
+        elif any(term in clean for term in ["carestia de comida", "alimentos", "comida", "alimentos y bebidas", "corrientazo", "morfi", "canasta alimentaria"]):
             facets["canasta"] = "ALIMENTOS"
         if "salud" in clean:
             facets["rubro"] = "SALUD"
@@ -276,7 +312,11 @@ class QueryParser:
             intent.root_concept = "CUENTA_CORRIENTE"
             intent.is_ambiguous_measure = True
             intent.ambiguous_candidate = "INTERNATIONAL_TRADE_PAYMENTS"
-        elif "emisiones de gases de efecto invernadero en" in clean and not any(t in clean for t in ["sin", "excluyendo", "con uso"]):
+        elif (
+            "emisiones de gases de efecto invernadero en" in clean
+            and not any(t in clean for t in ["sin", "excluyendo", "con uso"])
+            and not (intent.polarity_info and intent.polarity_info.polarity_type == PolarityType.INCLUSION_EXCLUSION)
+        ):
             intent.root_concept = "EMISIONES_GEI_LULUCF"
             intent.is_ambiguous_measure = True
             intent.ambiguous_candidate = "EMISSIONS_LULUCF_CHOICE"
@@ -296,7 +336,23 @@ class QueryParser:
         # Sector Público & Finanzas Públicas (checked first so "... % del PIB" does not shadow)
         elif any(term in clean for term in ["deuda", "endeudamiento"]):
             intent.root_concept = "DEUDA_PUBLICA"
-        elif any(term in clean for term in ["balance primario", "superavit primario", "deficit primario", "rojo fiscal", "rojo primario", "resultado fiscal primario"]):
+        elif any(
+            term in clean
+            for term in [
+                "balance primario",
+                "superavit primario",
+                "deficit primario",
+                "superavit fiscal",
+                "deficit fiscal",
+                "rojo fiscal",
+                "rojo primario",
+                "resultado fiscal primario",
+            ]
+        ) or (
+            intent.polarity_info
+            and intent.polarity_info.canonical_indicator_id == 1241
+            and not any(term in clean for term in ["cuenta corriente", "comercial", "balanza", "comercio"])
+        ):
             intent.root_concept = "BALANCE_PRIMARIO"
         elif any(term in clean for term in ["ingresos tributarios", "recaudacion tributaria", "recaudacion", "tributar", "carga tributaria", "presion fiscal", "dian", "cuantos impuestos", "impuestos", "el fisco"]):
             intent.root_concept = "INGRESOS_TRIBUTARIOS"
@@ -338,8 +394,26 @@ class QueryParser:
             "proporcion de renovables",
         ]):
             intent.root_concept = "ENERGIA_RENOVABLE"
-        elif "emisiones" in clean or "gei" in clean or "gases de invernadero" in clean or "huella de carbono" in clean:
-            if any(term in clean for term in ["sin lulucf", "sin utcuts", "excluyendo utcuts", "excluyendo sector utcuts", "sin uso de la tierra", "sin cambio de uso", "sin considerar bosques", "excluyendo el sector uso de la tierra"]):
+        elif (
+            "emisiones" in clean
+            or "gei" in clean
+            or "gases de invernadero" in clean
+            or "huella de carbono" in clean
+            or (intent.polarity_info and intent.polarity_info.polarity_type == PolarityType.INCLUSION_EXCLUSION)
+        ):
+            if (intent.polarity_info and intent.polarity_info.canonical_indicator_id == 5682) or any(
+                term in clean
+                for term in [
+                    "sin lulucf",
+                    "sin utcuts",
+                    "excluyendo utcuts",
+                    "excluyendo sector utcuts",
+                    "sin uso de la tierra",
+                    "sin cambio de uso",
+                    "sin considerar bosques",
+                    "excluyendo el sector uso de la tierra",
+                ]
+            ):
                 intent.root_concept = "EMISIONES_GEI_SIN_LULUCF"
             else:
                 intent.root_concept = "EMISIONES_GEI_LULUCF"

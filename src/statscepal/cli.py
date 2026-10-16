@@ -411,6 +411,11 @@ def main(args: Sequence[str] | None = None) -> int:
                     if res.conversational_hint:
                         print(f"Hint:      {res.conversational_hint}")
 
+                if res.polarity_info:
+                    print(
+                        f"Polarity:  {res.polarity_info.polarity_type.value} (Detected: '{res.polarity_info.term_detected}', Expected Sign: {res.polarity_info.expected_sign.value})"
+                    )
+
                 if res.temporal_info:
                     ti = res.temporal_info
                     prev_str = (

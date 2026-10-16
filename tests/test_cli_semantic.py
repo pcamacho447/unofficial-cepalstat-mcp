@@ -125,3 +125,16 @@ def test_cli_semantic_resolve_abstention_table(capsys):
     assert "CEPALSTAT Semantic Resolution Engine" in captured.out
     assert "Status:    ABSTAINED" in captured.out
     assert "Reason:" in captured.out
+
+
+def test_cli_semantic_resolve_polarity_display(capsys):
+    """Test semantic resolve table output displays polarity information when detected."""
+    from statscepal.cli import main
+
+    code = main(["semantic", "resolve", "Cual fue el deficit primario en Chile 2022"])
+    assert code == 0
+    captured = capsys.readouterr().out
+    assert "Polarity:" in captured
+    assert "ACCOUNTING_SIGN" in captured
+    assert "deficit" in captured
+

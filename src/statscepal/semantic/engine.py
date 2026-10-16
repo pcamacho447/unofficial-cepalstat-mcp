@@ -54,6 +54,10 @@ class SemanticResolutionEngine:
             f"  - Root Concept: '{intent.root_concept or 'None'}'",
             f"  - Normalized Facets: {intent.facets if intent.facets else 'None'}",
         ]
+        if intent.polarity_info:
+            trace.append(
+                f"  - Polarity: {intent.polarity_info.polarity_type.value} ('{intent.polarity_info.term_detected}', Expected Sign: {intent.polarity_info.expected_sign.value})"
+            )
 
         # ----------------------------------------------------
         # Stage 1 & 2: Hard Abstention Checks (Guaranteed Safety)
@@ -66,6 +70,7 @@ class SemanticResolutionEngine:
                 query=query_str,
                 abstention_reason="LOW_CONCEPTUAL_RELEVANCE",
                 conversational_hint="No se identificó un fenómeno socioeconómico cubierto por el catálogo de CEPALSTAT.",
+                polarity_info=intent.polarity_info,
                 execution_trace=trace,
                 latency_ms=latency,
             )
@@ -79,6 +84,7 @@ class SemanticResolutionEngine:
                 abstention_reason=intent.unsupported_facet,
                 unsupported_facet=intent.unsupported_facet,
                 conversational_hint=f"CEPALSTAT no dispone de desagregación para '{intent.unsupported_facet}' en este indicador.",
+                polarity_info=intent.polarity_info,
                 execution_trace=trace,
                 latency_ms=latency,
             )
@@ -91,6 +97,7 @@ class SemanticResolutionEngine:
                 query=query_str,
                 abstention_reason="PERIOD_OUT_OF_RANGE",
                 conversational_hint=f"El año solicitado ({intent.year}) está fuera del rango histórico de CEPALSTAT.",
+                polarity_info=intent.polarity_info,
                 execution_trace=trace,
                 latency_ms=latency,
             )
@@ -103,6 +110,7 @@ class SemanticResolutionEngine:
                 query=query_str,
                 abstention_reason="UNSUPPORTED_FREQUENCY",
                 conversational_hint="La periodicidad solicitada no se encuentra disponible para esta serie oficial en CEPALSTAT.",
+                polarity_info=intent.polarity_info,
                 execution_trace=trace,
                 latency_ms=latency,
             )
@@ -115,6 +123,7 @@ class SemanticResolutionEngine:
                 query=query_str,
                 abstention_reason="LOW_CONCEPTUAL_RELEVANCE",
                 conversational_hint="No se identificó un fenómeno socioeconómico cubierto por el catálogo de CEPALSTAT.",
+                polarity_info=intent.polarity_info,
                 execution_trace=trace,
                 latency_ms=latency,
             )
@@ -130,6 +139,7 @@ class SemanticResolutionEngine:
                 status=ResolutionStatus.ABSTAINED,
                 query=query_str,
                 abstention_reason="NO_CANONICAL_INDICATOR",
+                polarity_info=intent.polarity_info,
                 execution_trace=trace,
                 latency_ms=latency,
             )
@@ -220,6 +230,7 @@ class SemanticResolutionEngine:
                 selected_candidate=selected,
                 applied_filters=applied_filters,
                 alternatives=alternatives,
+                polarity_info=intent.polarity_info,
                 conversational_hint=conv_hint,
                 execution_trace=trace,
                 latency_ms=latency,
@@ -299,6 +310,7 @@ class SemanticResolutionEngine:
                     query=query_str,
                     abstention_reason="UNSUPPORTED_FACET",
                     unsupported_facet=list(unhandled_facets)[0],
+                    polarity_info=intent.polarity_info,
                     execution_trace=trace,
                     latency_ms=latency,
                 )
@@ -327,6 +339,7 @@ class SemanticResolutionEngine:
                     query=query_str,
                     abstention_reason="UNSUPPORTED_FACET",
                     unsupported_facet=critical_unhandled[0],
+                    polarity_info=intent.polarity_info,
                     execution_trace=trace,
                     latency_ms=latency,
                 )
@@ -389,6 +402,7 @@ class SemanticResolutionEngine:
             selected_candidate=selected,
             applied_filters=applied_filters,
             temporal_info=temporal_info,
+            polarity_info=intent.polarity_info,
             execution_trace=trace,
             latency_ms=latency,
         )
