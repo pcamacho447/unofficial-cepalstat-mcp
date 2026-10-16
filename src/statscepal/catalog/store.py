@@ -2,7 +2,7 @@
 
 from collections.abc import Generator
 from contextlib import contextmanager
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 import sqlite3
 from typing import Any
@@ -87,9 +87,17 @@ class CatalogStore:
                     dim_id INTEGER,
                     dim_name TEXT,
                     pos INTEGER,
+                    harvested_at TEXT,
+                    content_hash TEXT,
                     PRIMARY KEY (indicator_id, dim_id)
                 )
             """)
+            cur = conn.execute("PRAGMA table_info(indicator_dimensions)")
+            existing_cols = {row["name"] for row in cur.fetchall()}
+            if "harvested_at" not in existing_cols:
+                conn.execute("ALTER TABLE indicator_dimensions ADD COLUMN harvested_at TEXT")
+            if "content_hash" not in existing_cols:
+                conn.execute("ALTER TABLE indicator_dimensions ADD COLUMN content_hash TEXT")
             conn.execute("""
                 CREATE TABLE IF NOT EXISTS dimension_members (
                     indicator_id INTEGER,
@@ -288,18 +296,26 @@ class CatalogStore:
 
         return out_path
 
-    def store_indicator_dimensions(self, indicator_id: int, dimensions: list[Dimension]) -> None:
+    def store_indicator_dimensions(
+        self,
+        indicator_id: int,
+        dimensions: list[Dimension],
+        content_hash: str | None = None,
+        harvested_at: str | None = None,
+    ) -> None:
         """Store dimensions and their members for an indicator."""
+        if harvested_at is None:
+            harvested_at = datetime.now(timezone.utc).isoformat()
         with self._get_connection() as conn:
             conn.execute("DELETE FROM dimension_members WHERE indicator_id = ?", (indicator_id,))
             conn.execute("DELETE FROM indicator_dimensions WHERE indicator_id = ?", (indicator_id,))
             for pos, dim in enumerate(dimensions):
                 conn.execute(
                     """
-                    INSERT OR REPLACE INTO indicator_dimensions (indicator_id, dim_id, dim_name, pos)
-                    VALUES (?, ?, ?, ?)
+                    INSERT OR REPLACE INTO indicator_dimensions (indicator_id, dim_id, dim_name, pos, harvested_at, content_hash)
+                    VALUES (?, ?, ?, ?, ?, ?)
                     """,
-                    (indicator_id, dim.id, dim.name, pos),
+                    (indicator_id, dim.id, dim.name, pos, harvested_at, content_hash),
                 )
                 for member in dim.members:
                     conn.execute(
@@ -309,6 +325,26 @@ class CatalogStore:
                         """,
                         (indicator_id, dim.id, member.id, member.name),
                     )
+
+    def get_harvested_indicator_ids(self) -> set[int]:
+        """Return a set of all indicator IDs present in indicator_dimensions."""
+        with self._get_connection() as conn:
+            rows = conn.execute("SELECT DISTINCT indicator_id FROM indicator_dimensions").fetchall()
+            return {int(row["indicator_id"]) for row in rows}
+
+    def get_harvest_stats(self) -> dict[str, int]:
+        """Return harvesting statistics for indicator dimensions and members."""
+        with self._get_connection() as conn:
+            h_count = conn.execute(
+                "SELECT COUNT(DISTINCT indicator_id) AS cnt FROM indicator_dimensions"
+            ).fetchone()["cnt"]
+            d_count = conn.execute("SELECT COUNT(*) AS cnt FROM indicator_dimensions").fetchone()["cnt"]
+            m_count = conn.execute("SELECT COUNT(*) AS cnt FROM dimension_members").fetchone()["cnt"]
+            return {
+                "harvested_indicators": int(h_count or 0),
+                "total_dimensions": int(d_count or 0),
+                "total_members": int(m_count or 0),
+            }
 
     def get_indicator_dimensions(self, indicator_id: int) -> list[Dimension]:
         """Retrieve dimensions and nested members for an indicator."""
