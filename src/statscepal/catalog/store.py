@@ -346,6 +346,36 @@ class CatalogStore:
                 "total_members": int(m_count or 0),
             }
 
+    def get_distinct_harvested_dimensions(self) -> list[dict[str, Any]]:
+        """Return distinct harvested dimensions grouped by dim_id and dim_name with frequencies."""
+        with self._get_connection() as conn:
+            try:
+                rows = conn.execute(
+                    """
+                    SELECT dim_id, dim_name, COUNT(DISTINCT indicator_id) AS indicator_count,
+                           GROUP_CONCAT(indicator_id) AS raw_indicator_ids
+                    FROM indicator_dimensions
+                    GROUP BY dim_id, dim_name
+                    ORDER BY indicator_count DESC, dim_id ASC
+                    """
+                ).fetchall()
+            except sqlite3.OperationalError:
+                return []
+
+            result: list[dict[str, Any]] = []
+            for row in rows:
+                raw_ids = row["raw_indicator_ids"] or ""
+                indicator_ids = sorted({int(x) for x in raw_ids.split(",") if x.strip()})
+                result.append(
+                    {
+                        "dim_id": int(row["dim_id"]),
+                        "dim_name": str(row["dim_name"] or ""),
+                        "indicator_count": int(row["indicator_count"]),
+                        "sample_indicator_ids": indicator_ids[:5],
+                    }
+                )
+            return result
+
     def get_indicator_dimensions(self, indicator_id: int) -> list[Dimension]:
         """Retrieve dimensions and nested members for an indicator."""
         with self._get_connection() as conn:

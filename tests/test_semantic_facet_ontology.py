@@ -1,6 +1,7 @@
-"""Tests for CEPALSTAT Declarative Facet Ontology."""
-
+import json
 import pytest
+from statscepal.catalog.store import CatalogStore
+from statscepal.cli import main
 from statscepal.dimensions import Dimension, Member
 from statscepal.semantic.facet_ontology import (
     DEFAULT_FACET_ONTOLOGY,
@@ -125,4 +126,68 @@ def test_matcher_derives_patterns_from_ontology_and_matches_by_dim_id():
     assert matched_p is True
     assert len(filters_p) == 1
     assert filters_p[0].member_id == 43050
+
+
+def test_store_and_ontology_facet_audit(tmp_path, capsys, monkeypatch):
+    db_path = tmp_path / "audit_test.db"
+    store = CatalogStore(db_path=db_path)
+    store.init_tables()
+    store.init_semantic_tables()
+
+    store.store_indicator_dimensions(
+        3328,
+        [
+            Dimension(id=208, name="País__ESTANDAR", members=[Member(id=1, name="Chile")]),
+            Dimension(id=326, name="Área geográfica", members=[Member(id=2, name="Urbana")]),
+            Dimension(id=88888, name="Variable Experimental No Mapeada", members=[Member(id=3, name="X")]),
+        ],
+    )
+
+    distinct_dims = store.get_distinct_harvested_dimensions()
+    assert len(distinct_dims) == 3
+
+    report = DEFAULT_FACET_ONTOLOGY.audit_dimensions(distinct_dims)
+    assert report.total_distinct_dimensions == 3
+    assert len(report.structural_dimensions) == 1
+    assert "area" in report.mapped_dimensions
+    assert len(report.unmapped_dimensions) == 1
+    assert report.unmapped_dimensions[0]["dim_id"] == 88888
+
+    # Test CLI invocation
+    monkeypatch.setattr("statscepal.cli.CatalogStore", lambda: CatalogStore(db_path=db_path))
+    exit_code = main(["catalog", "facet-audit"])
+    assert exit_code == 0
+    out = capsys.readouterr().out
+    assert "CEPALSTAT Facet Ontology Audit" in out
+    assert "area" in out
+    assert "Variable Experimental No Mapeada" in out
+
+
+def test_cli_facet_audit_json(tmp_path, capsys, monkeypatch):
+    db_path = tmp_path / "audit_json_test.db"
+    store = CatalogStore(db_path=db_path)
+    store.init_tables()
+    store.init_semantic_tables()
+
+    store.store_indicator_dimensions(
+        3328,
+        [
+            Dimension(id=208, name="País__ESTANDAR", members=[Member(id=1, name="Chile")]),
+            Dimension(id=144, name="Sexo__ESTANDAR", members=[Member(id=2, name="Mujeres")]),
+            Dimension(id=99999, name="Unclassified Dim", members=[Member(id=3, name="Val")]),
+        ],
+    )
+
+    monkeypatch.setattr("statscepal.cli.CatalogStore", lambda: CatalogStore(db_path=db_path))
+    exit_code = main(["catalog", "facet-audit", "--json"])
+    assert exit_code == 0
+    out = capsys.readouterr().out
+    data = json.loads(out)
+    assert data["total_distinct_dimensions"] == 3
+    assert len(data["structural_dimensions"]) == 1
+    assert "sexo" in data["mapped_dimensions"]
+    assert len(data["unmapped_dimensions"]) == 1
+    assert data["unmapped_dimensions"][0]["dim_id"] == 99999
+    assert 0.0 < data["coverage_ratio"] <= 1.0
+
 

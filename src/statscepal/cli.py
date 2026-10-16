@@ -21,6 +21,7 @@ from statscepal.semantic import (
     SemanticRegistry,
     SemanticResolutionEngine,
 )
+from statscepal.semantic.facet_ontology import DEFAULT_FACET_ONTOLOGY
 from statscepal.thematic_tree import ThematicTree
 
 
@@ -167,6 +168,14 @@ def main(args: Sequence[str] | None = None) -> int:
         type=int,
         default=None,
         help="Maximum number of pending indicators to process in this run",
+    )
+
+    # catalog facet-audit
+    facet_audit_parser = catalog_subparsers.add_parser(
+        "facet-audit", help="Audit harvested dimensions against declarative facet ontology"
+    )
+    facet_audit_parser.add_argument(
+        "--json", action="store_true", help="Output audit report in JSON format"
     )
 
     # analyze
@@ -494,6 +503,45 @@ def main(args: Sequence[str] | None = None) -> int:
             except Exception as err:
                 print(f"CEPALSTAT Error during harvest: {err}", file=sys.stderr)
                 return 1
+
+        if parsed.catalog_command == "facet-audit":
+            ontology = DEFAULT_FACET_ONTOLOGY
+            store.init_semantic_tables()
+            distinct_dims = store.get_distinct_harvested_dimensions()
+            report = ontology.audit_dimensions(distinct_dims)
+
+            if parsed.json:
+                print(report.model_dump_json(indent=2))
+                return 0
+
+            print("=" * 70)
+            print("CEPALSTAT Facet Ontology Audit")
+            print("=" * 70)
+            print(f"Total distinct dimensions: {report.total_distinct_dimensions}")
+            print(f"Structural dimensions:     {len(report.structural_dimensions)} (Country, Time)")
+            print(f"Mapped facet dimensions:   {report.mapped_count}")
+            print(f"Unmapped dimensions:       {len(report.unmapped_dimensions)}")
+            print(f"Coverage ratio:            {report.coverage_ratio * 100:.1f}%")
+            print("=" * 70)
+            print("Mapped Dimensions by Facet:")
+            if not report.mapped_dimensions:
+                print("  (None)")
+            else:
+                for f_key in sorted(report.mapped_dimensions.keys()):
+                    dims = report.mapped_dimensions[f_key]
+                    dim_desc = ", ".join(f"[{d['dim_id']}] {d.get('dim_name', '')}" for d in dims)
+                    print(f"  - [{f_key}]: {len(dims)} dimension(s) ({dim_desc})")
+            print("=" * 70)
+            print("Unmapped Dimensions (Gap Report):")
+            if not report.unmapped_dimensions:
+                print("  (None)")
+            else:
+                for d in report.unmapped_dimensions:
+                    print(
+                        f"  - [{d['dim_id']}] {d.get('dim_name', '')} (occurs in {d.get('indicator_count', 0)} indicators)"
+                    )
+            print("=" * 70)
+            return 0
 
     if parsed.command == "semantic":
         if not parsed.semantic_command:

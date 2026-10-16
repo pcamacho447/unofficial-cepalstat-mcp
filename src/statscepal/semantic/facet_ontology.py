@@ -70,6 +70,11 @@ class FacetAuditReport(BaseModel):
         """Total count of mapped non-structural dimensions."""
         return sum(len(dims) for dims in self.mapped_dimensions.values())
 
+    def to_dict(self) -> dict[str, Any]:
+        """Convert audit report to dictionary."""
+        return self.model_dump()
+
+
 
 class FacetOntology:
     """Declarative ontology and classification registry for CEPALSTAT facets."""
