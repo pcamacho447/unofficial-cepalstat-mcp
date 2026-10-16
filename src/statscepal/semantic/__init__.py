@@ -18,6 +18,11 @@ from statscepal.semantic.models import (
     TemporalAvailabilityStatus,
 )
 from statscepal.semantic.fetcher import SemanticDataFetcher
+from statscepal.semantic.graph_builder import (
+    GraphBuildReport,
+    GraphBuilder,
+    InferredEdge,
+)
 from statscepal.semantic.matcher import DynamicMemberMatcher
 from statscepal.semantic.parser import QueryParser
 from statscepal.semantic.registry import SemanticRegistry
@@ -42,6 +47,9 @@ __all__ = [
     "BenchmarkResult",
     "DynamicMemberMatcher",
     "ExpectedSign",
+    "GraphBuildReport",
+    "GraphBuilder",
+    "InferredEdge",
     "MeasureType",
     "PolarityResolution",
     "PolarityType",
@@ -61,3 +69,4 @@ __all__ = [
     "Thesaurus",
     "get_default_thesaurus",
 ]
+

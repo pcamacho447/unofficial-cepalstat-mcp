@@ -270,17 +270,18 @@ class GraphBuilder:
         for cand in candidates.values():
             if cand.concept and cand.measure_type and cand.unit:
                 family_key = f"curated:{cand.concept}|{cand.measure_type}|{cand.unit}"
-            else:
-                stem = self.extract_name_stem(cand.name)
-                if len(stem) >= 8:
-                    family_key = f"stem:{stem}"
-                else:
-                    continue
-            families.setdefault(family_key, []).append(cand)
+                families.setdefault(family_key, []).append(cand)
+            stem = self.extract_name_stem(cand.name)
+            if len(stem) >= 8:
+                stem_key = f"stem:{stem}"
+                stem_list = families.setdefault(stem_key, [])
+                if not any(c.indicator_id == cand.indicator_id for c in stem_list):
+                    stem_list.append(cand)
 
         report.concept_families_count = len(families)
 
         single_incompatible = ("por habitante", "per capita", "indice de feminidad", "brecha de")
+        evaluated_pairs: set[tuple[int, int]] = set()
 
         for family_key, members in families.items():
             if len(members) < 2:
@@ -288,6 +289,14 @@ class GraphBuilder:
 
             for i, ind_a in enumerate(members):
                 for ind_b in members[i + 1 :]:
+                    pair_key = (
+                        min(ind_a.indicator_id, ind_b.indicator_id),
+                        max(ind_a.indicator_id, ind_b.indicator_id),
+                    )
+                    if pair_key in evaluated_pairs:
+                        continue
+                    evaluated_pairs.add(pair_key)
+
                     has_meta_a = bool(ind_a.concept and ind_a.measure_type and ind_a.unit)
                     has_meta_b = bool(ind_b.concept and ind_b.measure_type and ind_b.unit)
 

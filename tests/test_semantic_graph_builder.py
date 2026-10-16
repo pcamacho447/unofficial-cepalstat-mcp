@@ -151,3 +151,34 @@ def test_graph_builder_zero_false_edges_on_45_curated_indicators(tmp_path: Path)
             curated_rels = VERTICAL_SLICE_INDICATORS[edge.parent_id].relationships
             assert edge.child_id in curated_rels
 
+
+def test_cli_catalog_build_graph_ascii_and_json(tmp_path: Path, capsys, monkeypatch) -> None:
+    import json
+    from statscepal.cli import main
+
+    db_path = tmp_path / "cli_catalog.db"
+    store = CatalogStore(db_path=db_path)
+    store.init_tables()
+    store.init_semantic_tables()
+    store.populate_official_indicators()
+
+    monkeypatch.setattr("statscepal.cli.CatalogStore", lambda *args, **kwargs: CatalogStore(db_path=db_path))
+
+    # 1. ASCII output mode
+    exit_code = main(["catalog", "build-graph"])
+    assert exit_code == 0
+    captured = capsys.readouterr()
+    assert "CEPALSTAT Breakdown Graph Builder" in captured.out
+    assert "False curated edges:          0" in captured.out
+    assert "Inferred BREAKDOWN_OF pairs:" in captured.out
+
+    # 2. JSON output mode
+    exit_code_json = main(["catalog", "build-graph", "--json"])
+    assert exit_code_json == 0
+    captured_json = capsys.readouterr()
+    payload = json.loads(captured_json.out)
+    assert payload["false_curated_edges"] == 0
+    assert payload["inferred_edges_count"] >= 2
+    assert "inferred_edges" in payload
+
+

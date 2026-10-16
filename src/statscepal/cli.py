@@ -17,12 +17,50 @@ from statscepal.client import CepalStatClient
 from statscepal.exceptions import CepalStatError
 from statscepal.extractor import DataExtractor
 from statscepal.semantic import (
+    GraphBuilder,
     SemanticDataFetcher,
     SemanticRegistry,
     SemanticResolutionEngine,
 )
 from statscepal.semantic.facet_ontology import DEFAULT_FACET_ONTOLOGY
 from statscepal.thematic_tree import ThematicTree
+
+
+def _handle_catalog_build_graph(args: argparse.Namespace) -> int:
+    """Handle the 'catalog build-graph' command."""
+    store = CatalogStore()
+    builder = GraphBuilder(store=store)
+    report = builder.build_breakdown_graph(
+        persist=not args.no_persist,
+        seed_curated=not args.no_seed_curated,
+    )
+
+    if args.json:
+        print(report.model_dump_json(indent=2))
+        return 0
+
+    print("=" * 70)
+    print("CEPALSTAT Breakdown Graph Builder")
+    print("=" * 70)
+    print(f"Total indicators analyzed:    {report.total_indicators_analyzed}")
+    print(f"Concept families discovered:  {report.concept_families_count}")
+    print(f"Curated relationships:        {report.curated_edges_count}")
+    print(f"Inferred BREAKDOWN_OF pairs:  {report.inferred_edges_count}")
+    print(f"Newly persisted edges:        {report.newly_persisted_edges_count}")
+    print(f"Skipped curated conflicts:    {report.skipped_curated_conflicts}")
+    print(f"False curated edges:          {report.false_curated_edges}")
+    print("=" * 70)
+    print("Sample inferred edges:")
+    if not report.inferred_edges:
+        print("  (None)")
+    else:
+        for edge in report.inferred_edges[:10]:
+            added_str = f" (+{', '.join(edge.added_facets)})" if edge.added_facets else ""
+            print(f"  [{edge.parent_id}] -> [{edge.child_id}] {edge.concept_root}{added_str}")
+        if len(report.inferred_edges) > 10:
+            print(f"  ... and {len(report.inferred_edges) - 10} more.")
+    print("=" * 70)
+    return 0
 
 
 def main(args: Sequence[str] | None = None) -> int:
@@ -176,6 +214,28 @@ def main(args: Sequence[str] | None = None) -> int:
     )
     facet_audit_parser.add_argument(
         "--json", action="store_true", help="Output audit report in JSON format"
+    )
+
+    # catalog build-graph
+    build_graph_parser = catalog_subparsers.add_parser(
+        "build-graph",
+        help="Infer and persist multidimensional BREAKDOWN_OF relationships across the catalog",
+        description="Analyzes indicators, groups into concept families, infers strict-superset breakdowns, and persists edges to SQLite.",
+    )
+    build_graph_parser.add_argument(
+        "--no-persist",
+        action="store_true",
+        help="Dry-run mode: do not write inferred edges to SQLite",
+    )
+    build_graph_parser.add_argument(
+        "--no-seed-curated",
+        action="store_true",
+        help="Do not seed curated vertical slice edges prior to inference",
+    )
+    build_graph_parser.add_argument(
+        "--json",
+        action="store_true",
+        help="Emit report as JSON to stdout",
     )
 
     # analyze
@@ -542,6 +602,9 @@ def main(args: Sequence[str] | None = None) -> int:
                     )
             print("=" * 70)
             return 0
+
+        if parsed.catalog_command == "build-graph":
+            return _handle_catalog_build_graph(parsed)
 
     if parsed.command == "semantic":
         if not parsed.semantic_command:
