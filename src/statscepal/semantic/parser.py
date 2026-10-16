@@ -347,7 +347,23 @@ class QueryParser:
             intent.root_concept = "AGUA_DULCE"
 
         # Precios e Inflación
-        elif any(term in clean for term in ["transporte", "energia", "transporte y energia"]):
+        elif any(
+            term in clean
+            for term in [
+                "transporte",
+                "energia",
+                "transporte y energia",
+                "combustible",
+                "combustibles",
+                "gasolina",
+                "nafta",
+                "bencina",
+                "diesel",
+                "gasoil",
+                "electricidad",
+                "tarifas de luz",
+            ]
+        ):
             if any(term in clean for term in ["ipc", "precios", "precio", "inflacion", "golpe al bolsillo", "variacion de precios"]):
                 intent.root_concept = "IPC_TRANSPORTE_ENERGIA"
         elif "corrientazo" in clean or "alimentos y bebidas" in clean or "canasta alimentaria" in clean or "morfi" in clean or "carestia de la comida" in clean:
