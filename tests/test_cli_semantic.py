@@ -138,3 +138,37 @@ def test_cli_semantic_resolve_polarity_display(capsys):
     assert "ACCOUNTING_SIGN" in captured
     assert "deficit" in captured
 
+
+def test_cli_semantic_resolve_multi_year_series_display(capsys):
+    """Test semantic resolve with --fetch displays formatted empirical time series table."""
+    from unittest.mock import patch
+    from statscepal.cli import main
+
+    mock_payload = {
+        "observation_exists": True,
+        "indicator_id": 3337,
+        "indicator_name": "Salario mínimo real",
+        "unit": "índice 2018=100",
+        "country": "Perú",
+        "year": 2023,
+        "value": 101.8,
+        "series": [
+            {"year": 2022, "value": 104.2, "unit": "índice 2018=100", "notes": ""},
+            {"year": 2023, "value": 101.8, "unit": "índice 2018=100", "notes": ""},
+        ],
+    }
+
+    with patch(
+        "statscepal.semantic.fetcher.SemanticDataFetcher.fetch_resolved_data",
+        return_value=mock_payload,
+    ):
+        code = main(
+            ["semantic", "resolve", "plata minima en peru en 2022 y 2023", "--fetch"]
+        )
+    assert code == 0
+    captured = capsys.readouterr().out
+    assert "Empirical Series (2 observations):" in captured
+    assert "2022" in captured and "104.2" in captured
+    assert "2023" in captured and "101.8" in captured
+
+

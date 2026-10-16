@@ -387,7 +387,10 @@ def main(args: Sequence[str] | None = None) -> int:
 
                 if parsed.fetch:
                     fetcher = SemanticDataFetcher()
-                    fetcher.fetch_resolved_data(res)
+                    emp_data = fetcher.fetch_resolved_data(res)
+                    if emp_data and not res.empirical_data:
+                        res.empirical_data = emp_data
+
 
                 if parsed.json:
                     print(res.model_dump_json(indent=2))
@@ -471,9 +474,23 @@ def main(args: Sequence[str] | None = None) -> int:
 
                 if parsed.fetch:
                     print("-" * 70)
-                    print("Empirical Observation:")
                     emp = res.empirical_data or {}
-                    if emp.get("observation_exists"):
+                    series = emp.get("series")
+                    if series:
+                        print(f"Empirical Series ({len(series)} observations):")
+                        print(f"  {'Year':<8} {'Value':<12} {'Unit'}")
+                        print(f"  {'-'*6} {'-'*10} {'-'*20}")
+                        for item in series:
+                            val_str = (
+                                f"{item['value']:g}"
+                                if isinstance(item["value"], (int, float))
+                                else str(item["value"])
+                            )
+                            print(
+                                f"  {item['year']:<8} {val_str:<12} {item.get('unit', '')}"
+                            )
+                    elif emp.get("observation_exists"):
+                        print("Empirical Observation:")
                         val = emp.get("value")
                         unit = emp.get("unit", "")
                         unit_str = f" {unit}" if unit else ""
@@ -481,8 +498,10 @@ def main(args: Sequence[str] | None = None) -> int:
                         print(f"Year:      {emp.get('year')}")
                         print(f"Notes:     {emp.get('notes', '')}")
                     else:
+                        print("Empirical Observation:")
                         reason = emp.get("reason", "No observation available")
                         print(f"Status:    Unavailable ({reason})")
+
 
                 if parsed.explain and res.execution_trace:
                     print("-" * 70)
