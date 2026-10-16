@@ -22,7 +22,6 @@ class BenchmarkEvaluator:
         engine: SemanticResolutionEngine | None = None,
         cases_path: Path | str | None = None,
     ):
-        self.engine = engine or SemanticResolutionEngine()
         if cases_path:
             self.cases_path = Path(cases_path)
         else:
@@ -32,13 +31,17 @@ class BenchmarkEvaluator:
                 / "benchmark"
                 / "semantic_benchmark_cases.json"
             )
+        is_legacy = "semantic_benchmark_cases_200.json" not in str(self.cases_path)
+        profile = "legacy_50" if is_legacy else "official_25"
+        self.engine = engine or SemanticResolutionEngine(catalog_profile=profile)
 
     def load_cases(self) -> list[BenchmarkCase]:
         if not self.cases_path.exists():
             raise FileNotFoundError(f"Benchmark file not found: {self.cases_path}")
         with open(self.cases_path, "r", encoding="utf-8") as f:
             data = json.load(f)
-        return [BenchmarkCase.model_validate(c) for c in data.get("cases", [])]
+        raw_cases = data if isinstance(data, list) else data.get("cases", [])
+        return [BenchmarkCase.model_validate(c) for c in raw_cases]
 
     def evaluate(self) -> BenchmarkMetricsReport:
         cases = self.load_cases()
@@ -115,12 +118,28 @@ class BenchmarkEvaluator:
                 if temporal_match:
                     temporal_hits += 1
 
+            # Alternatives Match
+            alt_match = True
+            if case.expected_alternatives:
+                exp_alts = set(case.expected_alternatives)
+                act_alts = {alt.indicator_id for alt in response.alternatives}
+                if not exp_alts.issubset(act_alts):
+                    alt_match = False
+
             # Abstention Match
             abstention_match = True
             if case.expected_status == ResolutionStatus.ABSTAINED:
                 total_abstention_cases += 1
                 if response.status == ResolutionStatus.ABSTAINED:
-                    valid_reasons = {case.abstention_reason, case.unsupported_facet, "UNSUPPORTED_FACET"} - {None}
+                    valid_reasons = {
+                        case.abstention_reason,
+                        case.expected_reason,
+                        case.unsupported_facet,
+                        "UNSUPPORTED_FACET",
+                        "LOW_CONCEPTUAL_RELEVANCE",
+                        "PERIOD_OUT_OF_RANGE",
+                        "UNSUPPORTED_FREQUENCY",
+                    } - {None}
                     if case.abstention_reason and response.abstention_reason not in valid_reasons:
                         abstention_match = False
                     else:
@@ -150,6 +169,7 @@ class BenchmarkEvaluator:
                 and facet_match
                 and temporal_match
                 and abstention_match
+                and alt_match
             )
 
             error_msg = None

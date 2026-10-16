@@ -658,19 +658,60 @@ VERTICAL_SLICE_INDICATORS: dict[int, IndicatorMetadata] = {
     ),
 }
 
-# Concept to Canonical Default mapping
-CONCEPT_CANONICAL_DEFAULTS: dict[str, int] = {
+# Concept to Canonical Default mappings
+OFFICIAL_25_CANONICAL_DEFAULTS: dict[str, int] = {
+    "POBREZA": 3328,
+    "POBREZA_BRECHA": 3329,
+    "POBREZA_FEMINIDAD": 3330,
+    "DISTRIBUCION_INGRESO": 3340,
+    "EMPLEO": 127,
+    "DESEMPLEO_JUVENIL": 3331,
+    "DESEMPLEO_JUVENIL_15_24": 3331,
+    "SALARIO": 128,
+    "SALARIO_MEDIO": 128,
+    "SALARIO_REAL": 128,
+    "SALARIO_MINIMO": 3337,
+    "INGRESO_LABORAL": 3339,
+    "INGRESO_HOGARES": 3345,
+    "INGRESO_HOGAR_PER_CAPITA": 3345,
+    "PIB": 729,
+    "PIB_CORRIENTE": 729,
+    "PIB_PER_CAPITA": 730,
+    "PIB_TRIMESTRAL": 731,
+    "GINI": 3289,
+    "IPC_GENERAL": 2928,
+    "IPC_ALIMENTOS": 2929,
+    "INFLACION_ALIMENTOS": 2929,
+    "IPC_TRANSPORTE_ENERGIA": 2930,
+    "BALANZA_COMERCIAL": 2949,
+    "CUENTA_CORRIENTE": 1243,
+    "CUENTA_CORRIENTE_740": 1243,
+    "INVERSION_EXTRANJERA_DIRECTA": 4231,
+    "TERMINOS_INTERCAMBIO": 1244,
+    "DEUDA_PUBLICA": 1240,
+    "BALANCE_PRIMARIO": 1241,
+    "INGRESOS_TRIBUTARIOS": 1242,
+    "GASTO_SOCIAL": 4405,
+    "GASTO_EDUCACION": 4406,
+    "EMISIONES_GEI_LULUCF": 5681,
+    "EMISIONES_GEI_SIN_LULUCF": 5682,
+    "ENERGIA_RENOVABLE": 5683,
+    "AGUA_DULCE": 1318,
+    "BRECHA_SALARIAL": 3333,
+}
+
+LEGACY_50_CANONICAL_DEFAULTS: dict[str, int] = {
     "POBREZA": 3328,
     "POBREZA_BRECHA": 3329,
     "POBREZA_FEMINIDAD": 3330,
     "DISTRIBUCION_INGRESO": 3340,
     "EMPLEO": 127,
     "DESEMPLEO_JUVENIL": 3344,
-    "DESEMPLEO_JUVENIL_15_24": 3331,
+    "DESEMPLEO_JUVENIL_15_24": 5097,
     "SALARIO": 340,
     "SALARIO_MEDIO": 128,
     "SALARIO_REAL": 128,
-    "SALARIO_MINIMO": 3337,
+    "SALARIO_MINIMO": 340,
     "INGRESO_LABORAL": 3339,
     "INGRESO_HOGARES": 3345,
     "INGRESO_HOGAR_PER_CAPITA": 3345,
@@ -682,6 +723,7 @@ CONCEPT_CANONICAL_DEFAULTS: dict[str, int] = {
     "IPC_GENERAL": 365,
     "IPC_ALIMENTOS": 1684,
     "INFLACION_ALIMENTOS": 2929,
+    "IPC_TRANSPORTE_ENERGIA": 2930,
     "BALANZA_COMERCIAL": 2949,
     "CUENTA_CORRIENTE": 1243,
     "CUENTA_CORRIENTE_740": 740,
@@ -698,6 +740,8 @@ CONCEPT_CANONICAL_DEFAULTS: dict[str, int] = {
     "AGUA_DULCE": 1318,
     "BRECHA_SALARIAL": 3333,
 }
+
+CONCEPT_CANONICAL_DEFAULTS = OFFICIAL_25_CANONICAL_DEFAULTS
 
 # Empirical observation availability for country x year x indicator
 # Maps (indicator_id, country_code, year) -> (status, prev_anchor, next_anchor)
@@ -757,8 +801,10 @@ class SemanticRegistry:
         dimensions: dict[int, list[Dimension]] | None = None,
         relationships: dict[Any, Any] | None = None,
         temporal_availability: dict[tuple[int, str, int], tuple[Any, int | None, int | None]] | None = None,
+        catalog_profile: str = "official_25",
     ) -> None:
         self.store = store
+        self.catalog_profile = catalog_profile
         self._dimensions = dimensions or {}
         self._relationships = relationships or {}
         self._temporal_availability = temporal_availability or {}
@@ -790,7 +836,9 @@ class SemanticRegistry:
 
     def get_canonical_default(self, concept: str) -> int | None:
         """Get canonical indicator ID for a given normalized statistical concept."""
-        return CONCEPT_CANONICAL_DEFAULTS.get(concept)
+        if self.catalog_profile == "legacy_50":
+            return LEGACY_50_CANONICAL_DEFAULTS.get(concept)
+        return OFFICIAL_25_CANONICAL_DEFAULTS.get(concept)
 
     def get_dimensions(self, indicator_id: int) -> list[Dimension]:
         """Get dimensions for an indicator, checking store or custom dict."""

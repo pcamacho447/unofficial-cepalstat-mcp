@@ -25,9 +25,11 @@ class SemanticResolutionEngine:
         parser: QueryParser | None = None,
         registry: SemanticRegistry | None = None,
         matcher: DynamicMemberMatcher | None = None,
+        catalog_profile: str = "official_25",
     ):
-        self.parser = parser or QueryParser()
-        self.registry = registry or SemanticRegistry()
+        self.catalog_profile = catalog_profile
+        self.parser = parser or QueryParser(catalog_profile=catalog_profile)
+        self.registry = registry or SemanticRegistry(catalog_profile=catalog_profile)
         self.matcher = matcher or DynamicMemberMatcher()
 
     def resolve_query(self, query: str) -> SemanticResolutionResponse:
@@ -140,33 +142,32 @@ class SemanticResolutionEngine:
             primary_id = canonical_id
             alternatives: list[AlternativeCandidate] = []
 
-            if intent.ambiguous_candidate == "FEMININITY_INDEX":
-                primary_id = 3341
-                fem_meta = self.registry.get_indicator(3330)
-                if fem_meta:
-                    alternatives.append(
-                        AlternativeCandidate(
-                            indicator_id=3330,
-                            name=fem_meta.name,
-                            relationship=RelationshipType.ALTERNATIVE_MEASURE,
-                            note="Mide el ratio de mujeres por cada 100 hombres pobres (Índice de feminidad) en lugar del porcentaje.",
-                        )
-                    )
-            elif intent.ambiguous_candidate == "URBAN_UNEMPLOYMENT":
-                primary_id = 127
-                urb_meta = self.registry.get_indicator(119)
-                if urb_meta:
-                    alternatives.append(
-                        AlternativeCandidate(
-                            indicator_id=119,
-                            name=urb_meta.name,
-                            relationship=RelationshipType.ALTERNATIVE_MEASURE,
-                            note="Tasa de desocupación restringida exclusivamente al área urbana.",
-                        )
-                    )
-            elif intent.ambiguous_candidate == "INCOME_MEASURES":
-                primary_id = 128
-                for alt_id in [3337, 3345]:
+            AMBIGUOUS_CONFIGS: dict[str, tuple[int, list[int], str]] = {
+                "FEMININITY_INDEX": (3341, [3330], "Mide el ratio de mujeres por cada 100 hombres pobres (Índice de feminidad) en lugar del porcentaje."),
+                "URBAN_UNEMPLOYMENT": (127, [119], "Tasa de desocupación restringida exclusivamente al área urbana."),
+                "INCOME_MEASURES": (128, [3337, 3345], "Medida metodológica alternativa de ingreso o salario en CEPALSTAT."),
+                "PRIVATION_GAP": (3328, [3329], "Brecha de pobreza y pobreza extrema en lugar de tasa de incidencia."),
+                "INEQUALITY_INCOME": (3340, [3345], "Ingreso medio per cápita de los hogares como medida complementaria de bienestar."),
+                "DISTRIBUTIVE_GAP": (3340, [3339], "Ingreso laboral medio de la población ocupada por sexo y área."),
+                "LABOR_SITUATION": (127, [3331, 128], "Desempleo juvenil de 15 a 24 años e índice del salario medio real."),
+                "UNEMPLOYMENT_AND_WAGES": (127, [128, 3337], "Índice del salario medio real y salario mínimo real."),
+                "MACRO_ECONOMY": (729, [730, 731], "PIB per cápita y PIB trimestral a precios constantes."),
+                "ECONOMIC_ACTIVITY": (729, [730, 731], "PIB per cápita y PIB trimestral a precios constantes."),
+                "SECTORAL_INFLATION": (2928, [2929, 2930], "IPC de alimentos y bebidas e IPC de transporte y energía."),
+                "GENERAL_PRICES": (2928, [2929, 2930], "IPC de alimentos y bebidas e IPC de transporte y energía."),
+                "FISCAL_ACCOUNTS": (1240, [1241, 1242], "Balance primario e ingresos tributarios del gobierno central sobre el PIB."),
+                "FISCAL_HEALTH": (1240, [1241, 1242], "Balance primario e ingresos tributarios del gobierno central sobre el PIB."),
+                "EXTERNAL_SECTOR": (1243, [1244], "Términos de intercambio de bienes FOB/CIF."),
+                "INTERNATIONAL_TRADE_PAYMENTS": (1243, [1244], "Términos de intercambio de bienes FOB/CIF."),
+                "EMISSIONS_LULUCF_CHOICE": (5681, [5682], "Emisiones totales de GEI excluyendo sector UTCUTS / sin LULUCF."),
+                "ENERGY_POLLUTION": (5681, [5683], "Participación de energías renovables en la generación eléctrica."),
+                "SOCIOECONOMIC_WELLBEING": (3328, [3340, 128], "Distribución del ingreso por quintiles y salario medio real."),
+                "MACRO_FISCAL_PANORAMA": (729, [1240, 1243], "Saldo de la deuda pública y saldo en cuenta corriente sobre el PIB."),
+            }
+
+            if intent.ambiguous_candidate in AMBIGUOUS_CONFIGS:
+                primary_id, alt_ids, default_note = AMBIGUOUS_CONFIGS[intent.ambiguous_candidate]
+                for alt_id in alt_ids:
                     alt_meta = self.registry.get_indicator(alt_id)
                     if alt_meta:
                         alternatives.append(
@@ -174,7 +175,7 @@ class SemanticResolutionEngine:
                                 indicator_id=alt_id,
                                 name=alt_meta.name,
                                 relationship=RelationshipType.ALTERNATIVE_MEASURE,
-                                note="Medida metodológica alternativa de ingreso o salario en CEPALSTAT.",
+                                note=default_note,
                             )
                         )
 

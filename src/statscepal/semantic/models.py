@@ -2,7 +2,7 @@
 
 from enum import Enum
 from typing import Any
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class ResolutionStatus(str, Enum):
@@ -145,15 +145,18 @@ class SemanticResolutionResponse(BaseModel):
 class BenchmarkCase(BaseModel):
     """A ground truth test case for the semantic benchmark."""
 
-    case_id: str
+    case_id: str = Field(alias="id", default="")
     query: str
-    category: str
+    category: str = Field(alias="cluster", default="")
+    difficulty: str = "CANONICAL"
     expected_status: ResolutionStatus
     expected_indicator_id: int | None = None
     expected_measure: str | None = None
     required_country: str | None = None
     required_year: int | None = None
-    required_facets: dict[str, str] = Field(default_factory=dict)
+    required_facets: dict[str, str] = Field(default_factory=dict, alias="expected_facets")
+    expected_alternatives: list[int] = Field(default_factory=list)
+    expected_reason: str | None = None
     swapped_from: int | None = None
     relationship_used: str | None = None
     competing_indicator_id: int | None = None
@@ -166,6 +169,8 @@ class BenchmarkCase(BaseModel):
     abstention_reason: str | None = None
     unsupported_facet: str | None = None
     must_ask_clarification: bool = False
+
+    model_config = ConfigDict(populate_by_name=True)
 
 
 class BenchmarkResult(BaseModel):
