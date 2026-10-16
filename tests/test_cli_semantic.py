@@ -172,3 +172,25 @@ def test_cli_semantic_resolve_multi_year_series_display(capsys):
     assert "2023" in captured and "101.8" in captured
 
 
+def test_cli_semantic_resolve_ethnic_poverty(capsys=None):
+    """Test CLI resolution of ethnic poverty query displays indicator 3342 and dimension filters."""
+    import io
+    from contextlib import redirect_stdout
+    from statscepal.cli import main
+
+    f = io.StringIO()
+    with redirect_stdout(f):
+        ret = main(["semantic", "resolve", "cual es la pobreza etnica en el peru del 2020"])
+    assert ret == 0
+    output = f.getvalue()
+    assert "3342" in output
+    assert (
+        "Población en situación de pobreza extrema y pobreza, por sexo, autoidentificación étnico-racial y área"
+        in output
+    )
+    assert "PER" in output
+    assert "2020" in output
+    assert "Tipo de etnia" in output or "etnia" in output.lower()
+
+
+

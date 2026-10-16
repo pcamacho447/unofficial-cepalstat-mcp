@@ -128,3 +128,48 @@ def test_engine_abstains_on_unsupported_facet_without_false_substitution():
     # A facet with no breakdown indicator anywhere
     resp = engine.resolve("pobreza monetaria por nivel de coeficiencia intelectual en uruguay")
     assert resp.status == ResolutionStatus.ABSTAINED
+
+
+def test_fetcher_extracts_ethnic_observation():
+    from statscepal.semantic.engine import SemanticResolutionEngine
+    from statscepal.semantic.fetcher import SemanticDataFetcher
+    import pandas as pd
+
+    engine = SemanticResolutionEngine()
+    response = engine.resolve("cual es la pobreza etnica en el peru del 2020")
+
+    # Mock data extractor to verify fetcher dimension member filtering
+    mock_df = pd.DataFrame([
+        {"iso3": "PER", "Años__ESTANDAR": 2020, "Tipo de etnia": "Total", "Área geográfica": "Nacional", "value": 30.1, "notes_ids": ""},
+        {"iso3": "PER", "Años__ESTANDAR": 2020, "Tipo de etnia": "Indígena", "Área geográfica": "Nacional", "value": 45.2, "notes_ids": ""},
+        {"iso3": "PER", "Años__ESTANDAR": 2020, "Tipo de etnia": "Afrodescendiente", "Área geográfica": "Nacional", "value": 38.4, "notes_ids": ""},
+    ])
+
+    fetcher = SemanticDataFetcher()
+    fetcher._load_indicator_data = lambda ind_id, member_ids=None: mock_df
+
+    data = fetcher.fetch_resolved_data(response)
+    assert data["observation_exists"] is True
+    assert data["value"] is not None
+
+
+def test_fetcher_accent_resilient_dimension_filtering():
+    from statscepal.semantic.engine import SemanticResolutionEngine
+    from statscepal.semantic.fetcher import SemanticDataFetcher
+    import pandas as pd
+
+    engine = SemanticResolutionEngine()
+    response = engine.resolve("tasa de pobreza indigena en bolivia 2021")
+
+    # Mock data where member in dataframe is unaccented 'Indigena' whereas member_name in response is 'Indígena'
+    mock_df = pd.DataFrame([
+        {"iso3": "BOL", "Años__ESTANDAR": 2021, "Tipo de etnia": "Indigena", "Área geográfica": "Nacional", "value": 41.5, "notes_ids": ""},
+    ])
+
+    fetcher = SemanticDataFetcher()
+    fetcher._load_indicator_data = lambda ind_id, member_ids=None: mock_df
+
+    data = fetcher.fetch_resolved_data(response)
+    assert data["observation_exists"] is True
+    assert data["value"] == 41.5
+

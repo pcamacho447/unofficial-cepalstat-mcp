@@ -174,6 +174,14 @@ class SemanticDataFetcher:
                             .str.lower()
                             == dim_filter.member_name.strip().lower()
                         )
+                        # Also compare accent-stripped for resilience
+                        dim_mask |= (
+                            filtered_df[dim_col]
+                            .astype(str)
+                            .str.strip()
+                            .map(_strip_accents)
+                            == _strip_accents(dim_filter.member_name.strip())
+                        )
                     if dim_filter.member_id is not None:
                         dim_mask |= (
                             filtered_df[dim_col].astype(str).str.strip()
