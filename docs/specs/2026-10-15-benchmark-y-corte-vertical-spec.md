@@ -194,25 +194,42 @@ El archivo `tests/benchmark/semantic_benchmark_cases.json` se estructura con el 
 
 ## 4. Las 7 Métricas de Evaluación Obligatorias
 
-El evaluador del benchmark (`BenchmarkRunner`) ejecutará los 25 casos y calculará formalmente:
+El evaluador del benchmark (`BenchmarkRunner`) ejecutará las pruebas y calculará formalmente:
 
 | Métrica | Definición Matemática | Umbral Aceptación v1 |
 |---|---|:---:|
-| **Top-1 Resolution Accuracy** | $\frac{\sum \mathbb{I}(\text{indicador seleccionado} == \text{esperado})}{N_{\text{casos resolubles}}}$ | $\ge 90.0\%$ |
+| **Top-1 Resolution Accuracy** | $\frac{\sum \mathbb{I}(\text{indicador seleccionado} == \text{esperado})}{N_{\text{casos resolubles}}}$ | $\ge 90.0\%$ (Meta 100.0%) |
 | **Recall@3** | $\frac{\sum \mathbb{I}(\text{esperado} \in \text{Top-3 candidatos})}{N_{\text{casos resolubles}}}$ | $\ge 96.0\%$ |
 | **False Substitution Rate** | $\frac{\sum \mathbb{I}(\text{swap ejecutado sin relación 'breakdown\_of'})}{N_{\text{swaps}}}$ | **0.0% (Inviolable)** |
 | **Facet & Member Precision** | $\frac{\sum \mathbb{I}(\text{miembros mapeados} == \text{esperados})}{N_{\text{facetas requeridas}}}$ | $\ge 95.0\%$ |
 | **Temporal Status Accuracy** | $\frac{\sum \mathbb{I}(\text{estado temporal} == \text{esperado})}{N_{\text{auditorias}}}$ | $\ge 95.0\%$ |
 | **Justified Abstention Rate** | $\frac{\sum \mathbb{I}(\text{abstención ejecutada} \land \text{caso es inabarcable})}{N_{\text{casos inabarcables}}}$ | **100.0% (Inviolable)** |
-| **Latencia Local (p50 / p95)** | Percentil 50 y 95 del tiempo de resolución en SQLite | p50 $< 2$ ms, p95 $< 5$ ms |
+| **Latencia Local (p50 / p95)** | Percentil 50 y 95 del tiempo de resolución en SQLite | p50 $< 0.5$ ms, p95 $< 2.0$ ms |
 
 ---
 
-## 5. Implementación del Corte Vertical: Módulos de Código
+## 5. Estrategia de Benchmark Dual
+
+Para evitar la saturación métrica en suites estáticas y prevenir regresiones silenciosas por degradación de facetas, el sistema adopta una **arquitectura de evaluación dual**:
+
+1. **Suite de Regresión Canónica (`tests/test_semantic_benchmark_200.py`):**
+   - 200 casos de prueba fijos que certifican la no-regresión de conceptos fundamentales, anclajes temporales y el corte vertical histórico.
+   - Umbral inviolable: 100.0% Top-1 Accuracy y 0.00% False Substitution Rate.
+
+2. **Suite de Cobertura Facetaria Multidimensional (`tests/test_semantic_facet_coverage.py`):**
+   - Generación paramétrica sistemática de consultas $Faceta \times Familia$ sobre el catálogo cosechado.
+   - Evaluación granular de métricas por faceta (`etnia`, `sexo`, `edad`, `educacion`, `quintil`, `area`, etc.).
+   - Pruebas adversariales de abstención forzosa ante dimensiones no soportadas (verificando ausencia de falsa sustitución por agregados nacionales).
+   - Pruebas de límites léxicos y blindaje contra modismos regionales ("raza", "rama", etc.).
+
+---
+
+## 6. Implementación del Corte Vertical y Expansión: Módulos de Código
 
 La estructura de código en `src/statscepal/semantic/` implementa las clases base:
 1. `models.py`: Modelos Pydantic v2 inmutables y tipados.
 2. `parser.py`: Lematización de lenguaje natural a conceptos formales.
-3. `registry.py`: Consultas SQL compiladas a SQLite para metadatos reales y grafo relacional.
-4. `engine.py`: Motor determinista de 5 etapas con compuertas duras y scoring explicable.
-5. `evaluator.py`: Ejecutor de benchmarks con cálculo de matriz de confusión y latencia.
+3. `facet_ontology.py`: Ontología declarativa única de dimensiones y miembros.
+4. `registry.py`: Consultas SQL y grafos en memoria compilados desde SQLite para metadatos reales.
+5. `engine.py`: Motor determinista de 5 etapas con compuertas duras y scoring explicable.
+6. `evaluator.py`: Ejecutor de benchmarks con cálculo de matriz de confusión y latencia.

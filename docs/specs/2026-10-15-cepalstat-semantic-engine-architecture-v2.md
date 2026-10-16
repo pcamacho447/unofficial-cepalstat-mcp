@@ -186,12 +186,16 @@ Superando la clasificación teórica, el motor audita en la base de datos la cel
 
 ### Decisión 7: Procedimiento de Ingesta y Versionado de Metadatos
 - Se utiliza SQLite local (`.statscepal_cache.db`) con tablas relacionales normalizadas:
-  - `master_indicators`: Registro de 2,143 indicadores.
-  - `indicator_dimensions`: Dimensiones nativas descubiertas por indicador.
-  - `dimension_members`: Miembros con sus IDs oficiales.
-  - `indicator_relationships`: Grafo de relaciones tipadas (`breakdown_of`, `alternative_measure`, etc.).
-  - `data_availability_matrix`: Matriz de celdas existentes por País $\times$ Año $\times$ Indicador.
-- Versionado con marca de tiempo UTC y hash de control para detectar cambios en la API oficial.
+  - `master_indicators`: Registro de 1,739 indicadores catalogados.
+  - `indicator_dimensions`: Dimensiones nativas cosechadas masivamente por indicador (vía `/indicator/{id}/dimensions`).
+  - `dimension_members`: Miembros oficiales cosechados con sus IDs y etiquetas decodificadas.
+  - `indicator_relationships`: Grafo de relaciones tipadas con atributo `provenance` ('curated' para mapeos artesanales prioritarios, 'inferred' para derivaciones automáticas por superconjunto dimensional estricto).
+  - `temporal_availability`: Disponibilidad observada y anclajes temporales $T_{\max}$.
+- Módulo de Ingesta Automatizado (`CatalogStore.harvest` / CLI `statscepal catalog harvest`):
+  - Ingesta idempotente, reanudable (checkpointing), con rate-limiting y backoff exponencial hacia la API CEPALSTAT.
+  - Versionado con marca de tiempo UTC y hash de contenido (`content_hash`) para auditoría y no-regresión.
+- Carga en Memoria de Alto Rendimiento:
+  - Al iniciar, el registro compila las relaciones y dimensiones desde SQLite hacia estructuras en memoria (índices invertidos y grafos adyacentes), garantizando latencia $p50 < 0.5\text{ ms}$ para los 1,739 indicadores.
 
 ---
 
@@ -259,7 +263,9 @@ Siguiendo la recomendación de la revisión técnica, no expandiremos las 25 ont
 2. Implementar las 5 etapas del pipeline en código Python (`src/statscepal/semantic/`).
 3. Ejecutar el benchmark sobre este corte vertical y verificar que todas las restricciones duras se cumplan sin alucinaciones.
 
-### Fase C: Expansión Progresiva Basada en Errores
-1. Analizar los errores detectados por el benchmark.
-2. Calibrar empíricamente los pesos del relevance score.
-3. Expandir la ontología hacia los dominios Macroeconómico y Ambiental con la garantía de que el pipeline es estadísticamente inviolable.
+### Fase C: Ingesta Masiva, Ontología Declarativa y Enrutamiento Genérico
+1. Ejecutar la ingesta masiva (`harvest`) sobre los 1,739 indicadores para poblar `indicator_dimensions` y `dimension_members`.
+2. Implementar `FacetOntology`: módulo declarativo único que desliga el código de Python de nombres de faceta literales ("etnia", "sexo", etc.), parametrizando patrones de miembros y agregados por defecto.
+3. Activar inferencia automática de relaciones `BREAKDOWN_OF` entre indicadores con raíz común y dimensiones ampliadas.
+4. Generalizar la Etapa 4 del motor (`engine.py`) para operar sobre el grafo genérico en memoria sin ramas condicionales ad-hoc.
+5. Desplegar benchmark de cobertura facetaria multidimensional con tasa de falsa sustitución objetivo de 0.00%.
