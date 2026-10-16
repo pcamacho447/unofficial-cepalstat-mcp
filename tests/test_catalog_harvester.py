@@ -1,11 +1,18 @@
 """Tests for CatalogHarvester and CatalogStore harvest extensions."""
 
+import json
+from pathlib import Path
 import sqlite3
 from datetime import datetime
 import pytest
+import respx
+import httpx
 
+from statscepal.catalog.harvester import CatalogHarvester
 from statscepal.catalog.store import CatalogStore
+from statscepal.client import CepalStatClient
 from statscepal.dimensions import Dimension, Member
+
 
 
 def test_store_harvest_columns_and_status(tmp_path):
@@ -106,3 +113,179 @@ def test_schema_migration_adds_columns_to_existing_table(tmp_path):
         col_names = {row["name"] for row in cur.fetchall()}
         assert "harvested_at" in col_names
         assert "content_hash" in col_names
+
+
+@respx.mock
+def test_harvester_resumable_and_retry(tmp_path):
+    db_path = tmp_path / "test_catalog_harvester.db"
+    store = CatalogStore(db_path=db_path)
+    store.init_tables()
+    store.init_semantic_tables()
+
+    # Pre-populate master_indicators with 2 indicators
+    with store._get_connection() as conn:
+        conn.execute(
+            "INSERT INTO master_indicators (indicator_id, name, theme, area, full_path) VALUES (3328, 'Pobreza', 'Social', 'Pobreza', '/Social/Pobreza')"
+        )
+        conn.execute(
+            "INSERT INTO master_indicators (indicator_id, name, theme, area, full_path) VALUES (3342, 'Pobreza etnica', 'Social', 'Pobreza', '/Social/Pobreza')"
+        )
+
+    fixture_3328 = json.loads(Path("tests/fixtures/dimensions/indicator_3328.json").read_text(encoding="utf-8"))
+    fixture_3342 = json.loads(Path("tests/fixtures/dimensions/indicator_3342.json").read_text(encoding="utf-8"))
+
+    respx.get("https://api-cepalstat.cepal.org/cepalstat/api/v1/indicator/3328/dimensions").respond(
+        status_code=200, json=fixture_3328
+    )
+    respx.get("https://api-cepalstat.cepal.org/cepalstat/api/v1/indicator/3342/dimensions").respond(
+        status_code=200, json=fixture_3342
+    )
+
+    client = CepalStatClient()
+    harvester = CatalogHarvester(client=client, store=store, rate_limit_delay=0.0)
+
+    # First run: harvests both
+    progress_records = []
+
+    def on_progress(idx, total, ind_id, status):
+        progress_records.append((idx, total, ind_id, status))
+
+    summary = harvester.harvest(resume=True, on_progress=on_progress)
+    assert summary.total_target == 2
+    assert summary.already_harvested == 0
+    assert summary.newly_harvested == 2
+    assert summary.failed_count == 0
+    assert len(progress_records) == 2
+    assert progress_records[0] == (1, 2, 3328, "success")
+    assert progress_records[1] == (2, 2, 3342, "success")
+
+    # Verify content hash and data stored in DB
+    dims_3328 = store.get_indicator_dimensions(3328)
+    assert len(dims_3328) == 5
+    with store._get_connection() as conn:
+        row = conn.execute(
+            "SELECT content_hash, harvested_at FROM indicator_dimensions WHERE indicator_id = 3328"
+        ).fetchone()
+        assert row["content_hash"] is not None
+        assert row["harvested_at"] is not None
+
+    # Second run with resume=True: skips both
+    summary_resume = harvester.harvest(resume=True)
+    assert summary_resume.total_target == 2
+    assert summary_resume.already_harvested == 2
+    assert summary_resume.newly_harvested == 0
+    assert summary_resume.failed_count == 0
+
+    # Run with force=True: re-harvests both
+    summary_force = harvester.harvest(resume=True, force=True)
+    assert summary_force.total_target == 2
+    assert summary_force.already_harvested == 0
+    assert summary_force.newly_harvested == 2
+
+
+@respx.mock
+def test_harvester_handles_http_errors_and_continues(tmp_path):
+    db_path = tmp_path / "test_catalog_err.db"
+    store = CatalogStore(db_path=db_path)
+    store.init_tables()
+    store.init_semantic_tables()
+
+    with store._get_connection() as conn:
+        conn.execute(
+            "INSERT INTO master_indicators (indicator_id, name, theme, area, full_path) VALUES (1001, '404 Indicator', 'Social', 'Pobreza', '/Social/Pobreza')"
+        )
+        conn.execute(
+            "INSERT INTO master_indicators (indicator_id, name, theme, area, full_path) VALUES (3328, 'Success Indicator', 'Social', 'Pobreza', '/Social/Pobreza')"
+        )
+        conn.execute(
+            "INSERT INTO master_indicators (indicator_id, name, theme, area, full_path) VALUES (1002, '500 Indicator', 'Social', 'Pobreza', '/Social/Pobreza')"
+        )
+
+    fixture_3328 = json.loads(Path("tests/fixtures/dimensions/indicator_3328.json").read_text(encoding="utf-8"))
+
+    # 1001 returns 404 (non-transient)
+    respx.get("https://api-cepalstat.cepal.org/cepalstat/api/v1/indicator/1001/dimensions").respond(
+        status_code=404, text="Not Found"
+    )
+    # 3328 succeeds
+    respx.get("https://api-cepalstat.cepal.org/cepalstat/api/v1/indicator/3328/dimensions").respond(
+        status_code=200, json=fixture_3328
+    )
+    # 1002 returns 500 (transient, retried then fails)
+    respx.get("https://api-cepalstat.cepal.org/cepalstat/api/v1/indicator/1002/dimensions").respond(
+        status_code=500, text="Internal Server Error"
+    )
+
+    client = CepalStatClient()
+    harvester = CatalogHarvester(client=client, store=store, rate_limit_delay=0.0, max_retries=2, retry_backoff_base=0.01)
+
+    summary = harvester.harvest(resume=False)
+    assert summary.total_target == 3
+    assert summary.newly_harvested == 1
+    assert summary.failed_count == 2
+    assert 1001 in summary.failed_ids
+    assert 1002 in summary.failed_ids
+
+
+@respx.mock
+def test_harvester_retries_transient_error_and_succeeds(tmp_path):
+    db_path = tmp_path / "test_catalog_retry.db"
+    store = CatalogStore(db_path=db_path)
+    store.init_tables()
+    store.init_semantic_tables()
+
+    with store._get_connection() as conn:
+        conn.execute(
+            "INSERT INTO master_indicators (indicator_id, name, theme, area, full_path) VALUES (3328, 'Pobreza', 'Social', 'Pobreza', '/Social/Pobreza')"
+        )
+
+    fixture_3328 = json.loads(Path("tests/fixtures/dimensions/indicator_3328.json").read_text(encoding="utf-8"))
+
+    route = respx.get("https://api-cepalstat.cepal.org/cepalstat/api/v1/indicator/3328/dimensions")
+    route.side_effect = [
+        httpx.Response(503, text="Service Unavailable"),
+        httpx.Response(200, json=fixture_3328),
+    ]
+
+    client = CepalStatClient()
+    harvester = CatalogHarvester(client=client, store=store, rate_limit_delay=0.0, max_retries=3, retry_backoff_base=0.01)
+
+    summary = harvester.harvest(resume=False)
+    assert summary.total_target == 1
+    assert summary.newly_harvested == 1
+    assert summary.failed_count == 0
+    assert route.call_count == 2
+
+
+@respx.mock
+def test_harvester_explicit_indicator_ids_and_3arg_callback(tmp_path):
+    db_path = tmp_path / "test_catalog_explicit.db"
+    store = CatalogStore(db_path=db_path)
+    store.init_tables()
+    store.init_semantic_tables()
+
+    fixture_3342 = json.loads(Path("tests/fixtures/dimensions/indicator_3342.json").read_text(encoding="utf-8"))
+    respx.get("https://api-cepalstat.cepal.org/cepalstat/api/v1/indicator/3342/dimensions").respond(
+        status_code=200, json=fixture_3342
+    )
+
+    client = CepalStatClient()
+    harvester = CatalogHarvester(client=client, store=store, rate_limit_delay=0.0)
+
+    # 3-arg callback (idx, total, ind_id)
+    callback_calls = []
+
+    def legacy_callback(idx, total, ind_id):
+        callback_calls.append((idx, total, ind_id))
+
+    summary = harvester.harvest(indicator_ids=[3342], on_progress=legacy_callback)
+    assert summary.total_target == 1
+    assert summary.newly_harvested == 1
+    assert len(callback_calls) == 1
+    assert callback_calls[0] == (1, 1, 3342)
+
+    # Verify members and dimensions in store
+    dims = store.get_indicator_dimensions(3342)
+    assert len(dims) == 6
+
+

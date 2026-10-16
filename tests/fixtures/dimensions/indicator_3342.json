@@ -1,0 +1,67 @@
+{
+  "header": {
+    "success": true,
+    "code": 200
+  },
+  "body": {
+    "dimensions": [
+      {
+        "id": 208,
+        "name": "País__ESTANDAR",
+        "members": [
+          {"id": 215, "name": "América Latina y el Caribe", "order": 1, "parent": null, "selected": 0},
+          {"id": 218, "name": "Argentina", "order": 10, "parent": null, "selected": 0},
+          {"id": 224, "name": "Chile", "order": 110, "parent": null, "selected": 0}
+        ]
+      },
+      {
+        "id": 326,
+        "name": "Área geográfica",
+        "members": [
+          {"id": 327, "name": "Nacional", "order": 1, "parent": null, "selected": 0},
+          {"id": 330, "name": "Urbano", "order": 2, "parent": null, "selected": 0},
+          {"id": 331, "name": "Rural", "order": 3, "parent": null, "selected": 0}
+        ]
+      },
+      {
+        "id": 144,
+        "name": "Sexo__ESTANDAR",
+        "members": [
+          {"id": 146, "name": "Ambos sexos", "order": 1, "parent": null, "selected": 0},
+          {"id": 265, "name": "Hombres", "order": 2, "parent": null, "selected": 0},
+          {"id": 266, "name": "Mujeres", "order": 3, "parent": null, "selected": 0}
+        ]
+      },
+      {
+        "id": 43039,
+        "name": "Tipo de etnia",
+        "members": [
+          {"id": 43040, "name": "Afrodescendiente", "order": 1, "parent": null, "selected": 0},
+          {"id": 43041, "name": "Indígena", "order": 2, "parent": null, "selected": 0},
+          {"id": 43042, "name": "No indígena ni afrodescendiente", "order": 3, "parent": null, "selected": 0},
+          {"id": 43043, "name": "Total", "order": 4, "parent": null, "selected": 0}
+        ]
+      },
+      {
+        "id": 500,
+        "name": "Situación de pobreza",
+        "members": [
+          {"id": 501, "name": "Pobreza extrema / indigencia", "order": 1, "parent": null, "selected": 0},
+          {"id": 502, "name": "Total pobreza", "order": 2, "parent": null, "selected": 0}
+        ]
+      },
+      {
+        "id": 29117,
+        "name": "Años__ESTANDAR",
+        "members": [
+          {"id": 29190, "name": "2020", "order": 2020, "parent": null, "selected": 0},
+          {"id": 29191, "name": "2021", "order": 2021, "parent": null, "selected": 0},
+          {"id": 29192, "name": "2022", "order": 2022, "parent": null, "selected": 0}
+        ]
+      }
+    ]
+  },
+  "footer": {
+    "records": 6
+  }
+}
