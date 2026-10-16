@@ -332,6 +332,17 @@ class QueryParser:
         if "salud" in clean:
             facets["rubro"] = "SALUD"
 
+        # Etnia / Autoidentificación Étnico-Racial
+        etnia_match = self.thesaurus.match_synset("facet_etnia", clean)
+        if etnia_match:
+            facets["etnia"] = etnia_match.canonical_id
+        elif any(re.search(r"\b" + re.escape(term) + r"\b", clean) for term in ["indigena", "indigenas", "originarios", "pueblos originarios", "pueblos indigenas"]):
+            facets["etnia"] = "INDIGENA"
+        elif any(re.search(r"\b" + re.escape(term) + r"\b", clean) for term in ["afrodescendiente", "afrodescendientes", "afro", "afrolatino", "afrolatina"]):
+            facets["etnia"] = "AFRODESCENDIENTE"
+        elif any(re.search(r"\b" + re.escape(term) + r"\b", clean) for term in ["etnica", "etnico", "etnicas", "etnicos", "etnia"]):
+            facets["etnia"] = "ETNICO_TOTAL"
+
         # ----------------------------------------------------
         # 5. Extract Root Concept & Controlled Ambiguities
         # ----------------------------------------------------
