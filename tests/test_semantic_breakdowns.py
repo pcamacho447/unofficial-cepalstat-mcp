@@ -74,4 +74,57 @@ def test_member_matcher_resolves_ethnic_dimension():
     assert ethnic_filter4 is not None
     assert ethnic_filter4.member_name == "No indígena ni afrodescendiente"
 
+from statscepal.semantic.engine import SemanticResolutionEngine
+from statscepal.semantic.models import ResolutionStatus
 
+
+def test_engine_resolves_ethnic_poverty_to_3342():
+    engine = SemanticResolutionEngine()
+
+    # Exact user query that originally failed
+    resp = engine.resolve("cual es la pobreza etnica en el peru del 2020")
+    assert resp.status == ResolutionStatus.RESOLVED
+    assert resp.selected_candidate is not None
+    assert resp.selected_candidate.indicator_id == 3342
+    assert resp.applied_filters.country_code == "PER"
+    assert resp.applied_filters.year == 2020
+
+    # Ensure dimension 43039 (Tipo de etnia) is bound
+    ethnic_dim = next((f for f in resp.applied_filters.dimensions if f.dim_id == 43039), None)
+    assert ethnic_dim is not None
+    assert ethnic_dim.member_name in ("Total", "Indígena", "Afrodescendiente", "No indígena ni afrodescendiente")
+
+
+def test_engine_resolves_indigenous_poverty_to_3342_with_member():
+    engine = SemanticResolutionEngine()
+    resp = engine.resolve("tasa de pobreza indigena en bolivia 2021")
+    assert resp.status == ResolutionStatus.RESOLVED
+    assert resp.selected_candidate is not None
+    assert resp.selected_candidate.indicator_id == 3342
+    assert resp.applied_filters.country_code == "BOL"
+
+    # Must bind specific member 'Indígena'
+    ethnic_dim = next((f for f in resp.applied_filters.dimensions if f.dim_id == 43039), None)
+    assert ethnic_dim is not None
+    assert ethnic_dim.member_name == "Indígena"
+
+
+def test_engine_resolves_afrodescendant_poverty_to_3342_with_member():
+    engine = SemanticResolutionEngine()
+    resp = engine.resolve("pobreza extrema en afrodescendientes en colombia 2020")
+    assert resp.status == ResolutionStatus.RESOLVED
+    assert resp.selected_candidate is not None
+    assert resp.selected_candidate.indicator_id == 3342
+    assert resp.applied_filters.country_code == "COL"
+
+    # Must bind specific member 'Afrodescendiente'
+    ethnic_dim = next((f for f in resp.applied_filters.dimensions if f.dim_id == 43039), None)
+    assert ethnic_dim is not None
+    assert ethnic_dim.member_name == "Afrodescendiente"
+
+
+def test_engine_abstains_on_unsupported_facet_without_false_substitution():
+    engine = SemanticResolutionEngine()
+    # A facet with no breakdown indicator anywhere
+    resp = engine.resolve("pobreza monetaria por nivel de coeficiencia intelectual en uruguay")
+    assert resp.status == ResolutionStatus.ABSTAINED

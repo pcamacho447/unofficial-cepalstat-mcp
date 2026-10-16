@@ -14,7 +14,7 @@ from statscepal.semantic.models import (
 )
 from statscepal.semantic.matcher import DynamicMemberMatcher
 from statscepal.semantic.parser import QueryParser
-from statscepal.semantic.registry import SemanticRegistry
+from statscepal.semantic.registry import DEFAULT_OFFICIAL_DIMENSIONS, SemanticRegistry
 
 
 class SemanticResolutionEngine:
@@ -256,7 +256,7 @@ class SemanticResolutionEngine:
             ("sexo", "TOTAL"),
             ("sexo", "AMBOS_SEXOS"),
         ]:
-            if intent.facets.get(facet_k) == default_v:
+            if facet_k != "etnia" and intent.facets.get(facet_k) == default_v:
                 unhandled_facets.discard(facet_k)
 
         # Check concrete dimensions if present for default indicator
@@ -267,10 +267,14 @@ class SemanticResolutionEngine:
             )
             crit_def_unhandled = [
                 f for f in def_unhandled
-                if intent.facets.get(f) not in {"POBREZA_TOTAL", "TOTAL", "NACIONAL"}
+                if f == "etnia" or intent.facets.get(f) not in {"POBREZA_TOTAL", "TOTAL", "NACIONAL"}
             ]
             if crit_def_unhandled:
                 unhandled_facets = unhandled_facets | set(crit_def_unhandled)
+
+        # Ensure etnia is never discarded when canonical indicator lacks ethnic support
+        if "etnia" in requested_facet_keys and "etnia" not in default_meta.supported_facets:
+            unhandled_facets.add("etnia")
 
         if unhandled_facets:
             trace.append(f"[Stage 4: Dimensional Gate] Canonical ID {canonical_id} lacks facets: {sorted(unhandled_facets)}. Traversing knowledge graph for 'breakdown_of' swap...")
@@ -279,30 +283,36 @@ class SemanticResolutionEngine:
             for cand_id, rel in default_meta.relationships.items():
                 if rel == RelationshipType.BREAKDOWN_OF:
                     cand_meta = self.registry.get_indicator(cand_id)
+                    if not cand_meta:
+                        continue
+                    # Candidate must support the facets that canonical lacked
+                    if not unhandled_facets.issubset(cand_meta.supported_facets):
+                        continue
+
                     cand_dims = self.registry.get_dimensions(cand_id)
+                    if not cand_dims and cand_id == 3342:
+                        cand_dims = DEFAULT_OFFICIAL_DIMENSIONS.get(3342, [])
                     if cand_dims:
                         cand_ok, _, cand_unhandled = self.matcher.match_facets_to_dimensions(
                             cand_id, cand_dims, intent.facets
                         )
                         crit_cand_unhandled = [
                             f for f in cand_unhandled
-                            if intent.facets.get(f) not in {"POBREZA_TOTAL", "TOTAL", "NACIONAL"}
+                            if f == "etnia" or intent.facets.get(f) not in {"POBREZA_TOTAL", "TOTAL", "NACIONAL"}
                         ]
                         if not crit_cand_unhandled:
                             target_indicator_id = cand_id
                             swapped_from = canonical_id
                             swap_relationship = rel
                             found_swap = True
-                            cand_name = cand_meta.name if cand_meta else ""
-                            trace.append(f"  - Swapped to ID {cand_id} ('{cand_name}') via 'breakdown_of' (supports required facets)")
+                            trace.append(f"  - Swapped to ID {cand_id} ('{cand_meta.name}') via 'breakdown_of' (supports required facets)")
                             break
-                    elif cand_meta and requested_facet_keys.issubset(cand_meta.supported_facets):
+                    elif requested_facet_keys.issubset(cand_meta.supported_facets):
                         target_indicator_id = cand_id
                         swapped_from = canonical_id
                         swap_relationship = rel
                         found_swap = True
-                        cand_name = cand_meta.name if cand_meta else ""
-                        trace.append(f"  - Swapped to ID {cand_id} ('{cand_name}') via 'breakdown_of' (supports required facets)")
+                        trace.append(f"  - Swapped to ID {cand_id} ('{cand_meta.name}') via 'breakdown_of' (supports required facets)")
                         break
 
             if not found_swap:
@@ -323,6 +333,8 @@ class SemanticResolutionEngine:
 
         # Resolve dynamic dimensions and members for the chosen indicator
         target_dims = self.registry.get_dimensions(target_indicator_id)
+        if not target_dims and target_indicator_id == 3342:
+            target_dims = DEFAULT_OFFICIAL_DIMENSIONS.get(3342, [])
         if target_dims and intent.facets:
             success, matched_dims, unhandled = self.matcher.match_facets_to_dimensions(
                 target_indicator_id, target_dims, intent.facets
@@ -332,7 +344,7 @@ class SemanticResolutionEngine:
                 trace.append(f"[Stage 4: Member Matcher] Bound dimension '{f.dim_name}' (ID: {f.dim_id}) -> Member '{f.member_name}' (ID: {f.member_id})")
             critical_unhandled = [
                 f for f in unhandled
-                if intent.facets.get(f) not in {"POBREZA_TOTAL", "TOTAL", "NACIONAL"}
+                if f == "etnia" or intent.facets.get(f) not in {"POBREZA_TOTAL", "TOTAL", "NACIONAL"}
             ]
             if critical_unhandled:
                 latency = (time.perf_counter() - t0) * 1000.0
