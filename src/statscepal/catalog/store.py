@@ -112,9 +112,15 @@ class CatalogStore:
                     indicator_a INTEGER,
                     indicator_b INTEGER,
                     rel_type TEXT,
+                    provenance TEXT DEFAULT 'curated',
                     PRIMARY KEY (indicator_a, indicator_b)
                 )
             """)
+            cur = conn.execute("PRAGMA table_info(indicator_relationships)")
+            existing_rel_cols = {row["name"] for row in cur.fetchall()}
+            if "provenance" not in existing_rel_cols:
+                conn.execute("ALTER TABLE indicator_relationships ADD COLUMN provenance TEXT DEFAULT 'curated'")
+                conn.execute("UPDATE indicator_relationships SET provenance = 'curated' WHERE provenance IS NULL")
             conn.execute("""
                 CREATE TABLE IF NOT EXISTS temporal_availability (
                     indicator_id INTEGER,
@@ -409,16 +415,70 @@ class CatalogStore:
                 )
             return dimensions
 
-    def store_relationship(self, indicator_a: int, indicator_b: int, rel: str) -> None:
-        """Store a typed relationship between two indicators."""
+    def store_relationship(
+        self,
+        indicator_a: int,
+        indicator_b: int,
+        rel: str,
+        provenance: str = "curated",
+    ) -> bool:
+        """Store a typed relationship between two indicators with provenance tracking."""
         with self._get_connection() as conn:
+            row = conn.execute(
+                "SELECT provenance FROM indicator_relationships WHERE indicator_a = ? AND indicator_b = ?",
+                (indicator_a, indicator_b),
+            ).fetchone()
+            if row is not None and row["provenance"] == "curated" and provenance == "inferred":
+                return False
+
             conn.execute(
                 """
-                INSERT OR REPLACE INTO indicator_relationships (indicator_a, indicator_b, rel_type)
-                VALUES (?, ?, ?)
+                INSERT OR REPLACE INTO indicator_relationships (indicator_a, indicator_b, rel_type, provenance)
+                VALUES (?, ?, ?, ?)
                 """,
-                (indicator_a, indicator_b, rel),
+                (indicator_a, indicator_b, rel, provenance),
             )
+            return True
+
+    def get_relationships_with_provenance(self, indicator_a: int) -> dict[int, dict[str, str]]:
+        """Get all relationships for a given indicator including provenance."""
+        with self._get_connection() as conn:
+            rows = conn.execute(
+                "SELECT indicator_b, rel_type, provenance FROM indicator_relationships WHERE indicator_a = ?",
+                (indicator_a,),
+            ).fetchall()
+            return {
+                row["indicator_b"]: {
+                    "rel_type": row["rel_type"],
+                    "provenance": row["provenance"] or "curated",
+                }
+                for row in rows
+            }
+
+    def get_all_relationships(self, provenance: str | None = None) -> list[dict[str, Any]]:
+        """Retrieve all relationships optionally filtered by provenance."""
+        sql = "SELECT indicator_a, indicator_b, rel_type, provenance FROM indicator_relationships"
+        params: list[Any] = []
+        if provenance is not None:
+            sql += " WHERE provenance = ?"
+            params.append(provenance)
+        with self._get_connection() as conn:
+            rows = conn.execute(sql, params).fetchall()
+            return [
+                {
+                    "indicator_a": row["indicator_a"],
+                    "indicator_b": row["indicator_b"],
+                    "rel_type": row["rel_type"],
+                    "provenance": row["provenance"] or "curated",
+                }
+                for row in rows
+            ]
+
+    def clear_inferred_relationships(self) -> int:
+        """Clear all inferred relationships while preserving curated relationships."""
+        with self._get_connection() as conn:
+            cursor = conn.execute("DELETE FROM indicator_relationships WHERE provenance = 'inferred'")
+            return cursor.rowcount
 
     def get_relationships(self, indicator_a: int) -> dict[int, str]:
         """Get all relationships for a given indicator."""
