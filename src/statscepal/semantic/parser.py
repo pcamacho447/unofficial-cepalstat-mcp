@@ -437,9 +437,29 @@ class QueryParser:
                 "electricidad",
                 "tarifas de luz",
             ]
+        ) or (
+            (canasta_syn := self.thesaurus.match_synset("facet_canasta", clean))
+            and canasta_syn.canonical_id == "CANASTA_COMBUSTIBLES"
         ):
-            if any(term in clean for term in ["ipc", "precios", "precio", "inflacion", "golpe al bolsillo", "variacion de precios"]):
+            if any(
+                term in clean
+                for term in [
+                    "ipc",
+                    "precios",
+                    "precio",
+                    "inflacion",
+                    "golpe al bolsillo",
+                    "variacion de precios",
+                    "variacion",
+                    "aumento",
+                    "suba",
+                    "alza",
+                    "carestia",
+                    "costo",
+                ]
+            ):
                 intent.root_concept = "IPC_TRANSPORTE_ENERGIA"
+
         elif "corrientazo" in clean or "alimentos y bebidas" in clean or "canasta alimentaria" in clean or "morfi" in clean or "carestia de la comida" in clean:
             intent.root_concept = "IPC_ALIMENTOS"
             facets["canasta"] = "ALIMENTOS"

@@ -262,3 +262,37 @@ def test_default_thesaurus_latency_benchmark():
     p50 = times[len(times) // 2]
     assert p50 < 0.5, f"Default thesaurus p50 latency {p50:.4f} ms exceeded 0.5 ms target"
 
+
+def test_end_to_end_synonyms_and_antonyms_queries():
+    from statscepal.catalog.store import CatalogStore
+    from statscepal.semantic.registry import SemanticRegistry
+    from statscepal.semantic.engine import SemanticResolutionEngine
+    from statscepal.semantic.models import ResolutionStatus
+
+    store = CatalogStore()
+    registry = SemanticRegistry(store=store)
+    engine = SemanticResolutionEngine(registry=registry)
+
+    # Chilean fuels slang
+    res_bencina = engine.resolve_query("cual fue el aumento en bencina en chile 2022")
+    assert res_bencina.status == ResolutionStatus.RESOLVED
+    assert res_bencina.selected_candidate.indicator_id == 2930
+
+    # Argentine fuels slang
+    res_nafta = engine.resolve_query("inflacion de la nafta en argentina 2022")
+    assert res_nafta.status == ResolutionStatus.RESOLVED
+    assert res_nafta.selected_candidate.indicator_id == 2930
+
+    # Fiscal deficit polarity
+    res_def = engine.resolve_query("cual fue el deficit primario en chile 2022")
+    assert res_def.status == ResolutionStatus.RESOLVED
+    assert res_def.selected_candidate.indicator_id == 1241
+    assert res_def.polarity_info is not None
+    assert res_def.polarity_info.expected_sign.value == "NEGATIVE"
+
+    # LULUCF exclusion
+    res_sin_lulucf = engine.resolve_query("emisiones sin lulucf en colombia 2020")
+    assert res_sin_lulucf.status == ResolutionStatus.RESOLVED
+    assert res_sin_lulucf.selected_candidate.indicator_id == 5682
+
+
