@@ -29,7 +29,9 @@ DIMENSION_KEY_PATTERNS: dict[str, list[str]] = {
     "severidad": ["pobreza", "severidad", "tipo de pobreza", "condicion de pobreza"],
     "canasta": ["canasta", "alimentos", "bienes"],
     "educacion": ["educacion", "anos de educacion", "nivel", "instruccion"],
+    "etnia": ["etnia", "tipo de etnia", "autoidentificacion etnico-racial", "etnico", "etnico-racial", "raza"],
 }
+
 
 MEMBER_VALUE_PATTERNS: dict[str, list[str]] = {
     # Sexo
@@ -68,7 +70,14 @@ MEMBER_VALUE_PATTERNS: dict[str, list[str]] = {
     # Sector / Actividad
     "PUBLICO": ["publico", "sector publico", "gobierno"],
     "PRIVADO": ["privado", "sector privado"],
+    # Etnia
+    "INDIGENA": ["indigena", "indigenas", "pueblos indigenas", "originarios"],
+    "AFRODESCENDIENTE": ["afrodescendiente", "afrodescendientes", "afro", "negros"],
+    "NO_INDIGENA": ["no indigena", "no indigena ni afrodescendiente"],
+    "ETNICO_TOTAL": ["total", "nacional", "ambos", "etnia", "etnico", "etnica"],
+    "ETNICO": ["total", "nacional", "ambos", "etnia", "etnico", "etnica"],
 }
+
 
 
 class DynamicMemberMatcher:

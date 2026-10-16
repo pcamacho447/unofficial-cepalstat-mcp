@@ -25,3 +25,53 @@ def test_parser_extracts_ethnic_facet():
     # Negative check: non-ethnic query has no etnia facet
     intent4 = parser.parse("tasa de desocupacion en chile 2022")
     assert "etnia" not in intent4.facets
+
+
+def test_member_matcher_resolves_ethnic_dimension():
+    from statscepal.semantic.matcher import DynamicMemberMatcher
+    from statscepal.semantic.registry import DEFAULT_OFFICIAL_DIMENSIONS
+
+    matcher = DynamicMemberMatcher()
+    dims_3342 = DEFAULT_OFFICIAL_DIMENSIONS[3342]
+
+    # Test general ethnic facet -> Total etnia
+    success1, filters1, unhandled1 = matcher.match_facets_to_dimensions(
+        3342, dims_3342, {"etnia": "ETNICO_TOTAL", "area": "NACIONAL"}
+    )
+    assert success1 is True
+    assert len(unhandled1) == 0
+    ethnic_filter1 = next((f for f in filters1 if f.dim_id == 43039), None)
+    assert ethnic_filter1 is not None
+    assert ethnic_filter1.member_name in ("Total", "Afrodescendiente", "Indígena", "No indígena ni afrodescendiente")
+
+    # Test specific indigenous facet
+    success2, filters2, unhandled2 = matcher.match_facets_to_dimensions(
+        3342, dims_3342, {"etnia": "INDIGENA"}
+    )
+    assert success2 is True
+    assert len(unhandled2) == 0
+    ethnic_filter2 = next((f for f in filters2 if f.dim_id == 43039), None)
+    assert ethnic_filter2 is not None
+    assert ethnic_filter2.member_name == "Indígena"
+
+    # Test specific afrodescendant facet
+    success3, filters3, unhandled3 = matcher.match_facets_to_dimensions(
+        3342, dims_3342, {"etnia": "AFRODESCENDIENTE"}
+    )
+    assert success3 is True
+    assert len(unhandled3) == 0
+    ethnic_filter3 = next((f for f in filters3 if f.dim_id == 43039), None)
+    assert ethnic_filter3 is not None
+    assert ethnic_filter3.member_name == "Afrodescendiente"
+
+    # Test specific no-indigena facet
+    success4, filters4, unhandled4 = matcher.match_facets_to_dimensions(
+        3342, dims_3342, {"etnia": "NO_INDIGENA"}
+    )
+    assert success4 is True
+    assert len(unhandled4) == 0
+    ethnic_filter4 = next((f for f in filters4 if f.dim_id == 43039), None)
+    assert ethnic_filter4 is not None
+    assert ethnic_filter4.member_name == "No indígena ni afrodescendiente"
+
+
