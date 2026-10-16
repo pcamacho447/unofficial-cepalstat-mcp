@@ -1,5 +1,14 @@
+from unittest.mock import patch
+import pandas as pd
 import pytest
-from statscepal.semantic.models import AppliedFilters, ParsedIntent
+from statscepal.semantic.fetcher import SemanticDataFetcher
+from statscepal.semantic.models import (
+    AppliedFilters,
+    ParsedIntent,
+    ResolutionStatus,
+    SelectedCandidate,
+    SemanticResolutionResponse,
+)
 
 
 def test_applied_filters_multi_year_defaults_and_assignment():
@@ -113,4 +122,56 @@ def test_engine_propagates_multi_year_filters():
     assert res.applied_filters.time_mode == "RANGE"
     assert res.applied_filters.years == [2019, 2020, 2021, 2022]
     assert res.applied_filters.year == 2022
+
+
+def test_fetcher_extracts_multi_year_series():
+    mock_df = pd.DataFrame([
+        {"country": "Peru", "year": 2021, "value": 100.0, "notes": ""},
+        {"country": "Peru", "year": 2022, "value": 104.2, "notes": ""},
+        {"country": "Peru", "year": 2023, "value": 101.8, "notes": ""},
+    ])
+
+    response = SemanticResolutionResponse(
+        status=ResolutionStatus.RESOLVED,
+        query="plata minima en peru en 2022 y 2023",
+        selected_candidate=SelectedCandidate(indicator_id=3337, name="Salario mínimo real", unit="índice 2018=100"),
+        applied_filters=AppliedFilters(country_name="Perú", country_code="PER", year=2023, years=[2022, 2023], time_mode="LIST"),
+    )
+
+    fetcher = SemanticDataFetcher()
+    with patch.object(fetcher, "_load_indicator_data", return_value=mock_df):
+        payload = fetcher.fetch_resolved_data(response)
+
+    assert payload["observation_exists"] is True
+    assert "series" in payload
+    assert len(payload["series"]) == 2
+    assert payload["series"][0]["year"] == 2022
+    assert payload["series"][0]["value"] == 104.2
+    assert payload["series"][1]["year"] == 2023
+    assert payload["series"][1]["value"] == 101.8
+
+
+def test_fetcher_extracts_relative_window_series():
+    mock_df = pd.DataFrame([
+        {"country": "Peru", "year": 2019, "value": 95.0},
+        {"country": "Peru", "year": 2020, "value": 98.0},
+        {"country": "Peru", "year": 2021, "value": 100.0},
+        {"country": "Peru", "year": 2022, "value": 104.2},
+        {"country": "Peru", "year": 2023, "value": 101.8},
+    ])
+
+    response = SemanticResolutionResponse(
+        status=ResolutionStatus.RESOLVED,
+        query="ultimos 3 anos",
+        selected_candidate=SelectedCandidate(indicator_id=3337, name="Salario mínimo real", unit="índice 2018=100"),
+        applied_filters=AppliedFilters(country_name="Perú", country_code="PER", time_mode="RELATIVE_WINDOW", relative_window_size=3),
+    )
+
+    fetcher = SemanticDataFetcher()
+    with patch.object(fetcher, "_load_indicator_data", return_value=mock_df):
+        payload = fetcher.fetch_resolved_data(response)
+
+    assert len(payload["series"]) == 3
+    assert [s["year"] for s in payload["series"]] == [2021, 2022, 2023]
+
 
