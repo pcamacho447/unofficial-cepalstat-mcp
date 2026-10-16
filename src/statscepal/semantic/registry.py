@@ -38,6 +38,36 @@ class IndicatorMetadata:
 
 # Default official dimensions and members for the core 25 indicators
 DEFAULT_OFFICIAL_DIMENSIONS: dict[int, list[Dimension]] = {
+    3342: [
+        Dimension(
+            id=144,
+            name="Sexo__ESTANDAR",
+            members=[Member(id=146, name="Ambos sexos"), Member(id=265, name="Hombres"), Member(id=266, name="Mujeres")],
+        ),
+        Dimension(
+            id=326,
+            name="Área geográfica",
+            members=[Member(id=327, name="Nacional"), Member(id=330, name="Urbano"), Member(id=331, name="Rural")],
+        ),
+        Dimension(
+            id=1361,
+            name="Pobreza extrema y pobreza",
+            members=[
+                Member(id=501, name="Pobreza extrema"),
+                Member(id=502, name="Pobreza"),
+            ],
+        ),
+        Dimension(
+            id=43039,
+            name="Tipo de etnia",
+            members=[
+                Member(id=43040, name="Afrodescendiente"),
+                Member(id=43041, name="Indígena"),
+                Member(id=43042, name="No indígena ni afrodescendiente"),
+                Member(id=43043, name="Total"),
+            ],
+        ),
+    ],
     3341: [
         Dimension(
             id=144,
@@ -172,6 +202,7 @@ VERTICAL_SLICE_INDICATORS: dict[int, IndicatorMetadata] = {
         supported_facets={"area", "severidad"},
         relationships={
             3341: RelationshipType.BREAKDOWN_OF,
+            3342: RelationshipType.BREAKDOWN_OF,
             3329: RelationshipType.ALTERNATIVE_MEASURE,
             3330: RelationshipType.ALTERNATIVE_MEASURE,
             3337: RelationshipType.ALTERNATIVE_MEASURE,
@@ -189,6 +220,19 @@ VERTICAL_SLICE_INDICATORS: dict[int, IndicatorMetadata] = {
         relationships={
             3328: RelationshipType.BREAKDOWN_OF,
             3330: RelationshipType.ALTERNATIVE_MEASURE,
+        },
+    ),
+    # 2b. Pobreza por sexo, autoidentificación étnico-racial y área
+    3342: IndicatorMetadata(
+        indicator_id=3342,
+        name="Población en situación de pobreza extrema y pobreza, por sexo, autoidentificación étnico-racial y área",
+        concept="POBREZA",
+        measure_type=MeasureType.INCIDENCIA_PORCENTUAL,
+        unit="%",
+        supported_facets={"area", "severidad", "sexo", "etnia"},
+        relationships={
+            3328: RelationshipType.BREAKDOWN_OF,
+            3341: RelationshipType.ALTERNATIVE_MEASURE,
         },
     ),
     # 3. Brecha de pobreza

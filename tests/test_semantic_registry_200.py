@@ -237,3 +237,26 @@ def test_catalog_store_persists_25_indicators_and_relationships(tmp_path: Path):
     assert len(dims_3341) >= 2
     dim_names = [d.name for d in dims_3341]
     assert any("sexo" in d.lower() for d in dim_names)
+
+
+def test_registry_contains_ethnic_poverty_indicator_3342():
+    from statscepal.semantic.registry import VERTICAL_SLICE_INDICATORS, DEFAULT_OFFICIAL_DIMENSIONS, RelationshipType
+    assert 3342 in VERTICAL_SLICE_INDICATORS
+    ind_3342 = VERTICAL_SLICE_INDICATORS[3342]
+    assert ind_3342.concept == "POBREZA"
+    assert "etnia" in ind_3342.supported_facets
+    assert "area" in ind_3342.supported_facets
+    assert 3328 in ind_3342.relationships
+    assert ind_3342.relationships[3328] == RelationshipType.BREAKDOWN_OF
+
+    # Check canonical 3328 points to 3342 as BREAKDOWN_OF
+    ind_3328 = VERTICAL_SLICE_INDICATORS[3328]
+    assert 3342 in ind_3328.relationships
+    assert ind_3328.relationships[3342] == RelationshipType.BREAKDOWN_OF
+
+    # Check official dimensions for 3342
+    assert 3342 in DEFAULT_OFFICIAL_DIMENSIONS
+    dims = DEFAULT_OFFICIAL_DIMENSIONS[3342]
+    dim_names = [d.name for d in dims]
+    assert any("etnia" in d.lower() for d in dim_names)
+
