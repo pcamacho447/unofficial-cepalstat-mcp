@@ -1,10 +1,16 @@
 """Tests for CEPALSTAT Declarative Facet Ontology."""
 
 import pytest
+from statscepal.dimensions import Dimension, Member
 from statscepal.semantic.facet_ontology import (
     DEFAULT_FACET_ONTOLOGY,
     FacetOntology,
     get_default_facet_ontology,
+)
+from statscepal.semantic.matcher import (
+    DIMENSION_KEY_PATTERNS,
+    MEMBER_VALUE_PATTERNS,
+    DynamicMemberMatcher,
 )
 
 
@@ -55,3 +61,68 @@ def test_facet_ontology_dimension_classification():
     assert ontology.classify_dimension(326, "Área geográfica") == "area"
     assert ontology.classify_dimension(43039, "Tipo de etnia") == "etnia"
     assert ontology.classify_dimension(999999, "Dimensión desconocida xyz") is None
+
+
+def test_matcher_derives_patterns_from_ontology_and_matches_by_dim_id():
+    # 1. Asserts DIMENSION_KEY_PATTERNS and MEMBER_VALUE_PATTERNS contain expected facets and members
+    expected_facet_keys = {"sexo", "area", "edad", "etnia", "quintil", "moneda", "severidad"}
+    assert expected_facet_keys.issubset(set(DIMENSION_KEY_PATTERNS.keys()))
+
+    expected_member_keys = {"FEMENINO", "MASCULINO", "RURAL", "URBANO", "INDIGENA", "AFRODESCENDIENTE", "POBREZA_EXTREMA"}
+    assert expected_member_keys.issubset(set(MEMBER_VALUE_PATTERNS.keys()))
+
+    # 2. Check matcher has ontology attribute
+    matcher = DynamicMemberMatcher()
+    assert matcher.ontology is DEFAULT_FACET_ONTOLOGY
+
+    # Also test custom ontology injection
+    custom_matcher = DynamicMemberMatcher(ontology=DEFAULT_FACET_ONTOLOGY)
+    assert custom_matcher.ontology is DEFAULT_FACET_ONTOLOGY
+
+    # 3. Tests matching against a dimension that has a non-standard name
+    # ("Clasificación oficial CEPAL 43039") but matches known_dimension_ids (43039),
+    # verifying that it is placed in Group A and successfully matches member 43041: Indígena.
+    dim_non_standard = Dimension(
+        id=43039,
+        name="Clasificación oficial CEPAL 43039",
+        members=[
+            Member(id=43041, name="Indígena"),
+            Member(id=43042, name="No indígena"),
+        ],
+    )
+    dim_noise = Dimension(
+        id=9999,
+        name="Variable genérica no relacionada",
+        members=[Member(id=1, name="Total")],
+    )
+
+    matched, filters, unhandled = matcher.match_facets_to_dimensions(
+        indicator_id=3328,
+        dimensions=[dim_non_standard, dim_noise],
+        facets={"etnia": "INDIGENA"},
+    )
+
+    assert matched is True
+    assert len(filters) == 1
+    assert filters[0].dim_id == 43039
+    assert filters[0].member_id == 43041
+    assert filters[0].member_name == "Indígena"
+    assert len(unhandled) == 0
+
+    # Also verify with low-scoring member (score < 60) which would fail in Group B fallback (min_score=60)
+    dim_partial = Dimension(
+        id=43039,
+        name="Clasificación oficial CEPAL 43039",
+        members=[
+            Member(id=43050, name="originario"),  # score 37 < 60
+        ],
+    )
+    matched_p, filters_p, unhandled_p = matcher.match_facets_to_dimensions(
+        indicator_id=3328,
+        dimensions=[dim_partial],
+        facets={"etnia": "INDIGENA"},
+    )
+    assert matched_p is True
+    assert len(filters_p) == 1
+    assert filters_p[0].member_id == 43050
+

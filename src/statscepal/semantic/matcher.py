@@ -5,83 +5,32 @@ from __future__ import annotations
 import re
 import unicodedata
 from typing import TYPE_CHECKING
+from statscepal.semantic.facet_ontology import (
+    DEFAULT_FACET_ONTOLOGY,
+    FacetOntology,
+    strip_accents,
+)
 from statscepal.semantic.models import AppliedDimensionFilter
 
 if TYPE_CHECKING:
     from statscepal.dimensions import Dimension, Member
 
 
-def strip_accents(text: str) -> str:
-    """Normalize string to lowercase and strip diacritics."""
-    if not text:
-        return ""
-    normalized = unicodedata.normalize("NFD", text.lower())
-    return "".join(c for c in normalized if unicodedata.category(c) != "Mn").strip()
-
-
-DIMENSION_KEY_PATTERNS: dict[str, list[str]] = {
-    "sexo": ["sexo", "genero"],
-    "area": ["area", "zona", "area geografica"],
-    "edad": ["edad", "grupo de edad", "tramo de edad", "grupos de edad"],
-    "quintil": ["quintil", "decil", "estrato"],
-    "moneda": ["moneda", "precios", "unidad"],
-    "actividad": ["actividad", "rama", "sector"],
-    "severidad": ["pobreza", "severidad", "tipo de pobreza", "condicion de pobreza"],
-    "canasta": ["canasta", "alimentos", "bienes"],
-    "educacion": ["educacion", "anos de educacion", "nivel", "instruccion"],
-    "etnia": ["etnia", "tipo de etnia", "autoidentificacion etnico-racial", "etnico", "etnico-racial", "raza"],
-}
-
-
-MEMBER_VALUE_PATTERNS: dict[str, list[str]] = {
-    # Sexo
-    "FEMENINO": ["mujeres", "mujer", "femenino", "pibas", "chavas", "chicas"],
-    "MUJER": ["mujeres", "mujer", "femenino", "pibas", "chavas", "chicas"],
-    "MASCULINO": ["hombres", "hombre", "masculino", "varones", "pibes", "chavos"],
-    "HOMBRE": ["hombres", "hombre", "masculino", "varones", "pibes", "chavos"],
-    "AMBOS_SEXOS": ["ambos sexos", "ambos", "total"],
-    "AMBOS": ["ambos sexos", "ambos", "total"],
-    "TOTAL": ["total", "ambos sexos", "ambos", "nacional", "pais"],
-    # Area
-    "RURAL": ["rural", "area rural", "sector rural", "campo", "el campo", "zona rural"],
-    "URBANO": ["urbano", "area urbana", "sector urbano", "ciudad", "ciudades", "zona urbana"],
-    "NACIONAL": ["nacional", "total", "pais", "todo el pais"],
-    # Edad
-    "JUVENTUD": ["15 a 24 anos", "15-24", "jovenes", "juventud", "15 a 24", "cabros", "pibes", "chavos", "juvenil"],
-    "JOVENES": ["15 a 24 anos", "15-24", "jovenes", "juventud", "15 a 24", "cabros", "pibes", "chavos", "juvenil"],
-    "ADULTOS_MAYORES": ["60 anos y mas", "65 anos y mas", "60 y mas", "65 y mas", "adultos mayores", "tercera edad"],
-    "INFANCIA": ["0 a 14 anos", "0-14", "ninos", "ninas", "infancia", "0 a 14"],
-    # Quintiles
-    "QUINTIL_1": ["quintil 1", "i quintil", "primer quintil", "q1", "1 quintil"],
-    "QUINTIL_2": ["quintil 2", "ii quintil", "segundo quintil", "q2", "2 quintil"],
-    "QUINTIL_3": ["quintil 3", "iii quintil", "tercer quintil", "q3", "3 quintil"],
-    "QUINTIL_4": ["quintil 4", "iv quintil", "cuarto quintil", "q4", "4 quintil"],
-    "QUINTIL_5": ["quintil 5", "v quintil", "quinto quintil", "q5", "5 quintil"],
-    # Severidad
-    "POBREZA_EXTREMA": ["pobreza extrema", "extrema", "indigencia", "pobreza extrema / indigencia", "indigente"],
-    "EXTREMA": ["pobreza extrema", "extrema", "indigencia", "pobreza extrema / indigencia", "indigente"],
-    "POBREZA_TOTAL": ["total", "pobreza", "total pobreza", "pobres"],
-    "POBREZA": ["total", "pobreza", "total pobreza", "pobres"],
-    # Moneda
-    "DOLARES_CONSTANTES": ["dolares a precios constantes", "dolares constantes", "precios constantes", "dolares"],
-    "MONEDA_NACIONAL": ["moneda nacional", "moneda local"],
-    # Canasta
-    "ALIMENTOS": ["alimentos y bebidas", "alimentos", "comida", "alimentos y bebidas no alcoholicas"],
-    # Sector / Actividad
-    "PUBLICO": ["publico", "sector publico", "gobierno"],
-    "PRIVADO": ["privado", "sector privado"],
-    # Etnia
-    "INDIGENA": ["indigena", "indigenas", "pueblos indigenas", "originarios"],
-    "AFRODESCENDIENTE": ["afrodescendiente", "afrodescendientes", "afro", "negros"],
-    "NO_INDIGENA": ["no indigena", "no indigena ni afrodescendiente"],
-    "ETNICO_TOTAL": ["total", "nacional", "ambos", "etnia", "etnico", "etnica"],
-    "ETNICO": ["total", "nacional", "ambos", "etnia", "etnico", "etnica"],
-}
-
+DIMENSION_KEY_PATTERNS: dict[str, list[str]] = DEFAULT_FACET_ONTOLOGY.build_dimension_key_patterns()
+MEMBER_VALUE_PATTERNS: dict[str, list[str]] = DEFAULT_FACET_ONTOLOGY.build_member_value_patterns()
 
 
 class DynamicMemberMatcher:
     """Matches canonical conceptual facets to indicator dimensions and members dynamically."""
+
+    def __init__(self, ontology: FacetOntology | None = None) -> None:
+        self.ontology = ontology or DEFAULT_FACET_ONTOLOGY
+        if ontology is not None and ontology is not DEFAULT_FACET_ONTOLOGY:
+            self._dimension_key_patterns = self.ontology.build_dimension_key_patterns()
+            self._member_value_patterns = self.ontology.build_member_value_patterns()
+        else:
+            self._dimension_key_patterns = DIMENSION_KEY_PATTERNS
+            self._member_value_patterns = MEMBER_VALUE_PATTERNS
 
     def match_facets_to_dimensions(
         self,
@@ -109,17 +58,21 @@ class DynamicMemberMatcher:
         for facet_key, facet_val in facets.items():
             key_norm = strip_accents(facet_key)
             val_norm = strip_accents(facet_val).upper()
+            facet_def = self.ontology.get_facet(facet_key)
 
             # Target member patterns for this facet value
-            target_patterns = list(MEMBER_VALUE_PATTERNS.get(val_norm, []))
+            target_patterns = list(self._member_value_patterns.get(val_norm, []))
             raw_val_clean = strip_accents(facet_val)
             if raw_val_clean and raw_val_clean not in target_patterns:
                 target_patterns.append(raw_val_clean)
 
             # Find candidate dimensions for this facet key
-            key_patterns = DIMENSION_KEY_PATTERNS.get(key_norm, [key_norm])
+            if facet_def and facet_def.dimension_name_patterns:
+                key_patterns = list(facet_def.dimension_name_patterns)
+            else:
+                key_patterns = self._dimension_key_patterns.get(key_norm, [key_norm])
 
-            # Group dimensions: Group A (matches key by name), Group B (fallback)
+            # Group dimensions: Group A (matches key by name or known dim ID), Group B (fallback)
             candidate_dims_a: list[Dimension] = []
             candidate_dims_b: list[Dimension] = []
 
@@ -127,7 +80,15 @@ class DynamicMemberMatcher:
                 if d.id in used_dim_ids:
                     continue
                 d_name_norm = strip_accents(d.name)
-                if any(kp in d_name_norm for kp in key_patterns):
+                is_candidate_a = False
+                if facet_def is not None:
+                    if d.id in facet_def.known_dimension_ids or any(kp in d_name_norm for kp in key_patterns):
+                        is_candidate_a = True
+                else:
+                    if any(kp in d_name_norm for kp in key_patterns):
+                        is_candidate_a = True
+
+                if is_candidate_a:
                     candidate_dims_a.append(d)
                 else:
                     candidate_dims_b.append(d)
