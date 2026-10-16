@@ -5,6 +5,7 @@ from typing import Any
 from pydantic import BaseModel, ConfigDict, Field
 
 from statscepal.semantic.thesaurus import PolarityResolution
+from statscepal.semantic.parser import ParsedIntent
 
 
 class ResolutionStatus(str, Enum):
@@ -88,6 +89,9 @@ class AppliedFilters(BaseModel):
     country_code: str | None = None
     country_name: str | None = None
     year: int | None = None
+    years: list[int] = Field(default_factory=list)
+    time_mode: str = "SINGLE"  # "SINGLE", "LIST", "RANGE", "RELATIVE_WINDOW"
+    relative_window_size: int | None = None
     facets: dict[str, str] = Field(default_factory=dict)
     dimensions: list[AppliedDimensionFilter] = Field(default_factory=list)
 

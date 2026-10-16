@@ -64,6 +64,9 @@ class ParsedIntent(BaseModel):
     country_code: str | None = None
     country_name: str | None = None
     year: int | None = None
+    years: list[int] = Field(default_factory=list)
+    time_mode: str = "SINGLE"  # "SINGLE", "LIST", "RANGE", "RELATIVE_WINDOW"
+    relative_window_size: int | None = None
     facets: dict[str, str] = Field(default_factory=dict)
     polarity_info: PolarityResolution | None = None
     is_ambiguous_measure: bool = False
