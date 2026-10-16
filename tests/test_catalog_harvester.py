@@ -384,4 +384,69 @@ def test_cli_catalog_harvest_invalid_ids(capsys, monkeypatch, tmp_path):
     assert exit_code == 1
 
 
+@pytest.mark.integration
+def test_live_harvest_smoke_indicator_dimensions(tmp_path):
+    """End-to-end live API smoke test against CEPALSTAT endpoints.
+
+    Verifies that real dimension responses for indicators 3328 and 3342 are
+    fetched, parsed, and stored with their dimension members in SQLite.
+    """
+    db_path = tmp_path / "live_harvest_test.db"
+    store = CatalogStore(db_path=db_path)
+    store.init_tables()
+    store.init_semantic_tables()
+
+    client = CepalStatClient()
+    harvester = CatalogHarvester(client=client, store=store, rate_limit_delay=0.1)
+
+    summary = harvester.harvest(indicator_ids=[3328, 3342], force=True)
+
+    assert summary.total_target == 2
+    assert summary.newly_harvested == 2
+    assert summary.failed_count == 0
+
+    harvested_ids = store.get_harvested_indicator_ids()
+    assert 3328 in harvested_ids
+    assert 3342 in harvested_ids
+
+    # Indicator 3328: Check Area geográfica dimension
+    dims_3328 = store.get_indicator_dimensions(3328)
+    assert len(dims_3328) >= 4
+    area_dim_3328 = next(
+        (d for d in dims_3328 if "geogr" in d.name.lower() or "area" in d.name.lower() or d.id in (326, 1364)),
+        None,
+    )
+    assert area_dim_3328 is not None
+    assert len(area_dim_3328.members) >= 3
+    member_names_3328 = [m.name.lower() for m in area_dim_3328.members]
+    assert any("nacional" in name for name in member_names_3328)
+    assert any("urbana" in name or "urbano" in name for name in member_names_3328)
+
+    # Indicator 3342: Check Tipo de etnia and Area geográfica
+    dims_3342 = store.get_indicator_dimensions(3342)
+    assert len(dims_3342) >= 5
+
+    area_dim_3342 = next(
+        (d for d in dims_3342 if "geogr" in d.name.lower() or d.id == 326),
+        None,
+    )
+    assert area_dim_3342 is not None
+    assert len(area_dim_3342.members) >= 3
+
+    etnia_dim = next((d for d in dims_3342 if "etnia" in d.name.lower() or d.id == 43039), None)
+    assert etnia_dim is not None
+    assert etnia_dim.id == 43039
+    assert len(etnia_dim.members) >= 3
+    etnia_member_names = [m.name.lower() for m in etnia_dim.members]
+    assert any("afrodescendiente" in name for name in etnia_member_names)
+    assert any("ind" in name for name in etnia_member_names)
+
+    stats = store.get_harvest_stats()
+    assert stats["harvested_indicators"] == 2
+    assert stats["total_dimensions"] >= 9
+    assert stats["total_members"] >= 15
+
+
+
+
 
