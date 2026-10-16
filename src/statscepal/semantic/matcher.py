@@ -33,19 +33,20 @@ DIMENSION_KEY_PATTERNS: dict[str, list[str]] = {
 
 MEMBER_VALUE_PATTERNS: dict[str, list[str]] = {
     # Sexo
-    "FEMENINO": ["mujeres", "mujer", "femenino"],
-    "MUJER": ["mujeres", "mujer", "femenino"],
-    "MASCULINO": ["hombres", "hombre", "masculino"],
-    "HOMBRE": ["hombres", "hombre", "masculino"],
+    "FEMENINO": ["mujeres", "mujer", "femenino", "pibas", "chavas", "chicas"],
+    "MUJER": ["mujeres", "mujer", "femenino", "pibas", "chavas", "chicas"],
+    "MASCULINO": ["hombres", "hombre", "masculino", "varones", "pibes", "chavos"],
+    "HOMBRE": ["hombres", "hombre", "masculino", "varones", "pibes", "chavos"],
     "AMBOS_SEXOS": ["ambos sexos", "ambos", "total"],
+    "AMBOS": ["ambos sexos", "ambos", "total"],
     "TOTAL": ["total", "ambos sexos", "ambos", "nacional", "pais"],
     # Area
-    "RURAL": ["rural", "area rural", "sector rural"],
-    "URBANO": ["urbano", "area urbana", "sector urbano"],
+    "RURAL": ["rural", "area rural", "sector rural", "campo", "el campo", "zona rural"],
+    "URBANO": ["urbano", "area urbana", "sector urbano", "ciudad", "ciudades", "zona urbana"],
     "NACIONAL": ["nacional", "total", "pais", "todo el pais"],
     # Edad
-    "JUVENTUD": ["15 a 24 anos", "15-24", "jovenes", "juventud", "15 a 24"],
-    "JOVENES": ["15 a 24 anos", "15-24", "jovenes", "juventud", "15 a 24"],
+    "JUVENTUD": ["15 a 24 anos", "15-24", "jovenes", "juventud", "15 a 24", "cabros", "pibes", "chavos", "juvenil"],
+    "JOVENES": ["15 a 24 anos", "15-24", "jovenes", "juventud", "15 a 24", "cabros", "pibes", "chavos", "juvenil"],
     "ADULTOS_MAYORES": ["60 anos y mas", "65 anos y mas", "60 y mas", "65 y mas", "adultos mayores", "tercera edad"],
     "INFANCIA": ["0 a 14 anos", "0-14", "ninos", "ninas", "infancia", "0 a 14"],
     # Quintiles

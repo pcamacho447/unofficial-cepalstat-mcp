@@ -164,6 +164,19 @@ class SemanticResolutionEngine:
                             note="Tasa de desocupación restringida exclusivamente al área urbana.",
                         )
                     )
+            elif intent.ambiguous_candidate == "INCOME_MEASURES":
+                primary_id = 128
+                for alt_id in [3337, 3345]:
+                    alt_meta = self.registry.get_indicator(alt_id)
+                    if alt_meta:
+                        alternatives.append(
+                            AlternativeCandidate(
+                                indicator_id=alt_id,
+                                name=alt_meta.name,
+                                relationship=RelationshipType.ALTERNATIVE_MEASURE,
+                                note="Medida metodológica alternativa de ingreso o salario en CEPALSTAT.",
+                            )
+                        )
 
             prim_meta = self.registry.get_indicator(primary_id)
             assert prim_meta is not None
@@ -185,18 +198,28 @@ class SemanticResolutionEngine:
 
             trace.append(f"[Stage 3: Ambiguity Check] Ambiguous measure proposed: Primary ID {primary_id}, Alternatives={[a.indicator_id for a in alternatives]}")
             latency = (time.perf_counter() - t0) * 1000.0
+
+            if intent.ambiguous_candidate == "FEMININITY_INDEX":
+                conv_hint = (
+                    "Se seleccionó la tasa de incidencia de la pobreza femenina (ID 3341). "
+                    "Nota: también está disponible el Índice de feminidad de la pobreza (ID 3330)."
+                )
+            elif intent.ambiguous_candidate == "INCOME_MEASURES":
+                conv_hint = (
+                    "Consulta general sobre ingreso o salario sin especificación metodológica. "
+                    "Se seleccionó el índice del salario medio real (ID 128). "
+                    "Alternativas disponibles: Salario mínimo real (ID 3337) e Ingreso medio per cápita de los hogares (ID 3345)."
+                )
+            else:
+                conv_hint = "Se seleccionó la tasa nacional armonizada (ID 127). Nota: también está disponible la serie urbana (ID 119)."
+
             return SemanticResolutionResponse(
                 status=ResolutionStatus.ALTERNATIVE_PROPOSED,
                 query=query_str,
                 selected_candidate=selected,
                 applied_filters=applied_filters,
                 alternatives=alternatives,
-                conversational_hint=(
-                    "Se seleccionó la tasa de incidencia de la pobreza femenina (ID 3341). "
-                    "Nota: también está disponible el Índice de feminidad de la pobreza (ID 3330)."
-                    if intent.ambiguous_candidate == "FEMININITY_INDEX"
-                    else "Se seleccionó la tasa nacional armonizada (ID 127). Nota: también está disponible la serie urbana (ID 119)."
-                ),
+                conversational_hint=conv_hint,
                 execution_trace=trace,
                 latency_ms=latency,
             )
