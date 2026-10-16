@@ -45,6 +45,9 @@ class SemanticResolutionEngine:
             country_code=intent.country_code,
             country_name=intent.country_name,
             year=intent.year,
+            years=intent.years,
+            time_mode=intent.time_mode,
+            relative_window_size=intent.relative_window_size,
             facets=intent.facets,
         )
 

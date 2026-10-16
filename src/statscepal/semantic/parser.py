@@ -78,6 +78,23 @@ class ParsedIntent(BaseModel):
     frequency: str = "ANUAL"
 
 
+_RE_REL_YEARS = re.compile(r"\bultimos?\s+(\d+)\s+anos?\b")
+_RE_REL_DECADE = re.compile(r"\bultima\s+decada\b")
+_RE_REL_QUINQUENNIUM = re.compile(r"\bultimo\s+quinquenio\b")
+_RE_REL_TRIENNIUM = re.compile(r"\bultimo\s+trienio\b")
+
+_RE_RANGE_A = re.compile(
+    r"\b(?:del|desde|entre)\s+(?:el\s+)?(?:ano\s+)?(1\d{3}|20\d{2})\s+(?:al|a|hasta|y)\s+(?:el\s+)?(?:ano\s+)?(1\d{3}|20\d{2})\b"
+)
+_RE_RANGE_B = re.compile(
+    r"\bde\s+(?:el\s+)?(?:ano\s+)?(1\d{3}|20\d{2})\s+(?:a|al|hasta)\s+(?:el\s+)?(?:ano\s+)?(1\d{3}|20\d{2})\b"
+)
+_RE_RANGE_C = re.compile(r"\b(1\d{3}|20\d{2})\s*[-–]\s*(1\d{3}|20\d{2})\b")
+
+_RE_YEAR = re.compile(r"\b(1\d{3}|20\d{2})\b")
+_RE_FALLBACK_YEAR = re.compile(r"\b(?:ano|el\s+ano)\s+(\d{1,4})\b")
+
+
 class QueryParser:
     """Translates raw natural language queries into normalized conceptual intents."""
 
@@ -152,14 +169,72 @@ class QueryParser:
             intent.frequency = "REALTIME"
 
         # ----------------------------------------------------
-        # 2. Extract Year & Range Check
+        # 2. Extract Year & Range Check (Temporal Extraction)
         # ----------------------------------------------------
-        year_match = re.search(r"\b(?:ano|el\s+ano)\s+(\d{1,4})\b|\b(1\d{3}|20\d{2})\b", clean)
-        if year_match:
-            year_val = int(year_match.group(1) or year_match.group(2))
-            intent.year = year_val
-            if year_val < 1950 or year_val > 2030:
-                intent.period_out_of_range = True
+        rel_match = _RE_REL_YEARS.search(clean)
+        if rel_match:
+            intent.time_mode = "RELATIVE_WINDOW"
+            intent.relative_window_size = int(rel_match.group(1))
+            intent.year = None
+            intent.years = []
+        elif _RE_REL_DECADE.search(clean):
+            intent.time_mode = "RELATIVE_WINDOW"
+            intent.relative_window_size = 10
+            intent.year = None
+            intent.years = []
+        elif _RE_REL_QUINQUENNIUM.search(clean):
+            intent.time_mode = "RELATIVE_WINDOW"
+            intent.relative_window_size = 5
+            intent.year = None
+            intent.years = []
+        elif _RE_REL_TRIENNIUM.search(clean):
+            intent.time_mode = "RELATIVE_WINDOW"
+            intent.relative_window_size = 3
+            intent.year = None
+            intent.years = []
+        else:
+            range_match = _RE_RANGE_A.search(clean)
+            if not range_match:
+                range_match = _RE_RANGE_B.search(clean)
+            if not range_match:
+                range_match = _RE_RANGE_C.search(clean)
+
+            if range_match:
+                y1 = int(range_match.group(1))
+                y2 = int(range_match.group(2))
+                start_year = min(y1, y2)
+                end_year = max(y1, y2)
+                intent.time_mode = "RANGE"
+                intent.years = list(range(start_year, end_year + 1))
+                intent.year = end_year
+                if any(y < 1950 or y > 2030 for y in intent.years):
+                    intent.period_out_of_range = True
+            else:
+                found_years = [int(y) for y in _RE_YEAR.findall(clean)]
+                unique_years = sorted(set(found_years))
+                if len(unique_years) >= 2:
+                    intent.time_mode = "LIST"
+                    intent.years = unique_years
+                    intent.year = max(unique_years)
+                    if any(y < 1950 or y > 2030 for y in unique_years):
+                        intent.period_out_of_range = True
+                elif len(unique_years) == 1:
+                    year_val = unique_years[0]
+                    intent.time_mode = "SINGLE"
+                    intent.year = year_val
+                    intent.years = [year_val]
+                    if year_val < 1950 or year_val > 2030:
+                        intent.period_out_of_range = True
+                else:
+                    fallback_match = _RE_FALLBACK_YEAR.search(clean)
+                    if fallback_match:
+                        year_val = int(fallback_match.group(1))
+                        intent.time_mode = "SINGLE"
+                        intent.year = year_val
+                        intent.years = [year_val]
+                        if year_val < 1950 or year_val > 2030:
+                            intent.period_out_of_range = True
+
 
         # ----------------------------------------------------
         # 3. Extract Country
