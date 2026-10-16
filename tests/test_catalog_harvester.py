@@ -10,6 +10,7 @@ import httpx
 
 from statscepal.catalog.harvester import CatalogHarvester
 from statscepal.catalog.store import CatalogStore
+from statscepal.cli import main
 from statscepal.client import CepalStatClient
 from statscepal.dimensions import Dimension, Member
 
@@ -287,5 +288,100 @@ def test_harvester_explicit_indicator_ids_and_3arg_callback(tmp_path):
     # Verify members and dimensions in store
     dims = store.get_indicator_dimensions(3342)
     assert len(dims) == 6
+
+
+@respx.mock
+def test_cli_catalog_harvest_success(capsys, tmp_path, monkeypatch):
+    db_path = tmp_path / "test_cli_harvest_success.db"
+    store = CatalogStore(db_path=db_path)
+    store.init_tables()
+    store.init_semantic_tables()
+
+    with store._get_connection() as conn:
+        conn.execute(
+            "INSERT INTO master_indicators (indicator_id, name, theme, area, full_path) "
+            "VALUES (3328, 'Pobreza', 'Social', 'Pobreza', '/Social/Pobreza')"
+        )
+
+    fixture_3328 = json.loads(Path("tests/fixtures/dimensions/indicator_3328.json").read_text(encoding="utf-8"))
+    respx.get("https://api-cepalstat.cepal.org/cepalstat/api/v1/indicator/3328/dimensions").respond(
+        status_code=200, json=fixture_3328
+    )
+
+    monkeypatch.setattr("statscepal.cli.CatalogStore", lambda: store)
+
+    exit_code = main(["catalog", "harvest", "--rate", "0.0"])
+    assert exit_code == 0
+
+    captured = capsys.readouterr()
+    assert "CEPALSTAT Dimension Metadata Harvester" in captured.out
+    assert "Target: All catalog indicators" in captured.out
+    assert "[Harvesting] (1/1) Indicator ID: 3328 - success" in captured.out
+    assert "Catalog Harvest Complete" in captured.out
+    assert "Total target:      1" in captured.out
+    assert "Already harvested: 0" in captured.out
+    assert "Newly harvested:   1" in captured.out
+    assert "Failed:            0" in captured.out
+
+    # Verify store content
+    assert 3328 in store.get_harvested_indicator_ids()
+    dims = store.get_indicator_dimensions(3328)
+    assert len(dims) == 5
+
+
+@respx.mock
+def test_cli_catalog_harvest_with_ids_and_force(capsys, tmp_path, monkeypatch):
+    db_path = tmp_path / "test_cli_harvest_options.db"
+    store = CatalogStore(db_path=db_path)
+    store.init_tables()
+    store.init_semantic_tables()
+
+    with store._get_connection() as conn:
+        conn.execute(
+            "INSERT INTO master_indicators (indicator_id, name, theme, area, full_path) "
+            "VALUES (3328, 'Pobreza', 'Social', 'Pobreza', '/Social/Pobreza')"
+        )
+        conn.execute(
+            "INSERT INTO master_indicators (indicator_id, name, theme, area, full_path) "
+            "VALUES (3342, 'Pobreza etnica', 'Social', 'Pobreza', '/Social/Pobreza')"
+        )
+
+    fixture_3342 = json.loads(Path("tests/fixtures/dimensions/indicator_3342.json").read_text(encoding="utf-8"))
+    respx.get("https://api-cepalstat.cepal.org/cepalstat/api/v1/indicator/3342/dimensions").respond(
+        status_code=200, json=fixture_3342
+    )
+
+    monkeypatch.setattr("statscepal.cli.CatalogStore", lambda: store)
+
+    # First run with --ids 3342
+    exit_code = main(["catalog", "harvest", "--ids", "3342", "--rate", "0.0"])
+    assert exit_code == 0
+
+    captured = capsys.readouterr()
+    assert "Target: 1 indicator(s) [3342]" in captured.out
+    assert "Newly harvested:   1" in captured.out
+    assert 3342 in store.get_harvested_indicator_ids()
+
+    # Second run without force (resume=True by default) -> already harvested: 1, newly: 0
+    exit_code_resume = main(["catalog", "harvest", "--ids", "3342", "--rate", "0.0"])
+    assert exit_code_resume == 0
+    captured_resume = capsys.readouterr()
+    assert "Already harvested: 1" in captured_resume.out
+    assert "Newly harvested:   0" in captured_resume.out
+
+    # Third run with --force -> re-harvests 3342
+    exit_code_force = main(["catalog", "harvest", "--ids", "3342", "--force", "--rate", "0.0"])
+    assert exit_code_force == 0
+    captured_force = capsys.readouterr()
+    assert "Mode:   Force re-harvest" in captured_force.out
+    assert "Newly harvested:   1" in captured_force.out
+
+
+def test_cli_catalog_harvest_invalid_ids(capsys, monkeypatch, tmp_path):
+    store = CatalogStore(db_path=tmp_path / "test_cli_invalid.db")
+    monkeypatch.setattr("statscepal.cli.CatalogStore", lambda: store)
+    exit_code = main(["catalog", "harvest", "--ids", "not-a-number"])
+    assert exit_code == 1
+
 
 

@@ -12,6 +12,7 @@ import pandas as pd
 from statscepal.analysis import DecouplingAnalyzer
 from statscepal.bitacora import AntiBiasValidator, BitacoraRecipe, BitacoraStore
 from statscepal.catalog import CatalogStore
+from statscepal.catalog.harvester import CatalogHarvester
 from statscepal.client import CepalStatClient
 from statscepal.exceptions import CepalStatError
 from statscepal.extractor import DataExtractor
@@ -127,6 +128,45 @@ def main(args: Sequence[str] | None = None) -> int:
     export_parser.add_argument("filepath", help="Output file path (.json or .csv)")
     export_parser.add_argument(
         "--format", choices=["json", "csv"], default=None, help="Export format (json or csv)"
+    )
+
+    # catalog harvest
+    harvest_parser = catalog_subparsers.add_parser(
+        "harvest", help="Harvest dimension metadata for catalog indicators"
+    )
+    harvest_parser.add_argument(
+        "--ids", help="Comma-separated list of indicator IDs (e.g. 3328,3342)"
+    )
+    harvest_parser.add_argument(
+        "--no-resume",
+        action="store_false",
+        dest="resume",
+        default=True,
+        help="Disable resumption and process all targets",
+    )
+    harvest_parser.add_argument(
+        "--resume",
+        action="store_true",
+        dest="resume",
+        default=True,
+        help="Resume from last harvested indicator (default: True)",
+    )
+    harvest_parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Force re-harvesting of all targets even if already harvested",
+    )
+    harvest_parser.add_argument(
+        "--rate",
+        type=float,
+        default=0.05,
+        help="Inter-request rate limit delay in seconds (default: 0.05)",
+    )
+    harvest_parser.add_argument(
+        "--limit",
+        type=int,
+        default=None,
+        help="Maximum number of pending indicators to process in this run",
     )
 
     # analyze
@@ -371,6 +411,89 @@ def main(args: Sequence[str] | None = None) -> int:
             out_path = store.export(filepath, format=format_to_use)
             print(f"Catalog exported successfully to {out_path} (format: {format_to_use}).")
             return 0
+
+        if parsed.catalog_command == "harvest":
+            store.init_semantic_tables()
+            client = CepalStatClient()
+            harvester = CatalogHarvester(
+                client=client,
+                store=store,
+                rate_limit_delay=parsed.rate,
+            )
+
+            target_ids: list[int] | None = None
+            if parsed.ids:
+                try:
+                    target_ids = [int(x.strip()) for x in parsed.ids.split(",") if x.strip()]
+                except ValueError:
+                    print(
+                        f"Error: Invalid --ids value '{parsed.ids}'. Expected comma-separated integers.",
+                        file=sys.stderr,
+                    )
+                    return 1
+
+            if target_ids is None and parsed.limit is not None:
+                with store._get_connection() as conn:
+                    rows = conn.execute(
+                        "SELECT indicator_id FROM master_indicators ORDER BY indicator_id ASC"
+                    ).fetchall()
+                    all_ids = [int(r["indicator_id"]) for r in rows]
+                if parsed.resume and not parsed.force:
+                    harvested = store.get_harvested_indicator_ids()
+                    pending = [i for i in all_ids if i not in harvested]
+                    target_ids = pending[:parsed.limit]
+                else:
+                    target_ids = all_ids[:parsed.limit]
+            elif target_ids is not None and parsed.limit is not None:
+                target_ids = target_ids[:parsed.limit]
+
+            if parsed.ids:
+                target_desc = f"{len(target_ids)} indicator(s) [{parsed.ids}]"
+            elif target_ids is not None and parsed.limit is not None:
+                target_desc = f"{len(target_ids)} indicator(s) (limit: {parsed.limit})"
+            else:
+                target_desc = "All catalog indicators"
+
+            mode_desc = (
+                "Force re-harvest"
+                if parsed.force
+                else ("Resume (skip harvested)" if parsed.resume else "Full (no resume)")
+            )
+
+            print("=" * 70)
+            print("CEPALSTAT Dimension Metadata Harvester")
+            print("=" * 70)
+            print(f"Target: {target_desc}")
+            print(f"Mode:   {mode_desc}")
+            print("=" * 70)
+
+            def on_progress(idx: int, total: int, ind_id: int, status: str) -> None:
+                print(f"[Harvesting] ({idx}/{total}) Indicator ID: {ind_id} - {status}")
+
+            try:
+                summary = harvester.harvest(
+                    indicator_ids=target_ids,
+                    resume=parsed.resume,
+                    force=parsed.force,
+                    on_progress=on_progress,
+                )
+
+                print("=" * 70)
+                print("Catalog Harvest Complete")
+                print("=" * 70)
+                print(f"Total target:      {summary.total_target}")
+                print(f"Already harvested: {summary.already_harvested}")
+                print(f"Newly harvested:   {summary.newly_harvested}")
+                print(f"Failed:            {summary.failed_count}")
+                print(f"Duration:          {summary.duration_seconds:.2f}s")
+                print("=" * 70)
+                if summary.failed_ids:
+                    print(f"Failed indicator IDs: {summary.failed_ids}")
+
+                return 0
+            except Exception as err:
+                print(f"CEPALSTAT Error during harvest: {err}", file=sys.stderr)
+                return 1
 
     if parsed.command == "semantic":
         if not parsed.semantic_command:
