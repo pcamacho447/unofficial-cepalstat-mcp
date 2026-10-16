@@ -29,6 +29,7 @@ from statscepal.semantic.thesaurus import (
     Synset,
     SynsetMatch,
     Thesaurus,
+    get_default_thesaurus,
 )
 
 __all__ = [
@@ -58,4 +59,5 @@ __all__ = [
     "TemporalAnchorInfo",
     "TemporalAvailabilityStatus",
     "Thesaurus",
+    "get_default_thesaurus",
 ]

@@ -1,6 +1,7 @@
 """Declarative thesaurus engine for Latin American socioeconomic vocabulary and econometrics polarities."""
 
 from enum import Enum
+from functools import lru_cache
 import re
 import unicodedata
 from pydantic import BaseModel, Field
@@ -197,3 +198,168 @@ class Thesaurus:
                     explanation=rule.explanation,
                 )
         return None
+
+
+DEFAULT_CANONICAL_SYNSETS: list[Synset] = [
+    # facet_canasta
+    Synset(
+        canonical_id="CANASTA_ALIMENTOS",
+        domain="facet_canasta",
+        canonical_term="canasta basica de alimentos",
+        synonyms=["morfi", "corrientazo", "alimentos", "comida", "canasta basica de alimentos", "carestia de comida"],
+        regional_tags={"COL": ["corrientazo"], "ARG": ["morfi"]},
+    ),
+    Synset(
+        canonical_id="CANASTA_COMBUSTIBLES",
+        domain="facet_canasta",
+        canonical_term="combustibles y energia",
+        synonyms=["bencina", "nafta", "gasolina", "diesel", "gasoil", "electricidad", "combustibles", "energia", "transporte"],
+        regional_tags={"CHL": ["bencina"], "ARG": ["nafta", "gasoil"], "COL": ["gasolina"]},
+    ),
+    # facet_area
+    Synset(
+        canonical_id="RURAL",
+        domain="facet_area",
+        canonical_term="rural",
+        synonyms=["campo", "el campo", "zona rural", "area rural"],
+    ),
+    Synset(
+        canonical_id="URBANO",
+        domain="facet_area",
+        canonical_term="urbano",
+        synonyms=["ciudades", "ciudad", "villas", "zona urbana", "area urbana"],
+    ),
+    Synset(
+        canonical_id="NACIONAL",
+        domain="facet_area",
+        canonical_term="nacional",
+        synonyms=["todo el pais", "nivel nacional", "area nacional", "total nacional"],
+    ),
+    # facet_sexo
+    Synset(
+        canonical_id="FEMENINO",
+        domain="facet_sexo",
+        canonical_term="mujeres",
+        synonyms=["mujeres", "chicas", "pibas", "femenina", "femenino", "mujer"],
+        regional_tags={"ARG": ["pibas"]},
+    ),
+    Synset(
+        canonical_id="MASCULINO",
+        domain="facet_sexo",
+        canonical_term="hombres",
+        synonyms=["hombres", "chicos", "pibes", "masculino", "varones", "hombre"],
+        regional_tags={"ARG": ["pibes"]},
+    ),
+    Synset(
+        canonical_id="AMBOS_SEXOS",
+        domain="facet_sexo",
+        canonical_term="ambos sexos",
+        synonyms=["hombres y mujeres", "ambos sexos"],
+    ),
+    # facet_edad
+    Synset(
+        canonical_id="INFANCIA",
+        domain="facet_edad",
+        canonical_term="infancia",
+        synonyms=["ninos", "ninas", "infancia", "0 a 14", "infantil"],
+    ),
+    Synset(
+        canonical_id="JUVENTUD",
+        domain="facet_edad",
+        canonical_term="juventud",
+        synonyms=["cabros", "pibes", "chavos", "chavas", "jovenes", "juventud", "15 a 24", "juvenil"],
+        regional_tags={"CHL": ["cabros"], "MEX": ["chavos", "chavas"], "ARG": ["pibes"]},
+    ),
+    Synset(
+        canonical_id="ADULTOS_MAYORES",
+        domain="facet_edad",
+        canonical_term="adultos mayores",
+        synonyms=["tercera edad", "abuelos", "ancianos", "adultos mayores", "65 y mas"],
+    ),
+    # facet_severidad
+    Synset(
+        canonical_id="POBREZA_EXTREMA",
+        domain="facet_severidad",
+        canonical_term="pobreza extrema",
+        synonyms=["extrema", "indigencia", "indigente", "miseria"],
+    ),
+    Synset(
+        canonical_id="POBREZA_TOTAL",
+        domain="facet_severidad",
+        canonical_term="pobreza total",
+        synonyms=["pobreza", "pobres", "pobreza total"],
+    ),
+    # facet_formalidad
+    Synset(
+        canonical_id="INFORMAL",
+        domain="facet_formalidad",
+        canonical_term="informal",
+        synonyms=["en negro", "informal", "informalidad", "chamba informal", "rebusque"],
+        regional_tags={"ARG": ["en negro"], "MEX": ["chamba informal"], "COL": ["rebusque"]},
+    ),
+    Synset(
+        canonical_id="FORMAL",
+        domain="facet_formalidad",
+        canonical_term="formal",
+        synonyms=["en blanco", "formal", "formalidad", "empleo formal"],
+        regional_tags={"ARG": ["en blanco"]},
+    ),
+    # concept_income
+    Synset(
+        canonical_id="SALARIO_MINIMO",
+        domain="concept_income",
+        canonical_term="salario minimo",
+        synonyms=["plata minima", "salario minimo", "sueldo minimo", "sueldo basico", "salario de ley", "minimo por ley"],
+    ),
+    Synset(
+        canonical_id="SALARIO_MEDIO",
+        domain="concept_income",
+        canonical_term="salario medio",
+        synonyms=["salario medio", "sueldo medio", "salario promedio", "sueldo promedio", "remuneracion media", "laburantes"],
+        regional_tags={"ARG": ["laburantes"]},
+    ),
+    Synset(
+        canonical_id="INGRESO_HOGAR_PER_CAPITA",
+        domain="concept_income",
+        canonical_term="ingreso per capita de los hogares",
+        synonyms=["ingreso por cabeza", "ingreso de los hogares", "ingreso familiar", "per capita de los hogares"],
+    ),
+    Synset(
+        canonical_id="SLANG_INCOME_AMBIGUOUS",
+        domain="concept_income",
+        canonical_term="ingreso o remuneracion",
+        synonyms=["guita", "plata", "lana", "lucas", "sueldo", "salario", "remuneraciones"],
+        regional_tags={"ARG": ["guita"], "MEX": ["lana"], "CHL": ["lucas"], "COL": ["plata"]},
+    ),
+    # concept_labor
+    Synset(
+        canonical_id="EMPLEO_GENERAL",
+        domain="concept_labor",
+        canonical_term="empleo y mercado laboral",
+        synonyms=["chamba", "pega", "laburo", "camello", "empleo", "trabajo", "desocupacion", "desempleo", "paro"],
+        regional_tags={"MEX": ["chamba"], "CHL": ["pega"], "ARG": ["laburo"], "COL": ["camello"]},
+    ),
+    # concept_macro
+    Synset(
+        canonical_id="PIB_GENERAL",
+        domain="concept_macro",
+        canonical_term="producto interno bruto",
+        synonyms=["pib", "producto interno bruto", "actividad economica", "crecimiento economico"],
+    ),
+    Synset(
+        canonical_id="IPC_GENERAL",
+        domain="concept_macro",
+        canonical_term="indice de precios al consumidor",
+        synonyms=["inflacion", "tasa de inflacion", "ipc", "costo de vida", "carestia", "aumento de precios"],
+    ),
+]
+
+
+@lru_cache(maxsize=1)
+def get_default_thesaurus() -> Thesaurus:
+    """Return preloaded default Thesaurus catalogue for Latin American socioeconomic vocabulary."""
+    thesaurus = Thesaurus()
+    for synset in DEFAULT_CANONICAL_SYNSETS:
+        thesaurus.register_synset(synset)
+    return thesaurus
+
