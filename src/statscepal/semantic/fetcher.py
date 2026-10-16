@@ -125,31 +125,32 @@ class SemanticDataFetcher:
                     )
                 filtered_df = filtered_df[mask]
 
-        # 2. Filter by year if specified
-        target_year = response.applied_filters.year
-        if target_year is not None and not filtered_df.empty:
-            year_col = None
+        # 2. Identify year column and filter by year if specified
+        year_col = None
+        for col in filtered_df.columns:
+            cl = col.lower().replace("ñ", "n")
+            if cl in (
+                "year",
+                "ano",
+                "anio",
+                "anios__estandar",
+                "anos__estandar",
+                "period",
+                "periodo",
+                "anios",
+                "anos",
+            ):
+                year_col = col
+                break
+        if year_col is None:
             for col in filtered_df.columns:
-                cl = col.lower()
-                if cl in (
-                    "year",
-                    "año",
-                    "anios__estandar",
-                    "años__estandar",
-                    "period",
-                    "periodo",
-                    "anios",
-                    "años",
-                ):
+                cl = col.lower().replace("ñ", "n")
+                if "year" in cl or "anio" in cl or "ano" in cl or "period" in cl:
                     year_col = col
                     break
-            if year_col is None:
-                for col in filtered_df.columns:
-                    cl = col.lower()
-                    if "year" in cl or "año" in cl or "anio" in cl or "period" in cl:
-                        year_col = col
-                        break
 
+        target_year = response.applied_filters.year
+        if target_year is not None and not filtered_df.empty:
             if year_col is not None:
                 numeric_years = pd.to_numeric(filtered_df[year_col], errors="coerce")
                 filtered_df = filtered_df[numeric_years == target_year]
@@ -189,7 +190,17 @@ class SemanticDataFetcher:
 
         # 4. Format observation result
         if not filtered_df.empty:
-            row = filtered_df.iloc[0]
+            if target_year is None and year_col is not None:
+                valid_df = filtered_df.dropna(subset=["value"])
+                if not valid_df.empty:
+                    numeric_y = pd.to_numeric(valid_df[year_col], errors="coerce").fillna(0)
+                    sorted_order = numeric_y.argsort()
+                    row = valid_df.iloc[sorted_order.iloc[-1]]
+                else:
+                    row = filtered_df.iloc[-1]
+            else:
+                row = filtered_df.iloc[0]
+
             val_raw = row.get("value")
             try:
                 val = float(val_raw)
@@ -209,20 +220,20 @@ class SemanticDataFetcher:
                 }
             else:
                 row_year = None
-                for y_col in (
-                    "year",
-                    "año",
-                    "anios__estandar",
-                    "años__estandar",
-                    "period",
-                    "periodo",
-                ):
-                    if y_col in row and not pd.isna(row[y_col]):
-                        try:
-                            row_year = int(float(row[y_col]))
-                            break
-                        except (ValueError, TypeError):
-                            pass
+                if year_col is not None and year_col in row and not pd.isna(row[year_col]):
+                    try:
+                        row_year = int(float(str(row[year_col]).split()[0]))
+                    except (ValueError, TypeError):
+                        pass
+                if row_year is None:
+                    for c in row.index:
+                        cl = str(c).lower().replace("ñ", "n")
+                        if any(k in cl for k in ("year", "anio", "ano", "period")):
+                            try:
+                                row_year = int(float(str(row[c]).split()[0]))
+                                break
+                            except (ValueError, TypeError):
+                                pass
                 if row_year is None:
                     row_year = int(response.applied_filters.year or 0)
 
