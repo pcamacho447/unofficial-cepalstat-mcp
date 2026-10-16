@@ -1,7 +1,9 @@
 # statscepal: Cliente Python, Bitácoras Anti-Sesgo y Agentes para UN CEPALSTAT
 
 [![Python Version](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/)
-[![Status](https://img.shields.io/badge/tests-136%20passed-brightgreen.svg)]()
+[![Status](https://img.shields.io/badge/tests-203%20passed-brightgreen.svg)]()
+[![Semantic Benchmark](https://img.shields.io/badge/benchmark%20200-100%25%20Top--1-success.svg)](docs/BENCHMARK_200_PREGUNTAS_REPORTE.md)
+[![False Substitution Rate](https://img.shields.io/badge/FSR-0.00%25-brightgreen.svg)](docs/BENCHMARK_200_PREGUNTAS_REPORTE.md)
 [![API Source](https://img.shields.io/badge/CEPALSTAT-Open%20Data-orange.svg)](https://statistics.cepal.org/portal/cepalstat/open-data.html?lang=es)
 
 `statscepal` es un ecosistema completo en Python y un conjunto de herramientas para agentes de Inteligencia Artificial diseñado para interactuar con la **API de Datos Abiertos de la Comisión Económica para América Latina y el Caribe (UN CEPAL / ECLAC)**.
@@ -120,6 +122,24 @@ uv run statscepal bitacora add 4788 --country Chile --members 224,29190,88623 --
 uv run statscepal bitacora sync
 ```
 
+### 4. Motor Semántico de Desambiguación de Intenciones (200 Preguntas Certificadas)
+
+El motor semántico (`statscepal semantic resolve`) resuelve lenguaje natural, regionalismos (*"guita"*, *"plata"*, *"chamba"*, *"pega"*, *"laburantes"*) y desgloses multidimensionales con **100% Top-1 Accuracy** y **0.00% False Substitution Rate** (ver [Informe del Benchmark](docs/BENCHMARK_200_PREGUNTAS_REPORTE.md)):
+
+```bash
+# Resolución semántica directa con desconstructor de contexto de ingresos (Salario mínimo real 3337)
+uv run statscepal semantic resolve "Cuál fue la guita mínima por ley en Chile en 2022"
+
+# Jerga sin modificador (propone serie base + alternativas explícitas sin adivinar)
+uv run statscepal semantic resolve "Cómo estuvo la guita en Chile en 2021"
+
+# Resolución con extracción de datos empíricos en vivo
+uv run statscepal semantic resolve "Pobreza en Colombia en 2020" --fetch
+
+# Salida estructurada en JSON para agentes y clientes MCP
+uv run statscepal semantic resolve "Desempleo juvenil en México en 2021" --json
+```
+
 ---
 
 ## 🐍 Guía del SDK en Python
@@ -213,8 +233,10 @@ C:\papx\statscepal\
 │           └── 415_recipe_chl_pib_anual.md         # Ficha de PIB anual a precios constantes
 │
 ├── docs/                           # Documentación de diseño y auditorías
+│   ├── BENCHMARK_200_PREGUNTAS_REPORTE.md # Informe empírico oficial del benchmark (200 preguntas)
 │   ├── MANUAL_DE_OPERACION.md      # Manual de operación y metodología
-│   └── ECOSISTEMA_GITHUB_Y_BENCHMARK.md # Auditoría comparativa de repositorios CEPAL en GitHub
+│   ├── ECOSISTEMA_GITHUB_Y_BENCHMARK.md # Auditoría comparativa de repositorios CEPAL en GitHub
+│   └── specs/                      # Especificaciones técnicas formales y arquitectura v2
 │
 ├── src/
 │   └── statscepal/                 # Paquete principal en Python
@@ -224,28 +246,47 @@ C:\papx\statscepal\
 │       ├── thematic_tree.py        # Árbol temático y búsqueda recursiva
 │       ├── dimensions.py           # Gestor de dimensiones y miembros
 │       ├── extractor.py            # Extractor tabular y decodificador a DataFrames
-│       ├── cli.py                  # Interfaz de línea de comandos
+│       ├── cli.py                  # Interfaz de línea de comandos (con 'semantic resolve')
 │       ├── catalog/                # Catálogo maestro de 2,070 indicadores en SQLite
 │       ├── bitacora/               # Motor de bitácoras y calidad
-│       └── analysis/               # Servicios de análisis econométrico y estadístico
+│       ├── analysis/               # Servicios de análisis econométrico y estadístico
+│       └── semantic/               # Motor semántico determinista de desambiguación (5 etapas)
+│           ├── engine.py           # Orquestador del pipeline semántico
+│           ├── parser.py           # Parser léxico con desconstructor de ingresos y límites \b
+│           ├── matcher.py          # DynamicMemberMatcher para resolución de facetas
+│           ├── registry.py         # Registro con catálogo dual (official_25 / legacy_50)
+│           ├── models.py           # Modelos Pydantic y enums estadísticos
+│           └── fetcher.py          # Extracción empírica con validación de observaciones
 │
-├── tests/                          # Suite de pruebas automatizadas (146 tests)
+├── tests/                          # Suite de pruebas automatizadas (203 tests)
+│   ├── benchmark/                  # Datasets de benchmarking empírico
+│   │   ├── semantic_benchmark_cases_200.json # 200 casos (matriz 8-4-4-2-2)
+│   │   └── semantic_benchmark_cases.json     # 50 casos legacy v1
+│   ├── test_semantic_benchmark_200.py # Runner automatizado del benchmark de 200 casos
+│   ├── test_benchmark_dataset_integrity.py # Validación de integridad y esquema del dataset
+│   ├── test_parser_income_modifiers.py # Pruebas de desambiguación de ingresos y límites \b
+│   ├── test_semantic_registry_200.py # Validación de 25 indicadores oficiales y grafo tipado
+│   ├── test_semantic_matcher.py
+│   ├── test_semantic_fetcher.py
+│   ├── test_semantic_store_relational.py
+│   ├── test_semantic_benchmark.py
 │   ├── test_client.py
 │   ├── test_dimensions.py
 │   ├── test_extractor.py
 │   ├── test_thematic_tree.py
 │   ├── test_cli.py
+│   ├── test_cli_semantic.py
 │   ├── test_catalog_cli.py
 │   ├── test_catalog_store.py
 │   ├── test_bitacora_models.py
 │   ├── test_bitacora_store.py
 │   ├── test_bitacora_cli.py
-│   ├── test_quantitative_skills.py # Validación estructural de los 4 skills universales
-│   ├── test_github_skills.py       # Validación de github-repo-search y github-scout
+│   ├── test_quantitative_skills.py
+│   ├── test_github_skills.py
 │   ├── test_seed_recipes.py
 │   ├── test_validator.py
 │   ├── test_skill_structure.py
-│   └── test_live_smoke.py          # Pruebas de integración en vivo
+│   └── test_live_smoke.py
 │
 ├── pyproject.toml                  # Configuración del paquete y dependencias
 └── uv.lock                         # Lockfile reproducible de dependencias
@@ -255,11 +296,14 @@ C:\papx\statscepal\
 
 ## 🧪 Pruebas Automatizadas
 
-El proyecto cuenta con una cobertura integral que incluye pruebas unitarias offline con *mocking* (`respx`) y pruebas de humo en vivo contra los servidores de la CEPAL.
+El proyecto cuenta con una cobertura integral de **203 pruebas automatizadas**:
 
 ```bash
-# Ejecutar toda la suite de pruebas (146 tests)
+# Ejecutar toda la suite de pruebas (203 tests)
 uv run pytest
+
+# Ejecutar el benchmark de 200 casos en lenguaje natural
+uv run pytest tests/test_semantic_benchmark_200.py -v
 
 # Ejecutar pruebas excluyendo la red
 uv run pytest -m "not integration"
