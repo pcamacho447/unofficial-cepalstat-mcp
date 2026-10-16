@@ -296,3 +296,32 @@ def test_end_to_end_synonyms_and_antonyms_queries():
     assert res_sin_lulucf.selected_candidate.indicator_id == 5682
 
 
+def test_thesaurus_ethnic_synsets():
+    from statscepal.semantic.thesaurus import get_default_thesaurus
+    thesaurus = get_default_thesaurus()
+
+    # General ethnic term
+    match_gen = thesaurus.match_synset("facet_etnia", "cual es la pobreza etnica en peru 2020")
+    assert match_gen is not None
+    assert match_gen.canonical_id == "ETNICO_TOTAL"
+
+    # Indigenous term
+    match_ind = thesaurus.match_synset("facet_etnia", "pobreza de pueblos indigenas en bolivia 2021")
+    assert match_ind is not None
+    assert match_ind.canonical_id == "INDIGENA"
+
+    # Afrodescendant term
+    match_afro = thesaurus.match_synset("facet_etnia", "poblacion afrodescendiente en brasil")
+    assert match_afro is not None
+    assert match_afro.canonical_id == "AFRODESCENDIENTE"
+
+    # Non-indigenous term
+    match_no_ind = thesaurus.match_synset("facet_etnia", "poblacion no indigena ni afrodescendiente")
+    assert match_no_ind is not None
+    assert match_no_ind.canonical_id == "NO_INDIGENA"
+
+    # Negative check: non-ethnic token must not match
+    assert thesaurus.match_synset("facet_etnia", "inflacion mensual en chile") is None
+
+
+

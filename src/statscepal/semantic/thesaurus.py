@@ -310,6 +310,61 @@ DEFAULT_CANONICAL_SYNSETS: list[Synset] = [
         synonyms=["en blanco", "formal", "formalidad", "empleo formal"],
         regional_tags={"ARG": ["en blanco"]},
     ),
+    # facet_etnia
+    Synset(
+        canonical_id="ETNICO_TOTAL",
+        domain="facet_etnia",
+        canonical_term="etnica",
+        synonyms=[
+            "etnica",
+            "etnico",
+            "etnicas",
+            "etnicos",
+            "etnia",
+            "etnias",
+            "autoidentificacion etnica",
+            "autoidentificacion etnico-racial",
+            "origen etnico",
+        ],
+    ),
+    Synset(
+        canonical_id="INDIGENA",
+        domain="facet_etnia",
+        canonical_term="indigena",
+        synonyms=[
+            "indigena",
+            "indigenas",
+            "pueblos indigenas",
+            "originarios",
+            "pueblos originarios",
+            "poblacion indigena",
+        ],
+    ),
+    Synset(
+        canonical_id="AFRODESCENDIENTE",
+        domain="facet_etnia",
+        canonical_term="afrodescendiente",
+        synonyms=[
+            "afrodescendiente",
+            "afrodescendientes",
+            "afro",
+            "afrolatino",
+            "afrolatinos",
+            "afrolatina",
+            "afrolatinas",
+            "negros",
+        ],
+    ),
+    Synset(
+        canonical_id="NO_INDIGENA",
+        domain="facet_etnia",
+        canonical_term="no indigena",
+        synonyms=[
+            "no indigena",
+            "no indigena ni afrodescendiente",
+            "blancos y mestizos",
+        ],
+    ),
     # concept_income
     Synset(
         canonical_id="SALARIO_MINIMO",
