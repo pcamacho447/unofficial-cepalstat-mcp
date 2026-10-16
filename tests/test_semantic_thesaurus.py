@@ -171,3 +171,94 @@ def test_default_thesaurus_all_canonical_domains():
     assert th.match_synset("concept_macro", "tasa de crecimiento del producto interno bruto").canonical_id == "PIB_GENERAL"
     assert th.match_synset("concept_macro", "evolucion de la inflacion y costo de vida").canonical_id == "IPC_GENERAL"
 
+
+def test_econometric_antonym_polarities():
+    from statscepal.semantic.thesaurus import get_default_thesaurus, PolarityType, ExpectedSign
+
+    th = get_default_thesaurus()
+
+    # 1. State Inversion: Ocupación vs Desocupación
+    pol_desemp = th.resolve_polarity("cual es la tasa de desempleo en colombia 2021")
+    assert pol_desemp is not None
+    assert pol_desemp.polarity_type == PolarityType.STATE_INVERSION
+    assert pol_desemp.canonical_opposite in ["ocupacion", "empleo"]
+
+    # 2. Accounting Sign: Superávit vs Déficit (Indicador 1241)
+    pol_def = th.resolve_polarity("deficit primario como porcentaje del pib en brasil 2020")
+    assert pol_def is not None
+    assert pol_def.polarity_type == PolarityType.ACCOUNTING_SIGN
+    assert pol_def.canonical_indicator_id == 1241
+    assert pol_def.expected_sign == ExpectedSign.NEGATIVE
+
+    pol_sup = th.resolve_polarity("superavit primario en uruguay 2019")
+    assert pol_sup is not None
+    assert pol_sup.polarity_type == PolarityType.ACCOUNTING_SIGN
+    assert pol_sup.canonical_indicator_id == 1241
+    assert pol_sup.expected_sign == ExpectedSign.POSITIVE
+
+    # 3. Inclusion / Exclusion: LULUCF (5681 vs 5682)
+    pol_sin_lulucf = th.resolve_polarity("emisiones brutas de gei sin lulucf en argentina")
+    assert pol_sin_lulucf is not None
+    assert pol_sin_lulucf.polarity_type == PolarityType.INCLUSION_EXCLUSION
+    assert pol_sin_lulucf.canonical_indicator_id == 5682
+
+    pol_con_lulucf = th.resolve_polarity("emisiones netas con lulucf en argentina")
+    assert pol_con_lulucf is not None
+    assert pol_con_lulucf.polarity_type == PolarityType.INCLUSION_EXCLUSION
+    assert pol_con_lulucf.canonical_indicator_id == 5681
+
+    # 4. Current Account Sign (1243)
+    pol_ca = th.resolve_polarity("deficit en cuenta corriente en peru")
+    assert pol_ca is not None
+    assert pol_ca.polarity_type == PolarityType.ACCOUNTING_SIGN
+    assert pol_ca.canonical_indicator_id == 1243
+    assert pol_ca.expected_sign == ExpectedSign.NEGATIVE
+
+    # 5. Facet Complements (Formalidad y Área)
+    pol_formal = th.resolve_polarity("tasa de empleo formal en ecuador")
+    assert pol_formal is not None
+    assert pol_formal.polarity_type == PolarityType.FACET_COMPLEMENT
+
+    pol_rural = th.resolve_polarity("pobreza en zona rural de bolivia")
+    assert pol_rural is not None
+    assert pol_rural.polarity_type == PolarityType.FACET_COMPLEMENT
+
+
+def test_semantic_resolution_response_polarity_field():
+    from statscepal.semantic.models import SemanticResolutionResponse, ResolutionStatus
+    from statscepal.semantic.thesaurus import PolarityResolution, PolarityType
+
+    resp = SemanticResolutionResponse(
+        status=ResolutionStatus.RESOLVED,
+        query="test query",
+        polarity_info=PolarityResolution(
+            polarity_type=PolarityType.STATE_INVERSION,
+            term_detected="desempleo",
+            canonical_opposite="ocupacion",
+        ),
+    )
+    assert resp.polarity_info is not None
+    assert resp.polarity_info.polarity_type == PolarityType.STATE_INVERSION
+
+
+def test_default_thesaurus_latency_benchmark():
+    from statscepal.semantic.thesaurus import get_default_thesaurus
+
+    th = get_default_thesaurus()
+    query = "deficit primario como porcentaje del pib en brasil 2020 y empleo informal en zona rural"
+    times = []
+    # Warmup
+    for _ in range(100):
+        th.match_synset("facet_area", query)
+        th.resolve_polarity(query)
+
+    for _ in range(500):
+        t0 = time.perf_counter()
+        th.match_synset("facet_area", query)
+        th.resolve_polarity(query)
+        times.append((time.perf_counter() - t0) * 1000.0)
+
+    times.sort()
+    p50 = times[len(times) // 2]
+    assert p50 < 0.5, f"Default thesaurus p50 latency {p50:.4f} ms exceeded 0.5 ms target"
+

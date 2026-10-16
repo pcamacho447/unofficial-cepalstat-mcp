@@ -189,11 +189,17 @@ class Thesaurus:
                 term_detected = rule.positive_term if is_positive else rule.negative_term
                 opposite = rule.negative_term if is_positive else rule.positive_term
                 sign = rule.positive_sign if is_positive else rule.negative_sign
+                if is_positive and rule.target_indicator_positive is not None:
+                    target_id = rule.target_indicator_positive
+                elif not is_positive and rule.target_indicator_negative is not None:
+                    target_id = rule.target_indicator_negative
+                else:
+                    target_id = rule.canonical_indicator_id
                 return PolarityResolution(
                     polarity_type=rule.polarity_type,
                     term_detected=term_detected,
                     canonical_opposite=opposite,
-                    canonical_indicator_id=rule.canonical_indicator_id,
+                    canonical_indicator_id=target_id,
                     expected_sign=sign,
                     explanation=rule.explanation,
                 )
@@ -355,11 +361,226 @@ DEFAULT_CANONICAL_SYNSETS: list[Synset] = [
 ]
 
 
+DEFAULT_ANTONYM_RULES: list[AntonymRule] = [
+    # 1. State Inversion (Mercado laboral: Ocupación vs Desocupación / Desempleo / Paro)
+    AntonymRule(
+        rule_id="LABOR_OCUPACION_DESOCUPACION",
+        positive_term="ocupacion",
+        negative_term="desocupacion",
+        polarity_type=PolarityType.STATE_INVERSION,
+        canonical_indicator_id=127,
+        target_indicator_positive=5097,
+        target_indicator_negative=127,
+        explanation="Inversión de estado entre tasa de ocupación (5097) y tasa de desocupación (127).",
+    ),
+    AntonymRule(
+        rule_id="LABOR_OCUPACION_DESEMPLEO",
+        positive_term="ocupacion",
+        negative_term="desempleo",
+        polarity_type=PolarityType.STATE_INVERSION,
+        canonical_indicator_id=127,
+        target_indicator_positive=5097,
+        target_indicator_negative=127,
+        explanation="Inversión de estado entre tasa de ocupación (5097) y tasa de desempleo (127).",
+    ),
+    AntonymRule(
+        rule_id="LABOR_EMPLEO_PARO",
+        positive_term="empleo",
+        negative_term="paro",
+        polarity_type=PolarityType.STATE_INVERSION,
+        canonical_indicator_id=127,
+        target_indicator_positive=5097,
+        target_indicator_negative=127,
+        explanation="Inversión de estado entre empleo (5097) y paro laboral (127).",
+    ),
+    AntonymRule(
+        rule_id="LABOR_OCUPADOS_DESOCUPADOS",
+        positive_term="ocupados",
+        negative_term="desocupados",
+        polarity_type=PolarityType.STATE_INVERSION,
+        canonical_indicator_id=127,
+        target_indicator_positive=5097,
+        target_indicator_negative=127,
+        explanation="Inversión de estado entre personas ocupadas (5097) y desocupadas (127).",
+    ),
+    AntonymRule(
+        rule_id="LABOR_EMPLEADOS_DESEMPLEADOS",
+        positive_term="empleados",
+        negative_term="desempleados",
+        polarity_type=PolarityType.STATE_INVERSION,
+        canonical_indicator_id=127,
+        target_indicator_positive=5097,
+        target_indicator_negative=127,
+        explanation="Inversión de estado entre personas empleadas (5097) y desempleadas (127).",
+    ),
+
+    # 2. Accounting Sign (Balanza de Pagos y Finanzas Públicas: Superávit vs Déficit)
+    AntonymRule(
+        rule_id="CURRENT_ACCOUNT_BALANCE_EN",
+        positive_term="superavit en cuenta corriente",
+        negative_term="deficit en cuenta corriente",
+        polarity_type=PolarityType.ACCOUNTING_SIGN,
+        canonical_indicator_id=1243,
+        positive_sign=ExpectedSign.POSITIVE,
+        negative_sign=ExpectedSign.NEGATIVE,
+        explanation="Signo contable de balanza de pagos en Cuenta Corriente (1243): superávit positivo, déficit negativo.",
+    ),
+    AntonymRule(
+        rule_id="CURRENT_ACCOUNT_BALANCE_DE",
+        positive_term="superavit de cuenta corriente",
+        negative_term="deficit de cuenta corriente",
+        polarity_type=PolarityType.ACCOUNTING_SIGN,
+        canonical_indicator_id=1243,
+        positive_sign=ExpectedSign.POSITIVE,
+        negative_sign=ExpectedSign.NEGATIVE,
+        explanation="Signo contable de balanza de pagos en Cuenta Corriente (1243): superávit positivo, déficit negativo.",
+    ),
+    AntonymRule(
+        rule_id="CURRENT_ACCOUNT_BALANCE_SHORT",
+        positive_term="superavit cuenta corriente",
+        negative_term="deficit cuenta corriente",
+        polarity_type=PolarityType.ACCOUNTING_SIGN,
+        canonical_indicator_id=1243,
+        positive_sign=ExpectedSign.POSITIVE,
+        negative_sign=ExpectedSign.NEGATIVE,
+        explanation="Signo contable de balanza de pagos en Cuenta Corriente (1243): superávit positivo, déficit negativo.",
+    ),
+    AntonymRule(
+        rule_id="PRIMARY_BALANCE_SIGN_SPECIFIC",
+        positive_term="superavit primario",
+        negative_term="deficit primario",
+        polarity_type=PolarityType.ACCOUNTING_SIGN,
+        canonical_indicator_id=1241,
+        positive_sign=ExpectedSign.POSITIVE,
+        negative_sign=ExpectedSign.NEGATIVE,
+        explanation="Signo contable de finanzas públicas en Balance Primario (1241): superávit positivo, déficit negativo.",
+    ),
+    AntonymRule(
+        rule_id="FISCAL_BALANCE_SIGN_SPECIFIC",
+        positive_term="superavit fiscal",
+        negative_term="deficit fiscal",
+        polarity_type=PolarityType.ACCOUNTING_SIGN,
+        canonical_indicator_id=1241,
+        positive_sign=ExpectedSign.POSITIVE,
+        negative_sign=ExpectedSign.NEGATIVE,
+        explanation="Signo contable de finanzas públicas en Balance Fiscal / Primario (1241): superávit positivo, déficit negativo.",
+    ),
+    AntonymRule(
+        rule_id="FISCAL_BALANCE_SIGN",
+        positive_term="superavit",
+        negative_term="deficit",
+        polarity_type=PolarityType.ACCOUNTING_SIGN,
+        canonical_indicator_id=1241,
+        positive_sign=ExpectedSign.POSITIVE,
+        negative_sign=ExpectedSign.NEGATIVE,
+        explanation="Signo contable general en Balance Primario / Fiscal (1241): superávit positivo, déficit negativo.",
+    ),
+    AntonymRule(
+        rule_id="TRADE_BALANCE_SIGN",
+        positive_term="superavit comercial",
+        negative_term="deficit comercial",
+        polarity_type=PolarityType.ACCOUNTING_SIGN,
+        canonical_indicator_id=None,
+        positive_sign=ExpectedSign.POSITIVE,
+        negative_sign=ExpectedSign.NEGATIVE,
+        explanation="Signo contable de Balanza Comercial: superávit positivo (exportaciones > importaciones), déficit negativo.",
+    ),
+
+    # 3. Inclusion / Exclusion (LULUCF / UTCUTS: con LULUCF vs sin LULUCF)
+    AntonymRule(
+        rule_id="LULUCF_INCLUSION_EXCLUSION",
+        positive_term="con lulucf",
+        negative_term="sin lulucf",
+        polarity_type=PolarityType.INCLUSION_EXCLUSION,
+        canonical_indicator_id=5681,
+        target_indicator_positive=5681,
+        target_indicator_negative=5682,
+        explanation="Inclusión/exclusión de Uso de la Tierra, Cambio de Uso de la Tierra y Silvicultura (LULUCF): con LULUCF neto (5681) vs sin LULUCF bruto (5682).",
+    ),
+    AntonymRule(
+        rule_id="UTCUTS_INCLUSION_EXCLUSION",
+        positive_term="con utcuts",
+        negative_term="sin utcuts",
+        polarity_type=PolarityType.INCLUSION_EXCLUSION,
+        canonical_indicator_id=5681,
+        target_indicator_positive=5681,
+        target_indicator_negative=5682,
+        explanation="Inclusión/exclusión de Uso de la Tierra, Cambio de Uso de la Tierra y Silvicultura (UTCUTS): con UTCUTS neto (5681) vs sin UTCUTS bruto (5682).",
+    ),
+    AntonymRule(
+        rule_id="LULUCF_INCLUYENDO_EXCLUYENDO",
+        positive_term="incluyendo lulucf",
+        negative_term="excluyendo lulucf",
+        polarity_type=PolarityType.INCLUSION_EXCLUSION,
+        canonical_indicator_id=5681,
+        target_indicator_positive=5681,
+        target_indicator_negative=5682,
+        explanation="Inclusión/exclusión de LULUCF en emisiones de GEI: con LULUCF (5681) vs sin LULUCF (5682).",
+    ),
+    AntonymRule(
+        rule_id="UTCUTS_INCLUYENDO_EXCLUYENDO",
+        positive_term="incluyendo utcuts",
+        negative_term="excluyendo utcuts",
+        polarity_type=PolarityType.INCLUSION_EXCLUSION,
+        canonical_indicator_id=5681,
+        target_indicator_positive=5681,
+        target_indicator_negative=5682,
+        explanation="Inclusión/exclusión de UTCUTS en emisiones de GEI: con UTCUTS (5681) vs sin UTCUTS (5682).",
+    ),
+
+    # 4. Facet Complement (Formal vs Informal, Urbano vs Rural)
+    AntonymRule(
+        rule_id="FACET_FORMAL_INFORMAL_EMPLEO",
+        positive_term="empleo formal",
+        negative_term="empleo informal",
+        polarity_type=PolarityType.FACET_COMPLEMENT,
+        explanation="Complementariedad dimensional en la faceta formalidad laboral (empleo formal vs empleo informal).",
+    ),
+    AntonymRule(
+        rule_id="FACET_FORMAL_INFORMAL_TRABAJO",
+        positive_term="trabajo formal",
+        negative_term="trabajo informal",
+        polarity_type=PolarityType.FACET_COMPLEMENT,
+        explanation="Complementariedad dimensional en la faceta formalidad laboral (trabajo formal vs trabajo informal).",
+    ),
+    AntonymRule(
+        rule_id="FACET_FORMAL_INFORMAL",
+        positive_term="formal",
+        negative_term="informal",
+        polarity_type=PolarityType.FACET_COMPLEMENT,
+        explanation="Complementariedad dimensional en la faceta formalidad laboral (formal vs informal).",
+    ),
+    AntonymRule(
+        rule_id="FACET_URBANO_RURAL_ZONA",
+        positive_term="zona urbana",
+        negative_term="zona rural",
+        polarity_type=PolarityType.FACET_COMPLEMENT,
+        explanation="Complementariedad dimensional en la faceta área geográfica (zona urbana vs zona rural).",
+    ),
+    AntonymRule(
+        rule_id="FACET_URBANO_RURAL_AREA",
+        positive_term="area urbana",
+        negative_term="area rural",
+        polarity_type=PolarityType.FACET_COMPLEMENT,
+        explanation="Complementariedad dimensional en la faceta área geográfica (área urbana vs área rural).",
+    ),
+    AntonymRule(
+        rule_id="FACET_URBANO_RURAL",
+        positive_term="urbano",
+        negative_term="rural",
+        polarity_type=PolarityType.FACET_COMPLEMENT,
+        explanation="Complementariedad dimensional en la faceta área geográfica (urbano vs rural).",
+    ),
+]
+
+
 @lru_cache(maxsize=1)
 def get_default_thesaurus() -> Thesaurus:
     """Return preloaded default Thesaurus catalogue for Latin American socioeconomic vocabulary."""
     thesaurus = Thesaurus()
     for synset in DEFAULT_CANONICAL_SYNSETS:
         thesaurus.register_synset(synset)
+    for rule in DEFAULT_ANTONYM_RULES:
+        thesaurus.register_antonym_rule(rule)
     return thesaurus
 

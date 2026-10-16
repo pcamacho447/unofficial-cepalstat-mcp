@@ -4,6 +4,8 @@ from enum import Enum
 from typing import Any
 from pydantic import BaseModel, ConfigDict, Field
 
+from statscepal.semantic.thesaurus import PolarityResolution
+
 
 class ResolutionStatus(str, Enum):
     """Overall status of the semantic resolution."""
@@ -134,6 +136,7 @@ class SemanticResolutionResponse(BaseModel):
     applied_filters: AppliedFilters = Field(default_factory=AppliedFilters)
     temporal_info: TemporalAnchorInfo | None = None
     alternatives: list[AlternativeCandidate] = Field(default_factory=list)
+    polarity_info: PolarityResolution | None = None
     abstention_reason: str | None = None
     unsupported_facet: str | None = None
     conversational_hint: str | None = None
