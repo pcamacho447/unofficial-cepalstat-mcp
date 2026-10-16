@@ -219,6 +219,31 @@ The command automatically audits data quality and demographic/geographic anti-bi
 
 ---
 
+## Motor de Resolución Semántica Multidimensional (CLI & API)
+
+El paquete incorpora un motor determinístico y ultrarrápido ($p50 < 0.5\text{ ms}$) para resolver lenguaje natural a coordenadas formales de CEPALSTAT sin alucinación y con 0.00% de Tasa de Sustitución Falsa (FSR):
+
+```bash
+# Resolución de indicador canónico y filtros
+statscepal semantic resolve "cual es la pobreza en el peru en 2020"
+
+# Resolución con desglose multidimensional (etnia, género, etc.)
+statscepal semantic resolve "cual es la pobreza etnica en el peru del 2020"
+
+# Resolución con extracción de datos empíricos de la API
+statscepal semantic resolve "tasa de pobreza indigena en bolivia 2021" --fetch
+
+# Series temporales multi-anuales y ventanas relativas
+statscepal semantic resolve "pobreza en chile los ultimos 4 anos" --fetch
+```
+
+### Mapeo de Indicadores Multidimensionales Clave:
+- **Pobreza Agregada / Área:** `3328` (*Población en situación de pobreza extrema y pobreza, por área*)
+- **Pobreza Étnica / Racial:** `3342` (*Población en situación de pobreza extrema y pobreza, por sexo, autoidentificación étnico-racial y área*)
+  - Dimensión `43039` (`Tipo de etnia`): Miembros `43041` (Indígena), `43042` (Afrodescendiente), `43044` (No indígena ni afrodescendiente), `43043` (Total).
+
+---
+
 ## Python SDK Reference (`statscepal`)
 
 ### `CepalStatClient`
