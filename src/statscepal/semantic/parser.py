@@ -357,7 +357,18 @@ class QueryParser:
             intent.root_concept = "INFLACION_ALIMENTOS"
         elif "alimentos" in clean and any(term in clean for term in ["ipc", "inflacion", "precios"]):
             intent.root_concept = "INFLACION_ALIMENTOS" if "inflacion" in clean else "IPC_ALIMENTOS"
-        elif any(term in clean for term in ["ipc", "precios al consumidor", "costo de la vida", "costo de vida", "inflacion general"]):
+        elif any(
+            term in clean
+            for term in [
+                "ipc",
+                "precios al consumidor",
+                "costo de la vida",
+                "costo de vida",
+                "inflacion general",
+                "tasa de inflacion",
+                "inflacion",
+            ]
+        ):
             intent.root_concept = "IPC_GENERAL"
 
         # Cuentas Nacionales & PIB
