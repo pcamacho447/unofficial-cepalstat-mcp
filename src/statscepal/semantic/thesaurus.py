@@ -146,6 +146,8 @@ class Thesaurus:
         clean = strip_accents(query)
         compiled_list = self._compiled_synsets.get(domain, [])
         for synset, term, pattern in compiled_list:
+            if term not in clean:
+                continue
             m = pattern.search(clean)
             if m:
                 return SynsetMatch(
@@ -164,7 +166,7 @@ class Thesaurus:
         seen_canonical_ids: set[str] = set()
         compiled_list = self._compiled_synsets.get(domain, [])
         for synset, term, pattern in compiled_list:
-            if synset.canonical_id in seen_canonical_ids:
+            if synset.canonical_id in seen_canonical_ids or term not in clean:
                 continue
             m = pattern.search(clean)
             if m:
@@ -184,6 +186,8 @@ class Thesaurus:
         """Detect antonym and polarity signals in a query string."""
         clean = strip_accents(query)
         for rule, is_positive, term_clean, pattern in self._compiled_antonyms:
+            if term_clean not in clean:
+                continue
             m = pattern.search(clean)
             if m:
                 term_detected = rule.positive_term if is_positive else rule.negative_term

@@ -665,9 +665,14 @@ def main(args: Sequence[str] | None = None) -> int:
                         if ti.next_anchor_year is not None
                         else "None"
                     )
-                    print(
-                        f"Temporal:  {ti.temporal_status.value} (Anchors: Prev={prev_str}, Next={next_str})"
-                    )
+                    if getattr(ti, "requested_years", None) and len(ti.requested_years) > 1:
+                        print(
+                            f"Temporal:  {ti.temporal_status.value} (Observed: {ti.observed_years}, Unobserved: {ti.unobserved_years})"
+                        )
+                    else:
+                        print(
+                            f"Temporal:  {ti.temporal_status.value} (Anchors: Prev={prev_str}, Next={next_str})"
+                        )
                     if ti.disclaimer:
                         print(f"Notice:    {ti.disclaimer}")
                 else:
@@ -676,7 +681,17 @@ def main(args: Sequence[str] | None = None) -> int:
                 country_name = res.applied_filters.country_name or "N/A"
                 country_code = res.applied_filters.country_code or "N/A"
                 print(f"Country:   {country_name} ({country_code})")
-                print(f"Year:      {res.applied_filters.year or 'N/A'}")
+                af = res.applied_filters
+                if af.time_mode == "RANGE" and len(af.years) > 1:
+                    years_csv = ", ".join(str(y) for y in af.years)
+                    print(f"Year:      {af.years[0]}-{af.years[-1]} [{years_csv}] (Mode: RANGE)")
+                elif af.time_mode == "LIST" and len(af.years) > 1:
+                    years_csv = ", ".join(str(y) for y in af.years)
+                    print(f"Year:      [{years_csv}] (Mode: LIST)")
+                elif af.time_mode == "RELATIVE_WINDOW" and af.relative_window_size:
+                    print(f"Year:      Últimos {af.relative_window_size} años (Mode: RELATIVE_WINDOW)")
+                else:
+                    print(f"Year:      {af.year or 'N/A'}")
 
                 facets_str = (
                     ", ".join(f"{k}={v}" for k, v in res.applied_filters.facets.items())
@@ -717,17 +732,32 @@ def main(args: Sequence[str] | None = None) -> int:
                     series = emp.get("series")
                     if series:
                         print(f"Empirical Series ({len(series)} observations):")
-                        print(f"  {'Year':<8} {'Value':<12} {'Unit'}")
-                        print(f"  {'-'*6} {'-'*10} {'-'*20}")
-                        for item in series:
-                            val_str = (
-                                f"{item['value']:g}"
-                                if isinstance(item["value"], (int, float))
-                                else str(item["value"])
-                            )
-                            print(
-                                f"  {item['year']:<8} {val_str:<12} {item.get('unit', '')}"
-                            )
+                        has_member_col = any(item.get("member") for item in series)
+                        if has_member_col:
+                            print(f"  {'Year':<8} {'Member / Group':<34} {'Value':<12} {'Unit'}")
+                            print(f"  {'-'*6} {'-'*32} {'-'*10} {'-'*20}")
+                            for item in series:
+                                val_str = (
+                                    f"{item['value']:g}"
+                                    if isinstance(item["value"], (int, float))
+                                    else str(item["value"])
+                                )
+                                member_str = str(item.get("member", ""))[:32]
+                                print(
+                                    f"  {item['year']:<8} {member_str:<34} {val_str:<12} {item.get('unit', '')}"
+                                )
+                        else:
+                            print(f"  {'Year':<8} {'Value':<12} {'Unit'}")
+                            print(f"  {'-'*6} {'-'*10} {'-'*20}")
+                            for item in series:
+                                val_str = (
+                                    f"{item['value']:g}"
+                                    if isinstance(item["value"], (int, float))
+                                    else str(item["value"])
+                                )
+                                print(
+                                    f"  {item['year']:<8} {val_str:<12} {item.get('unit', '')}"
+                                )
                     elif emp.get("observation_exists"):
                         print("Empirical Observation:")
                         val = emp.get("value")

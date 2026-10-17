@@ -255,9 +255,14 @@ class SemanticDataFetcher:
                 col_years = pd.to_numeric(filtered_df[year_col], errors="coerce")
                 filtered_df = filtered_df[col_years == target_year]
 
+        has_breakdown = any(
+            getattr(d, "is_breakdown", False)
+            for d in response.applied_filters.dimensions
+        )
+
         # 5. Format observation result
         if not filtered_df.empty:
-            if is_multi_year:
+            if is_multi_year or has_breakdown:
                 if year_col is not None and year_col in filtered_df.columns:
                     sorted_df = filtered_df.assign(
                         _sort_year=pd.to_numeric(
@@ -268,6 +273,20 @@ class SemanticDataFetcher:
                     )
                 else:
                     sorted_df = filtered_df
+
+                breakdown_cols: list[str] = []
+                for dim_filter in response.applied_filters.dimensions:
+                    if not getattr(dim_filter, "is_breakdown", False):
+                        continue
+                    for col in sorted_df.columns:
+                        cl = col.lower()
+                        dl = dim_filter.dim_name.lower()
+                        if cl == dl or cl.replace("__estandar", "") == dl.replace("__estandar", ""):
+                            breakdown_cols.append(col)
+                            break
+                        if dim_filter.dim_id is not None and col == f"dim_{dim_filter.dim_id}":
+                            breakdown_cols.append(col)
+                            break
 
                 series: list[dict[str, Any]] = []
                 for _, row in sorted_df.iterrows():
@@ -304,12 +323,22 @@ class SemanticDataFetcher:
                             row_notes = str(row[n_col])
                             break
 
-                    series.append({
+                    item_dict: dict[str, Any] = {
                         "year": row_year,
                         "value": val,
                         "unit": response.selected_candidate.unit,
                         "notes": row_notes,
-                    })
+                    }
+                    if breakdown_cols:
+                        member_parts = [
+                            str(row[bc]).strip()
+                            for bc in breakdown_cols
+                            if bc in row and not pd.isna(row[bc])
+                        ]
+                        if member_parts:
+                            item_dict["member"] = " / ".join(member_parts)
+
+                    series.append(item_dict)
 
                 if not series:
                     payload = {

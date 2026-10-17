@@ -57,9 +57,18 @@ class SemanticResolutionEngine:
             facets=intent.facets,
         )
 
+        if intent.time_mode == "RANGE" and len(intent.years) > 1:
+            time_trace_str = f"Years: {intent.years[0]}-{intent.years[-1]} ({intent.years}, Mode: RANGE)"
+        elif intent.time_mode == "LIST" and len(intent.years) > 1:
+            time_trace_str = f"Years: {intent.years} (Mode: LIST)"
+        elif intent.time_mode == "RELATIVE_WINDOW" and intent.relative_window_size:
+            time_trace_str = f"Window: últimos {intent.relative_window_size} años (Mode: RELATIVE_WINDOW)"
+        else:
+            time_trace_str = f"Year: {intent.year or 'N/A'}"
+
         trace: list[str] = [
             f"[Stage 1: Intent Parsing] Query: '{query_str}'",
-            f"  - Geography: {intent.country_name or 'N/A'} ({intent.country_code or 'N/A'}), Year: {intent.year or 'N/A'}, Freq: {getattr(intent, 'frequency', 'ANUAL')}",
+            f"  - Geography: {intent.country_name or 'N/A'} ({intent.country_code or 'N/A'}), {time_trace_str}, Freq: {getattr(intent, 'frequency', 'ANUAL')}",
             f"  - Root Concept: '{intent.root_concept or 'None'}'",
             f"  - Normalized Facets: {intent.facets if intent.facets else 'None'}",
         ]
@@ -395,7 +404,64 @@ class SemanticResolutionEngine:
         temporal_info: TemporalAnchorInfo | None = None
         status = ResolutionStatus.RESOLVED
 
-        if intent.country_code and intent.year:
+        if intent.country_code and len(intent.years) > 1:
+            observed_years: list[int] = []
+            unobserved_years: list[int] = []
+            prev_anchor_first: int | None = None
+            next_anchor_last: int | None = None
+
+            for y in intent.years:
+                t_st, p_a, n_a = self.registry.check_temporal_availability(
+                    target_indicator_id,
+                    intent.country_code,
+                    y,
+                )
+                if t_st == TemporalAvailabilityStatus.OBSERVATION_EXISTING:
+                    observed_years.append(y)
+                else:
+                    unobserved_years.append(y)
+                    if prev_anchor_first is None and p_a is not None:
+                        prev_anchor_first = p_a
+                    if n_a is not None:
+                        next_anchor_last = n_a
+
+            if unobserved_years:
+                overall_temp_status = TemporalAvailabilityStatus.PERIOD_UNOBSERVED
+                status = ResolutionStatus.RESOLVED_WITH_ANCHORS
+                trace.append(
+                    f"[Stage 5: Temporal Audit] Country={intent.country_code}, Years={intent.years} (Mode: {intent.time_mode}) -> Status={overall_temp_status.value} (Observed: {observed_years}, Unobserved: {unobserved_years})"
+                )
+                trace.append(
+                    f"  - Sampling notice: Gaps in survey schedule for {intent.country_name} in years {unobserved_years}. Observed years in range: {observed_years}. Interpolation strictly forbidden."
+                )
+                temporal_info = TemporalAnchorInfo(
+                    requested_year=intent.year or intent.years[-1],
+                    requested_years=list(intent.years),
+                    observed_years=observed_years,
+                    unobserved_years=unobserved_years,
+                    temporal_status=overall_temp_status,
+                    previous_anchor_year=prev_anchor_first,
+                    next_anchor_year=next_anchor_last,
+                    forbid_interpolation=True,
+                    disclaimer=(
+                        f"En {intent.country_name} la serie solicitada ({intent.years[0]}-{intent.years[-1]}) presenta años sin medición muestral: {unobserved_years}. "
+                        f"Años con observación oficial en el rango: {observed_years}. Se prohíbe la interpolación."
+                    ),
+                )
+            else:
+                overall_temp_status = TemporalAvailabilityStatus.OBSERVATION_EXISTING
+                trace.append(
+                    f"[Stage 5: Temporal Audit] Country={intent.country_code}, Years={intent.years} (Mode: {intent.time_mode}) -> Status={overall_temp_status.value} (Observed: {observed_years}, Unobserved: [])"
+                )
+                temporal_info = TemporalAnchorInfo(
+                    requested_year=intent.year or intent.years[-1],
+                    requested_years=list(intent.years),
+                    observed_years=observed_years,
+                    unobserved_years=[],
+                    temporal_status=overall_temp_status,
+                    forbid_interpolation=True,
+                )
+        elif intent.country_code and intent.year:
             temp_status, prev_anchor, next_anchor = self.registry.check_temporal_availability(
                 target_indicator_id,
                 intent.country_code,
@@ -408,6 +474,9 @@ class SemanticResolutionEngine:
                 trace.append(f"  - Sampling notice: Gap in survey schedule for {intent.country_name} in {intent.year}. Interpolation strictly forbidden.")
                 temporal_info = TemporalAnchorInfo(
                     requested_year=intent.year,
+                    requested_years=[intent.year],
+                    observed_years=[],
+                    unobserved_years=[intent.year],
                     temporal_status=temp_status,
                     previous_anchor_year=prev_anchor,
                     next_anchor_year=next_anchor,
@@ -420,6 +489,9 @@ class SemanticResolutionEngine:
             else:
                 temporal_info = TemporalAnchorInfo(
                     requested_year=intent.year,
+                    requested_years=[intent.year],
+                    observed_years=[intent.year],
+                    unobserved_years=[],
                     temporal_status=temp_status,
                     forbid_interpolation=True,
                 )

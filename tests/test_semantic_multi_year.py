@@ -175,3 +175,55 @@ def test_fetcher_extracts_relative_window_series():
     assert [s["year"] for s in payload["series"]] == [2021, 2022, 2023]
 
 
+def test_engine_resolves_multi_year_range_in_trace_and_stage5_audit():
+    from statscepal.semantic.engine import SemanticResolutionEngine
+
+    engine = SemanticResolutionEngine()
+    res = engine.resolve("cual es la pobreza extrema etnica en el peru de 2019 al 2021")
+
+    assert res.status == ResolutionStatus.RESOLVED
+    assert res.selected_candidate is not None
+    assert res.selected_candidate.indicator_id == 3342
+    assert res.applied_filters.time_mode == "RANGE"
+    assert res.applied_filters.years == [2019, 2020, 2021]
+
+    assert res.temporal_info is not None
+    assert res.temporal_info.requested_years == [2019, 2020, 2021]
+    assert res.temporal_info.observed_years == [2019, 2020, 2021]
+    assert res.temporal_info.unobserved_years == []
+
+    trace_text = "\n".join(res.execution_trace)
+    assert "2019-2021" in trace_text
+    assert "Mode: RANGE" in trace_text
+    assert "Years=[2019, 2020, 2021]" in trace_text
+    assert "Year: 2021," not in trace_text
+    assert "Year=2021 ->" not in trace_text
+
+
+def test_engine_multi_year_range_with_survey_gaps_reports_observed_and_unobserved_years():
+    from statscepal.semantic.engine import SemanticResolutionEngine
+
+    engine = SemanticResolutionEngine()
+    res = engine.resolve("tasa de pobreza en chile de 2019 al 2022")
+
+    assert res.status == ResolutionStatus.RESOLVED_WITH_ANCHORS
+    assert res.temporal_info is not None
+    assert res.temporal_info.requested_years == [2019, 2020, 2021, 2022]
+    assert 2020 in res.temporal_info.observed_years
+    assert 2022 in res.temporal_info.observed_years
+    assert 2021 in res.temporal_info.unobserved_years
+    assert "2021" in res.temporal_info.disclaimer
+
+
+def test_cli_displays_multi_year_range_and_breakdown_series(capsys):
+    from statscepal.cli import main
+
+    ret = main(["semantic", "resolve", "cual es la pobreza extrema etnica en el peru de 2019 al 2021", "--explain"])
+    assert ret == 0
+    out = capsys.readouterr().out
+    assert "2019-2021" in out
+    assert "RANGE" in out
+    assert "2019, 2020, 2021" in out
+    assert "Years=[2019, 2020, 2021]" in out
+
+

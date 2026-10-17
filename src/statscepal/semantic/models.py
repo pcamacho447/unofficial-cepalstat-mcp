@@ -103,6 +103,9 @@ class TemporalAnchorInfo(BaseModel):
     """Contextual anchor years for unobserved periods."""
 
     requested_year: int
+    requested_years: list[int] = Field(default_factory=list)
+    observed_years: list[int] = Field(default_factory=list)
+    unobserved_years: list[int] = Field(default_factory=list)
     temporal_status: TemporalAvailabilityStatus
     previous_anchor_year: int | None = None
     previous_anchor_value: float | None = None
