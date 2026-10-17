@@ -289,3 +289,25 @@ def test_fetcher_and_cli_support_multi_country_extraction(capsys):
     assert {item["country"] for item in payload["series"]} == {"PER", "COL", "CHL"}
 
 
+def test_stage5_populates_per_country_anchors_and_explicit_disclaimer():
+    from statscepal.semantic.engine import SemanticResolutionEngine
+
+    engine = SemanticResolutionEngine()
+    res = engine.resolve("tasa de pobreza en peru colombia y chile en el 2021")
+
+    assert res.status == ResolutionStatus.RESOLVED_WITH_ANCHORS
+    assert res.temporal_info is not None
+    assert "CHL" in res.temporal_info.country_anchors
+    chl_anchor = res.temporal_info.country_anchors["CHL"]
+    assert chl_anchor.country_code == "CHL"
+    assert chl_anchor.country_name == "Chile"
+    assert chl_anchor.unobserved_years == [2021]
+    assert chl_anchor.previous_anchor_year == 2020
+    assert chl_anchor.next_anchor_year == 2022
+
+    assert "2020" in res.temporal_info.disclaimer
+    assert "2022" in res.temporal_info.disclaimer
+    trace_str = "\n".join(res.execution_trace)
+    assert "Prev=2020, Next=2022" in trace_str
+
+

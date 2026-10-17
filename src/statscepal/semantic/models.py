@@ -101,6 +101,16 @@ class AppliedFilters(BaseModel):
     dimensions: list[AppliedDimensionFilter] = Field(default_factory=list)
 
 
+class CountryTemporalAnchor(BaseModel):
+    """Official adjacent survey anchor years for a specific country with unobserved periods."""
+
+    country_code: str
+    country_name: str | None = None
+    unobserved_years: list[int] = Field(default_factory=list)
+    previous_anchor_year: int | None = None
+    next_anchor_year: int | None = None
+
+
 class TemporalAnchorInfo(BaseModel):
     """Contextual anchor years for unobserved periods."""
 
@@ -111,6 +121,7 @@ class TemporalAnchorInfo(BaseModel):
     requested_countries: list[str] = Field(default_factory=list)
     observed_countries: list[str] = Field(default_factory=list)
     unobserved_countries: list[str] = Field(default_factory=list)
+    country_anchors: dict[str, CountryTemporalAnchor] = Field(default_factory=dict)
     temporal_status: TemporalAvailabilityStatus
     previous_anchor_year: int | None = None
     previous_anchor_value: float | None = None

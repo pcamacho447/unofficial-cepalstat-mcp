@@ -4,6 +4,7 @@ import time
 from statscepal.semantic.models import (
     AlternativeCandidate,
     AppliedFilters,
+    CountryTemporalAnchor,
     RelationshipType,
     ResolutionStatus,
     SelectedCandidate,
@@ -419,11 +420,16 @@ class SemanticResolutionEngine:
             unobserved_countries: list[str] = []
             observed_years_set: set[int] = set()
             unobserved_years_set: set[int] = set()
+            country_anchors: dict[str, CountryTemporalAnchor] = {}
+            country_name_map = dict(zip(intent.country_codes, intent.country_names))
             prev_anchor_first: int | None = None
             next_anchor_last: int | None = None
 
             for c_code in intent.country_codes:
-                c_has_gap = False
+                c_name = country_name_map.get(c_code, c_code)
+                c_unobserved_years: list[int] = []
+                c_prev: int | None = None
+                c_next: int | None = None
                 for y in target_years:
                     t_st, p_a, n_a = self.registry.check_temporal_availability(
                         target_indicator_id,
@@ -433,13 +439,24 @@ class SemanticResolutionEngine:
                     if t_st == TemporalAvailabilityStatus.OBSERVATION_EXISTING:
                         observed_years_set.add(y)
                     else:
-                        c_has_gap = True
+                        c_unobserved_years.append(y)
                         unobserved_years_set.add(y)
+                        if c_prev is None and p_a is not None:
+                            c_prev = p_a
+                        if n_a is not None:
+                            c_next = n_a
                         if prev_anchor_first is None and p_a is not None:
                             prev_anchor_first = p_a
                         if n_a is not None:
                             next_anchor_last = n_a
-                if c_has_gap:
+                if c_unobserved_years:
+                    country_anchors[c_code] = CountryTemporalAnchor(
+                        country_code=c_code,
+                        country_name=c_name,
+                        unobserved_years=c_unobserved_years,
+                        previous_anchor_year=c_prev,
+                        next_anchor_year=c_next,
+                    )
                     unobserved_countries.append(c_code)
                 else:
                     observed_countries.append(c_code)
@@ -450,11 +467,15 @@ class SemanticResolutionEngine:
             if unobserved_countries:
                 overall_temp_status = TemporalAvailabilityStatus.PERIOD_UNOBSERVED
                 status = ResolutionStatus.RESOLVED_WITH_ANCHORS
+                anchor_details = [
+                    f"{ca.country_name or ca.country_code} sin medición en {ca.unobserved_years} (Puntos ancla oficiales disponibles: {ca.previous_anchor_year} y {ca.next_anchor_year})"
+                    for ca in country_anchors.values()
+                ]
                 trace.append(
-                    f"[Stage 5: Temporal Audit] Countries={intent.country_codes}, Years={target_years} -> Status={overall_temp_status.value} (Observed Countries: {observed_countries}, Unobserved Countries: {unobserved_countries})"
+                    f"[Stage 5: Temporal Audit] Countries={intent.country_codes}, Years={target_years} -> Status={overall_temp_status.value} (Observed Countries: {observed_countries}, Unobserved Countries: {unobserved_countries}) (Anchors: Prev={prev_anchor_first}, Next={next_anchor_last})"
                 )
                 trace.append(
-                    f"  - Sampling notice: Gaps in survey schedule for countries {unobserved_countries} in years {unobs_years_sorted}. Interpolation strictly forbidden."
+                    f"  - Sampling notice: Gaps in survey schedule for countries {unobserved_countries} in years {unobs_years_sorted}. {'; '.join(anchor_details)}. Interpolation strictly forbidden."
                 )
                 temporal_info = TemporalAnchorInfo(
                     requested_year=intent.year or target_years[-1],
@@ -464,12 +485,13 @@ class SemanticResolutionEngine:
                     requested_countries=list(intent.country_codes),
                     observed_countries=observed_countries,
                     unobserved_countries=unobserved_countries,
+                    country_anchors=country_anchors,
                     temporal_status=overall_temp_status,
                     previous_anchor_year=prev_anchor_first,
                     next_anchor_year=next_anchor_last,
                     forbid_interpolation=True,
                     disclaimer=(
-                        f"Entre los países solicitados ({', '.join(intent.country_names)}), presentan brechas de medición muestral: {unobserved_countries} en {unobs_years_sorted}. "
+                        f"Entre los países solicitados ({', '.join(intent.country_names)}), presentan brechas de medición muestral: {'; '.join(anchor_details)}. "
                         f"Países con cobertura completa en el período: {observed_countries}. Se prohíbe la interpolación."
                     ),
                 )
@@ -486,6 +508,7 @@ class SemanticResolutionEngine:
                     requested_countries=list(intent.country_codes),
                     observed_countries=observed_countries,
                     unobserved_countries=[],
+                    country_anchors={},
                     temporal_status=overall_temp_status,
                     forbid_interpolation=True,
                 )
@@ -519,6 +542,15 @@ class SemanticResolutionEngine:
                 trace.append(
                     f"  - Sampling notice: Gaps in survey schedule for {intent.country_name} in years {unobserved_years}. Observed years in range: {observed_years}. Interpolation strictly forbidden."
                 )
+                c_anchors = {
+                    intent.country_code: CountryTemporalAnchor(
+                        country_code=intent.country_code,
+                        country_name=intent.country_name,
+                        unobserved_years=unobserved_years,
+                        previous_anchor_year=prev_anchor_first,
+                        next_anchor_year=next_anchor_last,
+                    )
+                }
                 temporal_info = TemporalAnchorInfo(
                     requested_year=intent.year or intent.years[-1],
                     requested_years=list(intent.years),
@@ -527,6 +559,7 @@ class SemanticResolutionEngine:
                     requested_countries=[intent.country_code],
                     observed_countries=[intent.country_code] if observed_years else [],
                     unobserved_countries=[intent.country_code],
+                    country_anchors=c_anchors,
                     temporal_status=overall_temp_status,
                     previous_anchor_year=prev_anchor_first,
                     next_anchor_year=next_anchor_last,
@@ -549,6 +582,7 @@ class SemanticResolutionEngine:
                     requested_countries=[intent.country_code],
                     observed_countries=[intent.country_code],
                     unobserved_countries=[],
+                    country_anchors={},
                     temporal_status=overall_temp_status,
                     forbid_interpolation=True,
                 )
@@ -563,6 +597,15 @@ class SemanticResolutionEngine:
             if temp_status == TemporalAvailabilityStatus.PERIOD_UNOBSERVED:
                 status = ResolutionStatus.RESOLVED_WITH_ANCHORS
                 trace.append(f"  - Sampling notice: Gap in survey schedule for {intent.country_name} in {intent.year}. Interpolation strictly forbidden.")
+                c_anchors = {
+                    intent.country_code: CountryTemporalAnchor(
+                        country_code=intent.country_code,
+                        country_name=intent.country_name,
+                        unobserved_years=[intent.year],
+                        previous_anchor_year=prev_anchor,
+                        next_anchor_year=next_anchor,
+                    )
+                }
                 temporal_info = TemporalAnchorInfo(
                     requested_year=intent.year,
                     requested_years=[intent.year],
@@ -571,6 +614,7 @@ class SemanticResolutionEngine:
                     requested_countries=[intent.country_code],
                     observed_countries=[],
                     unobserved_countries=[intent.country_code],
+                    country_anchors=c_anchors,
                     temporal_status=temp_status,
                     previous_anchor_year=prev_anchor,
                     next_anchor_year=next_anchor,
@@ -589,6 +633,7 @@ class SemanticResolutionEngine:
                     requested_countries=[intent.country_code],
                     observed_countries=[intent.country_code],
                     unobserved_countries=[],
+                    country_anchors={},
                     temporal_status=temp_status,
                     forbid_interpolation=True,
                 )
