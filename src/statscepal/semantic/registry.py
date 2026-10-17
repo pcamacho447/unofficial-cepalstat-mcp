@@ -798,21 +798,21 @@ LEGACY_50_CANONICAL_DEFAULTS: dict[str, int] = {
 
 CONCEPT_CANONICAL_DEFAULTS = OFFICIAL_25_CANONICAL_DEFAULTS
 
+BADEHOG_SURVEY_INDICATORS: tuple[int, ...] = (
+    3328,
+    3329,
+    3330,
+    3339,
+    3340,
+    3341,
+    3342,
+    3345,
+    3289,
+)
+
 # Empirical observation availability for country x year x indicator
 # Maps (indicator_id, country_code, year) -> (status, prev_anchor, next_anchor)
 TEMPORAL_AVAILABILITY_MATRIX: dict[tuple[int, str, int], tuple[TemporalAvailabilityStatus, int | None, int | None]] = {
-    # Chile (CASEN is biennial/triennial)
-    (3328, "CHL", 2020): (TemporalAvailabilityStatus.OBSERVATION_EXISTING, None, None),
-    (3328, "CHL", 2021): (TemporalAvailabilityStatus.PERIOD_UNOBSERVED, 2020, 2022),
-    (3328, "CHL", 2022): (TemporalAvailabilityStatus.OBSERVATION_EXISTING, None, None),
-    (3341, "CHL", 2022): (TemporalAvailabilityStatus.OBSERVATION_EXISTING, None, None),
-    # Mexico (ENIGH is biennial in even years)
-    (3328, "MEX", 2020): (TemporalAvailabilityStatus.OBSERVATION_EXISTING, None, None),
-    (3328, "MEX", 2021): (TemporalAvailabilityStatus.PERIOD_UNOBSERVED, 2020, 2022),
-    (3328, "MEX", 2022): (TemporalAvailabilityStatus.OBSERVATION_EXISTING, None, None),
-    # Brazil (PNADC is continuous annual)
-    (3328, "BRA", 2021): (TemporalAvailabilityStatus.OBSERVATION_EXISTING, None, None),
-    (3341, "BRA", 2021): (TemporalAvailabilityStatus.OBSERVATION_EXISTING, None, None),
     # Colombia (GEIH continuous)
     (127, "COL", 2021): (TemporalAvailabilityStatus.OBSERVATION_EXISTING, None, None),
     (5097, "COL", 2021): (TemporalAvailabilityStatus.OBSERVATION_EXISTING, None, None),
@@ -824,11 +824,58 @@ TEMPORAL_AVAILABILITY_MATRIX: dict[tuple[int, str, int], tuple[TemporalAvailabil
     (127, "ARG", 2021): (TemporalAvailabilityStatus.OBSERVATION_EXISTING, None, None),
     (127, "ARG", 2022): (TemporalAvailabilityStatus.OBSERVATION_EXISTING, None, None),
     (5097, "ARG", 2021): (TemporalAvailabilityStatus.OBSERVATION_EXISTING, None, None),
-    # Costa Rica
-    (3289, "CRI", 2022): (TemporalAvailabilityStatus.OBSERVATION_EXISTING, None, None),
-    # Peru
-    (3328, "PER", 2021): (TemporalAvailabilityStatus.OBSERVATION_EXISTING, None, None),
 }
+
+for _badehog_id in BADEHOG_SURVEY_INDICATORS:
+    # Chile (CASEN biennial/triennial: 2017, 2020, 2022; no 2021 survey)
+    TEMPORAL_AVAILABILITY_MATRIX[(_badehog_id, "CHL", 2020)] = (
+        TemporalAvailabilityStatus.OBSERVATION_EXISTING,
+        None,
+        None,
+    )
+    TEMPORAL_AVAILABILITY_MATRIX[(_badehog_id, "CHL", 2021)] = (
+        TemporalAvailabilityStatus.PERIOD_UNOBSERVED,
+        2020,
+        2022,
+    )
+    TEMPORAL_AVAILABILITY_MATRIX[(_badehog_id, "CHL", 2022)] = (
+        TemporalAvailabilityStatus.OBSERVATION_EXISTING,
+        None,
+        None,
+    )
+    # Mexico (ENIGH biennial even years: 2020, 2022; no 2021 survey)
+    TEMPORAL_AVAILABILITY_MATRIX[(_badehog_id, "MEX", 2020)] = (
+        TemporalAvailabilityStatus.OBSERVATION_EXISTING,
+        None,
+        None,
+    )
+    TEMPORAL_AVAILABILITY_MATRIX[(_badehog_id, "MEX", 2021)] = (
+        TemporalAvailabilityStatus.PERIOD_UNOBSERVED,
+        2020,
+        2022,
+    )
+    TEMPORAL_AVAILABILITY_MATRIX[(_badehog_id, "MEX", 2022)] = (
+        TemporalAvailabilityStatus.OBSERVATION_EXISTING,
+        None,
+        None,
+    )
+    # Continuous annual surveys (BRA, PER, CRI)
+    TEMPORAL_AVAILABILITY_MATRIX[(_badehog_id, "BRA", 2021)] = (
+        TemporalAvailabilityStatus.OBSERVATION_EXISTING,
+        None,
+        None,
+    )
+    TEMPORAL_AVAILABILITY_MATRIX[(_badehog_id, "PER", 2021)] = (
+        TemporalAvailabilityStatus.OBSERVATION_EXISTING,
+        None,
+        None,
+    )
+    TEMPORAL_AVAILABILITY_MATRIX[(_badehog_id, "CRI", 2022)] = (
+        TemporalAvailabilityStatus.OBSERVATION_EXISTING,
+        None,
+        None,
+    )
+
 
 
 def _normalize_temporal_status(status_raw: Any) -> TemporalAvailabilityStatus:

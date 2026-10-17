@@ -412,6 +412,56 @@ def test_cli_displays_per_country_anchors_and_rescued_fetch_rows(capsys):
     assert "[Ancla oficial para 2021]" in fetch_out
 
 
+def test_badehog_family_indicators_report_chile_2021_anchors_in_stage5():
+    """Verify swapped/breakdown household survey indicators (3342, 3341, 3329, 3289) detect Chile's 2021 CASEN gap in Stage 5."""
+    from statscepal.semantic.engine import SemanticResolutionEngine
+
+    engine = SemanticResolutionEngine()
+
+    for query, expected_id in [
+        ("pobreza indigena en chile en 2021", 3342),
+        ("pobreza infantil en chile en 2021", 3341),
+        ("brecha de pobreza en chile en 2021", 3329),
+        ("indice de gini en chile en 2021", 3289),
+    ]:
+        res = engine.resolve(query)
+        assert res.status == ResolutionStatus.RESOLVED_WITH_ANCHORS, f"Failed for {query}"
+        assert res.selected_candidate is not None
+        assert res.selected_candidate.indicator_id == expected_id
+        assert res.temporal_info is not None
+        assert res.temporal_info.previous_anchor_year == 2020
+        assert res.temporal_info.next_anchor_year == 2022
+        assert "CHL" in res.temporal_info.country_anchors
+
+
+def test_fetcher_dynamically_rescues_empirical_anchors_even_when_unindexed_in_stage5():
+    """Verify SemanticDataFetcher dynamically computes and rescues anchor years from the DataFrame if a country lacks data in requested year."""
+    import pandas as pd
+    from statscepal.semantic.engine import SemanticResolutionEngine
+    from statscepal.semantic.fetcher import SemanticDataFetcher
+
+    engine = SemanticResolutionEngine()
+    # Suppose Bolivia has an unindexed gap in 2021 in the empirical DataFrame (only 2020 and 2022 exist)
+    res = engine.resolve("pobreza indigena en bolivia en 2021")
+
+    mock_df = pd.DataFrame([
+        {"iso3": "BOL", "País__ESTANDAR": "Bolivia", "Años__ESTANDAR": 2020, "Tipo de etnia": "Indígena", "Área geográfica": "Nacional", "Pobreza extrema y pobreza": "Pobreza", "Sexo__ESTANDAR": "Ambos sexos", "value": 48.5, "notes_ids": ""},
+        {"iso3": "BOL", "País__ESTANDAR": "Bolivia", "Años__ESTANDAR": 2022, "Tipo de etnia": "Indígena", "Área geográfica": "Nacional", "Pobreza extrema y pobreza": "Pobreza", "Sexo__ESTANDAR": "Ambos sexos", "value": 44.1, "notes_ids": ""},
+    ])
+
+    fetcher = SemanticDataFetcher()
+    fetcher._load_indicator_data = lambda ind_id, member_ids=None: mock_df
+
+    payload = fetcher.fetch_resolved_data(res)
+    assert payload["observation_exists"] is True
+    series = payload.get("series", [])
+    assert len(series) == 2
+    assert [r["year"] for r in series] == [2020, 2022]
+    assert all(r["is_anchor"] is True for r in series)
+    assert all(r["anchor_for_years"] == [2021] for r in series)
+
+
+
 
 
 

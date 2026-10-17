@@ -277,6 +277,14 @@ class SemanticDataFetcher:
         if response.applied_filters.country_code and response.applied_filters.country_name:
             code_by_name[_strip_accents(response.applied_filters.country_name).lower()] = response.applied_filters.country_code.upper()
             code_by_name[response.applied_filters.country_name.lower()] = response.applied_filters.country_code.upper()
+        for c in target_country_codes:
+            if c:
+                code_by_name[c.strip().lower()] = c.strip().upper()
+                code_by_name[c.strip().upper()] = c.strip().upper()
+        if response.applied_filters.country_code:
+            cc = response.applied_filters.country_code.strip().upper()
+            code_by_name[cc.lower()] = cc
+            code_by_name[cc] = cc
 
         country_anchor_map: dict[str, dict[int, list[int]]] = {}
         if response.temporal_info:
@@ -310,6 +318,16 @@ class SemanticDataFetcher:
                         country_anchor_map[primary_code][response.temporal_info.next_anchor_year] = unobs
 
         def _get_row_country_code(row: pd.Series) -> str | None:
+            for iso_col in ("iso3", "country_code"):
+                if iso_col in row and not pd.isna(row[iso_col]):
+                    iso_val = str(row[iso_col]).strip().upper()
+                    if iso_val in country_anchor_map:
+                        return iso_val
+                    if iso_val.lower() in code_by_name:
+                        return code_by_name[iso_val.lower()]
+                    for target_code in target_country_codes:
+                        if iso_val == target_code.strip().upper():
+                            return target_code.strip().upper()
             if country_col is not None and country_col in row and not pd.isna(row[country_col]):
                 c_val = str(row[country_col]).strip()
                 if c_val.upper() in country_anchor_map:
@@ -417,6 +435,73 @@ class SemanticDataFetcher:
             if target_years
             else ({target_year} if target_year is not None else set())
         )
+
+        # Dynamic empirical anchor discovery:
+        # If requested_year_set is non-empty and a requested country has no observations in
+        # requested_year_set within filtered_df, inspect filtered_df for available years.
+        if requested_year_set and not filtered_df.empty and year_col is not None:
+            candidate_countries: list[str] = []
+            if target_country_codes:
+                candidate_countries = [c.strip().upper() for c in target_country_codes if c]
+            elif response.applied_filters.country_code:
+                candidate_countries = [response.applied_filters.country_code.strip().upper()]
+            elif response.applied_filters.country_name:
+                norm_name = _strip_accents(response.applied_filters.country_name).lower()
+                if norm_name in code_by_name:
+                    candidate_countries = [code_by_name[norm_name]]
+
+            for c_code in candidate_countries:
+                if c_code in country_anchor_map and country_anchor_map[c_code]:
+                    continue
+
+                if is_multi_country:
+                    country_rows = [
+                        idx for idx, row in filtered_df.iterrows()
+                        if _get_row_country_code(row) == c_code
+                    ]
+                    country_df = filtered_df.loc[country_rows]
+                else:
+                    country_df = filtered_df
+
+                if country_df.empty:
+                    continue
+
+                val_df = country_df
+                if "value" in val_df.columns:
+                    val_num = pd.to_numeric(val_df["value"], errors="coerce")
+                    valid_rows = val_df[val_num.notna()]
+                    if not valid_rows.empty:
+                        val_df = valid_rows
+
+                num_years = (
+                    pd.to_numeric(val_df[year_col], errors="coerce")
+                    .dropna()
+                    .astype(int)
+                )
+                avail_years = set(num_years.unique())
+                observed_requested = avail_years.intersection(requested_year_set)
+
+                if not observed_requested and avail_years:
+                    for req_y in sorted(requested_year_set):
+                        prev_anchor = max((y for y in avail_years if y < req_y), default=None)
+                        next_anchor = min((y for y in avail_years if y > req_y), default=None)
+                        if prev_anchor is not None or next_anchor is not None:
+                            if c_code not in country_anchor_map:
+                                country_anchor_map[c_code] = {}
+                            if prev_anchor is not None:
+                                country_anchor_map[c_code].setdefault(prev_anchor, [])
+                                if req_y not in country_anchor_map[c_code][prev_anchor]:
+                                    country_anchor_map[c_code][prev_anchor].append(req_y)
+                            if next_anchor is not None:
+                                country_anchor_map[c_code].setdefault(next_anchor, [])
+                                if req_y not in country_anchor_map[c_code][next_anchor]:
+                                    country_anchor_map[c_code][next_anchor].append(req_y)
+
+                            if country_col is not None and country_col in country_df.columns:
+                                for c_val in country_df[country_col].dropna().unique():
+                                    c_str = str(c_val).strip()
+                                    code_by_name[_strip_accents(c_str).lower()] = c_code
+                                    code_by_name[c_str.lower()] = c_code
 
         # 4. Filter by temporal constraints
         if not filtered_df.empty and year_col is not None:
