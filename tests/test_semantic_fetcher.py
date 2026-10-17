@@ -236,3 +236,67 @@ def test_semantic_data_fetcher_uses_fetch_indicator_dataframe_if_present():
     assert payload["observation_exists"] is True
     assert payload["value"] == 10.5
 
+
+def test_fetcher_collapses_unconstrained_dataframe_dimensions_to_aggregate_members():
+    """Verify that unbound DataFrame dimensions (e.g. Sexo__ESTANDAR in 3342 or Sexo jefatura in 3345) filter to aggregate instead of duplicating rows."""
+    import pandas as pd
+    from statscepal.semantic.engine import SemanticResolutionEngine
+    from statscepal.semantic.fetcher import SemanticDataFetcher
+
+    engine = SemanticResolutionEngine()
+    # Query specifies etnia=INDIGENA, area=NACIONAL, severidad=POBREZA_TOTAL, but leaves Sexo__ESTANDAR unspecified
+    res = engine.resolve("pobreza indigena en peru de 2020 al 2021")
+
+    mock_df = pd.DataFrame([
+        {"iso3": "PER", "País__ESTANDAR": "Perú", "Años__ESTANDAR": 2020, "Tipo de etnia": "Indígena", "Área geográfica": "Nacional", "Pobreza extrema y pobreza": "Pobreza", "Sexo__ESTANDAR": "Hombres", "value": 24.1, "notes_ids": ""},
+        {"iso3": "PER", "País__ESTANDAR": "Perú", "Años__ESTANDAR": 2020, "Tipo de etnia": "Indígena", "Área geográfica": "Nacional", "Pobreza extrema y pobreza": "Pobreza", "Sexo__ESTANDAR": "Mujeres", "value": 26.3, "notes_ids": ""},
+        {"iso3": "PER", "País__ESTANDAR": "Perú", "Años__ESTANDAR": 2020, "Tipo de etnia": "Indígena", "Área geográfica": "Nacional", "Pobreza extrema y pobreza": "Pobreza", "Sexo__ESTANDAR": "Ambos sexos", "value": 25.2, "notes_ids": ""},
+        {"iso3": "PER", "País__ESTANDAR": "Perú", "Años__ESTANDAR": 2021, "Tipo de etnia": "Indígena", "Área geográfica": "Nacional", "Pobreza extrema y pobreza": "Pobreza", "Sexo__ESTANDAR": "Hombres", "value": 20.0, "notes_ids": ""},
+        {"iso3": "PER", "País__ESTANDAR": "Perú", "Años__ESTANDAR": 2021, "Tipo de etnia": "Indígena", "Área geográfica": "Nacional", "Pobreza extrema y pobreza": "Pobreza", "Sexo__ESTANDAR": "Mujeres", "value": 22.0, "notes_ids": ""},
+        {"iso3": "PER", "País__ESTANDAR": "Perú", "Años__ESTANDAR": 2021, "Tipo de etnia": "Indígena", "Área geográfica": "Nacional", "Pobreza extrema y pobreza": "Pobreza", "Sexo__ESTANDAR": "Ambos sexos", "value": 21.0, "notes_ids": ""},
+    ])
+
+    fetcher = SemanticDataFetcher()
+    fetcher._load_indicator_data = lambda ind_id, member_ids=None: mock_df
+
+    payload = fetcher.fetch_resolved_data(res)
+    assert payload["observation_exists"] is True
+    series = payload["series"]
+    # Must contain exactly 1 row per year (Ambos sexos), NOT 3 rows per year
+    assert len(series) == 2
+    assert series[0]["year"] == 2020
+    assert series[0]["value"] == 25.2
+    assert series[1]["year"] == 2021
+    assert series[1]["value"] == 21.0
+
+
+def test_fetcher_multi_country_without_year_filters_to_latest_year_per_country():
+    """Verify multi-country query with no year specified returns only the latest available year per country."""
+    import pandas as pd
+    from statscepal.semantic.engine import SemanticResolutionEngine
+    from statscepal.semantic.fetcher import SemanticDataFetcher
+
+    engine = SemanticResolutionEngine()
+    res = engine.resolve("pobreza en peru y chile")
+
+    mock_df = pd.DataFrame([
+        {"iso3": "PER", "País__ESTANDAR": "Perú", "Años__ESTANDAR": 2019, "Área geográfica": "Nacional", "Tipo de pobreza": "Total pobreza", "value": 20.2, "notes_ids": ""},
+        {"iso3": "PER", "País__ESTANDAR": "Perú", "Años__ESTANDAR": 2022, "Área geográfica": "Nacional", "Tipo de pobreza": "Total pobreza", "value": 27.5, "notes_ids": ""},
+        {"iso3": "CHL", "País__ESTANDAR": "Chile", "Años__ESTANDAR": 2017, "Área geográfica": "Nacional", "Tipo de pobreza": "Total pobreza", "value": 10.7, "notes_ids": ""},
+        {"iso3": "CHL", "País__ESTANDAR": "Chile", "Años__ESTANDAR": 2022, "Área geográfica": "Nacional", "Tipo de pobreza": "Total pobreza", "value": 6.5, "notes_ids": ""},
+    ])
+
+    fetcher = SemanticDataFetcher()
+    fetcher._load_indicator_data = lambda ind_id, member_ids=None: mock_df
+
+    payload = fetcher.fetch_resolved_data(res)
+    assert payload["observation_exists"] is True
+    series = payload["series"]
+    assert len(series) == 2
+    by_country = {item["country"]: item for item in series}
+    assert by_country["Perú"]["year"] == 2022
+    assert by_country["Perú"]["value"] == 27.5
+    assert by_country["Chile"]["year"] == 2022
+    assert by_country["Chile"]["value"] == 6.5
+
+

@@ -18,6 +18,53 @@ def _strip_accents(text: str) -> str:
 class SemanticDataFetcher:
     """Bridges resolved semantic queries to concrete CEPALSTAT data extraction."""
 
+    _STRUCTURAL_AND_META_COLS: frozenset[str] = frozenset({
+        "value",
+        "source_id",
+        "notes_ids",
+        "notes",
+        "notas",
+        "notes_id",
+        "iso3",
+        "country",
+        "country_code",
+        "country_name",
+        "pais",
+        "país",
+        "pais__estandar",
+        "país__estandar",
+        "year",
+        "ano",
+        "anio",
+        "anios",
+        "anos",
+        "anios__estandar",
+        "anos__estandar",
+        "period",
+        "periodo",
+        "record_id",
+        "indicator_id",
+        "id_indicador",
+        "indicador",
+        "unit",
+        "unidad",
+    })
+
+    _AGGREGATE_MEMBER_PRIORITY: tuple[str, ...] = (
+        "total",
+        "ambos sexos",
+        "jefe ambos sexos",
+        "nacional",
+        "total nacional",
+        "total pais",
+        "total del pais",
+        "total pobreza",
+        "pobreza",
+        "indice general",
+        "general",
+        "todas las edades",
+    )
+
     def __init__(
         self,
         extractor: DataExtractor | None = None,
@@ -46,6 +93,53 @@ class SemanticDataFetcher:
             if (df is None or df.empty) and member_ids:
                 df = self.extractor.get_dataframe(indicator_id, members=None)
         return df
+
+    def _filter_unconstrained_dimensions(
+        self,
+        df: pd.DataFrame,
+        filtered_dim_cols: set[str],
+        country_col: str | None,
+        year_col: str | None,
+    ) -> pd.DataFrame:
+        """Collapse any non-structural DataFrame dimension column not in filtered_dim_cols to its aggregate member."""
+        if df.empty:
+            return df
+        result = df
+        norm_filtered_cols = {_strip_accents(c).lower() for c in filtered_dim_cols}
+        norm_country_col = _strip_accents(country_col).lower() if country_col else None
+        norm_year_col = _strip_accents(year_col).lower() if year_col else None
+
+        for col in list(result.columns):
+            if (
+                col in filtered_dim_cols
+                or col == country_col
+                or col == year_col
+            ):
+                continue
+            cl = _strip_accents(col).lower()
+            if (
+                cl in norm_filtered_cols
+                or cl == norm_country_col
+                or cl == norm_year_col
+                or cl in self._STRUCTURAL_AND_META_COLS
+            ):
+                continue
+            unique_vals = result[col].dropna().astype(str).str.strip().unique()
+            if len(unique_vals) <= 1:
+                continue
+            norm_to_raw = {_strip_accents(v).lower(): v for v in unique_vals}
+            chosen_raw: str | None = None
+            for agg_pat in self._AGGREGATE_MEMBER_PRIORITY:
+                if agg_pat in norm_to_raw:
+                    chosen_raw = norm_to_raw[agg_pat]
+                    break
+            if chosen_raw is not None:
+                chosen_norm = _strip_accents(chosen_raw).lower()
+                result = result[
+                    result[col].astype(str).str.strip().map(lambda s: _strip_accents(s).lower())
+                    == chosen_norm
+                ]
+        return result
 
 
     def fetch_resolved_data(
@@ -94,6 +188,10 @@ class SemanticDataFetcher:
             time_mode in ("LIST", "RANGE", "RELATIVE_WINDOW")
             or len(target_years) > 1
         )
+        has_breakdown = any(
+            getattr(d, "is_breakdown", False)
+            for d in response.applied_filters.dimensions
+        )
 
         if df is None or df.empty:
             payload = {
@@ -125,20 +223,30 @@ class SemanticDataFetcher:
         is_multi_country = len(target_country_codes) > 1 or len(target_country_names) > 1
         country_col = None
         if target_country_names or target_country_codes:
-            for col in filtered_df.columns:
-                cl = col.lower()
-                if cl in (
-                    "country",
-                    "country_name",
-                    "país__estandar",
-                    "pais__estandar",
-                    "país",
-                    "pais",
-                    "iso3",
-                    "country_code",
-                ):
-                    country_col = col
+            for candidate in (
+                "país__estandar",
+                "pais__estandar",
+                "country_name",
+                "country",
+                "país",
+                "pais",
+            ):
+                for col in filtered_df.columns:
+                    if col.lower() == candidate:
+                        country_col = col
+                        break
+                if country_col is not None:
                     break
+
+            if country_col is None:
+                for candidate in ("iso3", "country_code"):
+                    for col in filtered_df.columns:
+                        if col.lower() == candidate:
+                            country_col = col
+                            break
+                    if country_col is not None:
+                        break
+
             if country_col is None:
                 for col in filtered_df.columns:
                     cl = col.lower()
@@ -221,14 +329,18 @@ class SemanticDataFetcher:
             return None
 
         # 2. Filter by resolved dimensions if specified
+        filtered_dim_cols: set[str] = set()
         if response.applied_filters.dimensions and not filtered_df.empty:
             for dim_filter in response.applied_filters.dimensions:
                 dim_col = None
                 for col in filtered_df.columns:
                     cl = col.lower()
                     dl = dim_filter.dim_name.lower()
-                    if cl == dl or cl.replace("__estandar", "") == dl.replace(
-                        "__estandar", ""
+                    if (
+                        cl == dl
+                        or cl.replace("__estandar", "") == dl.replace("__estandar", "")
+                        or _strip_accents(cl).replace("__estandar", "")
+                        == _strip_accents(dl).replace("__estandar", "")
                     ):
                         dim_col = col
                         break
@@ -237,6 +349,7 @@ class SemanticDataFetcher:
                         dim_col = f"dim_{dim_filter.dim_id}"
 
                 if dim_col is not None:
+                    filtered_dim_cols.add(dim_col)
                     dim_mask = pd.Series(False, index=filtered_df.index)
                     candidate_names = (
                         list(dim_filter.member_names)
@@ -293,6 +406,10 @@ class SemanticDataFetcher:
                 if "year" in cl or "anio" in cl or "ano" in cl or "period" in cl:
                     year_col = col
                     break
+
+        filtered_df = self._filter_unconstrained_dimensions(
+            filtered_df, filtered_dim_cols, country_col, year_col
+        )
 
         has_rescued_anchors = False
         requested_year_set: set[int] = (
@@ -355,11 +472,37 @@ class SemanticDataFetcher:
             elif target_year is not None:
                 col_years = pd.to_numeric(filtered_df[year_col], errors="coerce")
                 filtered_df = filtered_df[col_years == target_year]
-
-        has_breakdown = any(
-            getattr(d, "is_breakdown", False)
-            for d in response.applied_filters.dimensions
-        )
+            elif (
+                target_year is None
+                and not target_years
+                and time_mode == "SINGLE"
+                and (is_multi_country or has_breakdown)
+            ):
+                val_df = filtered_df
+                if "value" in val_df.columns:
+                    val_num = pd.to_numeric(val_df["value"], errors="coerce")
+                    valid_rows = val_df[val_num.notna()]
+                    if not valid_rows.empty:
+                        val_df = valid_rows
+                col_years = pd.to_numeric(val_df[year_col], errors="coerce")
+                if not col_years.dropna().empty:
+                    if (
+                        is_multi_country
+                        and country_col is not None
+                        and country_col in val_df.columns
+                    ):
+                        max_years_by_country = (
+                            val_df.assign(_num_year=col_years)
+                            .groupby(country_col)["_num_year"]
+                            .transform("max")
+                        )
+                        keep_indices = val_df.index[col_years == max_years_by_country]
+                        filtered_df = filtered_df.loc[filtered_df.index.isin(keep_indices)]
+                    else:
+                        max_y = col_years.max()
+                        if pd.notna(max_y):
+                            all_years = pd.to_numeric(filtered_df[year_col], errors="coerce")
+                            filtered_df = filtered_df[all_years == max_y]
 
         # 5. Format observation result
         if not filtered_df.empty:
