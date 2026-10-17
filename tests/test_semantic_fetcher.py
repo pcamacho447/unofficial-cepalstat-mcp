@@ -360,4 +360,72 @@ def test_fetcher_maps_synthetic_indicator_2928_to_real_cepalstat_2484():
     assert len(payload["series"]) == 2
 
 
+def test_fetcher_matches_un_formal_country_names_and_displays_human_country_column():
+    """Verify fetcher matches Bolivia (Estado Plurinacional de) via iso3/prefix and displays human country name over iso3."""
+    import pandas as pd
+    from statscepal.semantic.engine import SemanticResolutionEngine
+    from statscepal.semantic.fetcher import SemanticDataFetcher
+
+    engine = SemanticResolutionEngine()
+    res = engine.resolve("inflacion de alimentos en bolivia y chile del 2021 al 2022")
+
+    mock_df = pd.DataFrame([
+        {"iso3": "BOL", "Países_agregados regionales especiales VAR IPC": "Bolivia (Estado Plurinacional de)", "Años__ESTANDAR": 2021, "value": 0.9, "notes_ids": ""},
+        {"iso3": "BOL", "Países_agregados regionales especiales VAR IPC": "Bolivia (Estado Plurinacional de)", "Años__ESTANDAR": 2022, "value": 4.2, "notes_ids": ""},
+        {"iso3": "CHL", "Países_agregados regionales especiales VAR IPC": "Chile", "Años__ESTANDAR": 2021, "value": 5.7, "notes_ids": ""},
+        {"iso3": "CHL", "Países_agregados regionales especiales VAR IPC": "Chile", "Años__ESTANDAR": 2022, "value": 21.0, "notes_ids": ""},
+    ])
+
+    fetcher = SemanticDataFetcher()
+    fetcher._load_indicator_data = lambda ind_id, member_ids=None: mock_df
+
+    payload = fetcher.fetch_resolved_data(res)
+    assert payload["observation_exists"] is True
+    series = payload["series"]
+    assert len(series) == 4
+    countries = {r["country"] for r in series}
+    assert "Bolivia (Estado Plurinacional de)" in countries
+    assert "Chile" in countries
+
+
+def test_fetcher_parses_decada_column_as_temporal_dimension():
+    """Verify fetcher recognizes 'Década' column (e.g. 'Década 2010', 'Década 2020') as year_col and extracts numeric year."""
+    import pandas as pd
+    from statscepal.semantic.fetcher import SemanticDataFetcher
+    from statscepal.semantic.models import (
+        AppliedFilters,
+        ResolutionStatus,
+        SelectedCandidate,
+        SemanticResolutionResponse,
+    )
+
+    res = SemanticResolutionResponse(
+        status=ResolutionStatus.RESOLVED,
+        query="poblacion indigena en peru",
+        selected_candidate=SelectedCandidate(
+            indicator_id=4968,
+            name="Población Indígena y no indígena según área de residencia",
+            unit="personas",
+        ),
+        applied_filters=AppliedFilters(
+            country_code="PER",
+            country_name="Perú",
+        ),
+    )
+
+    mock_df = pd.DataFrame([
+        {"iso3": "PER", "País__ESTANDAR": "Perú", "Década": "Década 2010", "Area Geografica": "Total", "Condición Indígena": "Total", "value": 23820599.0, "notes_ids": ""},
+        {"iso3": "PER", "País__ESTANDAR": "Perú", "Década": "Década 2020", "Area Geografica": "Total", "Condición Indígena": "Total", "value": 26500000.0, "notes_ids": ""},
+    ])
+
+    fetcher = SemanticDataFetcher()
+    fetcher._load_indicator_data = lambda ind_id, member_ids=None: mock_df
+
+    payload = fetcher.fetch_resolved_data(res)
+    assert payload["observation_exists"] is True
+    assert payload["year"] == 2020
+    assert payload["value"] == 26500000.0
+
+
+
 

@@ -1,6 +1,7 @@
 """Empirical data fetcher for resolved CEPALSTAT semantic queries."""
 
 from typing import Any
+import re
 import unicodedata
 import pandas as pd
 
@@ -13,15 +14,43 @@ from statscepal.semantic.registry import (
 )
 
 
-
 def _strip_accents(text: str) -> str:
     """Normalize text by converting to lowercase, stripping whitespace and combining accents."""
     normalized = unicodedata.normalize("NFD", str(text).lower().strip())
     return "".join(c for c in normalized if unicodedata.category(c) != "Mn")
 
 
+def _extract_numeric_years(series: pd.Series) -> pd.Series:
+    """Convert a year or decade Series (e.g., 2020 or 'Década 2010') into numeric years."""
+    num = pd.to_numeric(series, errors="coerce")
+    if num.notna().any():
+        if num.isna().any():
+            extracted = series.astype(str).str.extract(r"(1\d{3}|20\d{2})", expand=False)
+            return num.combine_first(pd.to_numeric(extracted, errors="coerce"))
+        return num
+    extracted = series.astype(str).str.extract(r"(1\d{3}|20\d{2})", expand=False)
+    return pd.to_numeric(extracted, errors="coerce")
+
+
+def _extract_single_year(val: Any) -> int | None:
+    """Extract an integer year from a scalar value, string or decade text (e.g., 'Década 2010' -> 2010)."""
+    if val is None or pd.isna(val):
+        return None
+    try:
+        return int(float(str(val).split()[0]))
+    except (ValueError, TypeError):
+        pass
+    match = re.search(r"(1\d{3}|20\d{2})", str(val))
+    if match:
+        return int(match.group(1))
+    return None
+
+
 class SemanticDataFetcher:
     """Bridges resolved semantic queries to concrete CEPALSTAT data extraction."""
+
+    _extract_numeric_years = staticmethod(_extract_numeric_years)
+    _extract_single_year = staticmethod(_extract_single_year)
 
     _STRUCTURAL_AND_META_COLS: frozenset[str] = frozenset({
         "value",
@@ -47,6 +76,10 @@ class SemanticDataFetcher:
         "anos__estandar",
         "period",
         "periodo",
+        "decada",
+        "década",
+        "países_agregados regionales especiales var ipc",
+        "paises_agregados regionales especiales var ipc",
         "record_id",
         "indicator_id",
         "id_indicador",
@@ -68,6 +101,8 @@ class SemanticDataFetcher:
         "indice general",
         "general",
         "todas las edades",
+        "total quintiles",
+        "total deciles",
     )
 
     def __init__(
@@ -257,7 +292,7 @@ class SemanticDataFetcher:
                 "pais",
             ):
                 for col in filtered_df.columns:
-                    if col.lower() == candidate:
+                    if col.lower() == candidate or _strip_accents(col).lower() == candidate:
                         country_col = col
                         break
                 if country_col is not None:
@@ -281,18 +316,24 @@ class SemanticDataFetcher:
                     if country_col is not None:
                         break
 
+            mask = pd.Series(False, index=filtered_df.index)
             if country_col is not None:
-                mask = pd.Series(False, index=filtered_df.index)
                 col_str = filtered_df[country_col].astype(str).str.strip()
                 if target_country_names:
                     col_norm = col_str.map(_strip_accents)
                     for t_name in target_country_names:
                         norm_target_name = _strip_accents(t_name)
-                        mask |= (col_norm == norm_target_name)
+                        mask |= (col_norm == norm_target_name) | col_norm.str.startswith(norm_target_name + " (")
                 if target_country_codes:
                     col_upper = col_str.str.upper()
                     for t_code in target_country_codes:
                         mask |= (col_upper == t_code.strip().upper())
+            for iso_cand in ("iso3", "country_code"):
+                if iso_cand in filtered_df.columns and target_country_codes:
+                    iso_upper = filtered_df[iso_cand].astype(str).str.strip().str.upper()
+                    for t_code in target_country_codes:
+                        mask |= (iso_upper == t_code.strip().upper())
+            if country_col is not None or any(c in filtered_df.columns for c in ("iso3", "country_code")):
                 filtered_df = filtered_df[mask]
 
         # Build country lookup for mapping names and codes to standardized codes
@@ -312,6 +353,15 @@ class SemanticDataFetcher:
             cc = response.applied_filters.country_code.strip().upper()
             code_by_name[cc.lower()] = cc
             code_by_name[cc] = cc
+        if country_col is not None and country_col in filtered_df.columns:
+            for c_val in filtered_df[country_col].dropna().unique():
+                c_str = str(c_val).strip()
+                c_norm = _strip_accents(c_str).lower()
+                for target_code, target_name in zip(target_country_codes, target_country_names):
+                    norm_t_name = _strip_accents(target_name).lower()
+                    if c_norm == norm_t_name or c_norm.startswith(norm_t_name + " ("):
+                        code_by_name[c_norm] = target_code.strip().upper()
+                        code_by_name[c_str.lower()] = target_code.strip().upper()
 
         country_anchor_map: dict[str, dict[int, list[int]]] = {}
         if response.temporal_info:
@@ -364,6 +414,10 @@ class SemanticDataFetcher:
                     return code_by_name[c_norm]
                 if c_val.lower() in code_by_name:
                     return code_by_name[c_val.lower()]
+                for target_code, target_name in zip(target_country_codes, target_country_names):
+                    norm_t_name = _strip_accents(target_name).lower()
+                    if c_norm == norm_t_name or c_norm.startswith(norm_t_name + " ("):
+                        return target_code.strip().upper()
                 for target_code in target_country_codes:
                     if c_val.upper() == target_code.strip().upper():
                         return target_code.strip().upper()
@@ -431,7 +485,7 @@ class SemanticDataFetcher:
         # 3. Identify year column
         year_col = None
         for col in filtered_df.columns:
-            cl = col.lower().replace("ñ", "n")
+            cl = _strip_accents(col).lower().replace("ñ", "n")
             if cl in (
                 "year",
                 "ano",
@@ -442,13 +496,17 @@ class SemanticDataFetcher:
                 "periodo",
                 "anios",
                 "anos",
+                "decada",
             ):
                 year_col = col
                 break
         if year_col is None:
             for col in filtered_df.columns:
-                cl = col.lower().replace("ñ", "n")
-                if "year" in cl or "anio" in cl or "ano" in cl or "period" in cl:
+                cl = _strip_accents(col).lower().replace("ñ", "n")
+                if any(
+                    k in cl
+                    for k in ("year", "anio", "ano", "period", "decada")
+                ):
                     year_col = col
                     break
 
@@ -501,7 +559,7 @@ class SemanticDataFetcher:
                         val_df = valid_rows
 
                 num_years = (
-                    pd.to_numeric(val_df[year_col], errors="coerce")
+                    _extract_numeric_years(val_df[year_col])
                     .dropna()
                     .astype(int)
                 )
@@ -542,7 +600,7 @@ class SemanticDataFetcher:
                         val_df = valid_rows
 
                 num_years = (
-                    pd.to_numeric(val_df[year_col], errors="coerce")
+                    _extract_numeric_years(val_df[year_col])
                     .dropna()
                     .astype(int)
                 )
@@ -553,18 +611,16 @@ class SemanticDataFetcher:
                         if len(unique_years) > window_size
                         else unique_years
                     )
-                    col_years = pd.to_numeric(filtered_df[year_col], errors="coerce")
+                    col_years = _extract_numeric_years(filtered_df[year_col])
                     filtered_df = filtered_df[col_years.isin(selected_years)]
             elif country_anchor_map:
-                col_years = pd.to_numeric(filtered_df[year_col], errors="coerce")
+                col_years = _extract_numeric_years(filtered_df[year_col])
                 normal_mask = col_years.isin(requested_year_set)
 
                 anchor_indices = []
                 for idx, row in filtered_df.iterrows():
-                    ry_raw = row.get(year_col)
-                    try:
-                        ry_val = int(float(str(ry_raw).split()[0]))
-                    except (ValueError, TypeError):
+                    ry_val = _extract_single_year(row.get(year_col))
+                    if ry_val is None:
                         continue
 
                     row_c_code = _get_row_country_code(row)
@@ -579,10 +635,10 @@ class SemanticDataFetcher:
                 else:
                     filtered_df = filtered_df[normal_mask]
             elif target_years:
-                col_years = pd.to_numeric(filtered_df[year_col], errors="coerce")
+                col_years = _extract_numeric_years(filtered_df[year_col])
                 filtered_df = filtered_df[col_years.isin(target_years)]
             elif target_year is not None:
-                col_years = pd.to_numeric(filtered_df[year_col], errors="coerce")
+                col_years = _extract_numeric_years(filtered_df[year_col])
                 filtered_df = filtered_df[col_years == target_year]
             elif (
                 target_year is None
@@ -596,7 +652,7 @@ class SemanticDataFetcher:
                     valid_rows = val_df[val_num.notna()]
                     if not valid_rows.empty:
                         val_df = valid_rows
-                col_years = pd.to_numeric(val_df[year_col], errors="coerce")
+                col_years = _extract_numeric_years(val_df[year_col])
                 if not col_years.dropna().empty:
                     if (
                         is_multi_country
@@ -613,7 +669,7 @@ class SemanticDataFetcher:
                     else:
                         max_y = col_years.max()
                         if pd.notna(max_y):
-                            all_years = pd.to_numeric(filtered_df[year_col], errors="coerce")
+                            all_years = _extract_numeric_years(filtered_df[year_col])
                             filtered_df = filtered_df[all_years == max_y]
 
         # 5. Format observation result
@@ -621,8 +677,8 @@ class SemanticDataFetcher:
             if is_multi_year or has_breakdown or is_multi_country or has_rescued_anchors:
                 if year_col is not None and year_col in filtered_df.columns:
                     sorted_df = filtered_df.assign(
-                        _sort_year=pd.to_numeric(
-                            filtered_df[year_col], errors="coerce"
+                        _sort_year=_extract_numeric_years(
+                            filtered_df[year_col]
                         ).fillna(0)
                     ).sort_values(by="_sort_year", ascending=True).drop(
                         columns=["_sort_year"]
@@ -657,19 +713,14 @@ class SemanticDataFetcher:
 
                     row_year = None
                     if year_col is not None and year_col in row and not pd.isna(row[year_col]):
-                        try:
-                            row_year = int(float(str(row[year_col]).split()[0]))
-                        except (ValueError, TypeError):
-                            pass
+                        row_year = _extract_single_year(row[year_col])
                     if row_year is None:
                         for c in row.index:
-                            cl = str(c).lower().replace("ñ", "n")
-                            if any(k in cl for k in ("year", "anio", "ano", "period")):
-                                try:
-                                    row_year = int(float(str(row[c]).split()[0]))
+                            cl = _strip_accents(str(c)).lower().replace("ñ", "n")
+                            if any(k in cl for k in ("year", "anio", "ano", "period", "decada")):
+                                row_year = _extract_single_year(row[c])
+                                if row_year is not None:
                                     break
-                                except (ValueError, TypeError):
-                                    pass
                     if row_year is None:
                         row_year = int(response.applied_filters.year or 0)
 
@@ -757,8 +808,8 @@ class SemanticDataFetcher:
                         else filtered_df
                     )
                     if not valid_df.empty:
-                        numeric_y = pd.to_numeric(
-                            valid_df[year_col], errors="coerce"
+                        numeric_y = _extract_numeric_years(
+                            valid_df[year_col]
                         ).fillna(0)
                         sorted_order = numeric_y.argsort()
                         row = valid_df.iloc[sorted_order.iloc[-1]]
@@ -787,19 +838,14 @@ class SemanticDataFetcher:
                 else:
                     row_year = None
                     if year_col is not None and year_col in row and not pd.isna(row[year_col]):
-                        try:
-                            row_year = int(float(str(row[year_col]).split()[0]))
-                        except (ValueError, TypeError):
-                            pass
+                        row_year = _extract_single_year(row[year_col])
                     if row_year is None:
                         for c in row.index:
-                            cl = str(c).lower().replace("ñ", "n")
-                            if any(k in cl for k in ("year", "anio", "ano", "period")):
-                                try:
-                                    row_year = int(float(str(row[c]).split()[0]))
+                            cl = _strip_accents(str(c)).lower().replace("ñ", "n")
+                            if any(k in cl for k in ("year", "anio", "ano", "period", "decada")):
+                                row_year = _extract_single_year(row[c])
+                                if row_year is not None:
                                     break
-                                except (ValueError, TypeError):
-                                    pass
                     if row_year is None:
                         row_year = int(response.applied_filters.year or 0)
 
