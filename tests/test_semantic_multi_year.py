@@ -311,3 +311,63 @@ def test_stage5_populates_per_country_anchors_and_explicit_disclaimer():
     assert "Prev=2020, Next=2022" in trace_str
 
 
+def test_fetcher_rescues_anchor_years_for_unobserved_country_in_multi_country_query():
+    from statscepal.semantic.engine import SemanticResolutionEngine
+
+    engine = SemanticResolutionEngine()
+    res = engine.resolve("tasa de pobreza en peru colombia y chile en el 2021")
+
+    mock_df = pd.DataFrame([
+        {"iso3": "PER", "year": 2021, "value": 25.9, "dim_500": "502", "dim_326": "327", "notes": ""},
+        {"iso3": "COL", "year": 2021, "value": 39.3, "dim_500": "502", "dim_326": "327", "notes": ""},
+        # Chile has no 2021 row, only 2020 and 2022 CASEN anchor rows
+        {"iso3": "CHL", "year": 2020, "value": 10.8, "dim_500": "502", "dim_326": "327", "notes": "CASEN 2020"},
+        {"iso3": "CHL", "year": 2022, "value": 6.5, "dim_500": "502", "dim_326": "327", "notes": "CASEN 2022"},
+        {"iso3": "CHL", "year": 2017, "value": 8.6, "dim_500": "502", "dim_326": "327", "notes": "CASEN 2017"},
+    ])
+
+    fetcher = SemanticDataFetcher()
+    with patch.object(fetcher, "_load_indicator_data", return_value=mock_df):
+        payload = fetcher.fetch_resolved_data(res)
+
+    assert payload["observation_exists"] is True
+    series = payload["series"]
+    assert len(series) == 4
+    chl_rows = [s for s in series if s.get("country") == "CHL"]
+    assert len(chl_rows) == 2
+    assert [s["year"] for s in chl_rows] == [2020, 2022]
+    assert all(s.get("is_anchor") is True for s in chl_rows)
+    assert all(2021 in s.get("anchor_for_years", []) for s in chl_rows)
+    assert all("Ancla oficial para 2021" in s.get("notes", "") for s in chl_rows)
+
+
+def test_fetcher_rescues_anchor_years_for_single_country_query():
+    from statscepal.semantic.engine import SemanticResolutionEngine
+
+    engine = SemanticResolutionEngine()
+    res = engine.resolve("tasa de pobreza en chile en el 2021")
+    assert res.status == ResolutionStatus.RESOLVED_WITH_ANCHORS
+
+    mock_df = pd.DataFrame([
+        # Chile has no 2021 row, only 2020 and 2022 CASEN anchor rows
+        {"iso3": "CHL", "year": 2020, "value": 10.8, "dim_500": "502", "dim_326": "327", "notes": "CASEN 2020"},
+        {"iso3": "CHL", "year": 2022, "value": 6.5, "dim_500": "502", "dim_326": "327", "notes": "CASEN 2022"},
+        {"iso3": "CHL", "year": 2017, "value": 8.6, "dim_500": "502", "dim_326": "327", "notes": "CASEN 2017"},
+    ])
+
+    fetcher = SemanticDataFetcher()
+    with patch.object(fetcher, "_load_indicator_data", return_value=mock_df):
+        payload = fetcher.fetch_resolved_data(res)
+
+    assert payload["observation_exists"] is True
+    assert "series" in payload
+    series = payload["series"]
+    assert len(series) == 2
+    assert [s["year"] for s in series] == [2020, 2022]
+    assert all(s.get("is_anchor") is True for s in series)
+    assert all(2021 in s.get("anchor_for_years", []) for s in series)
+    assert all("Ancla oficial para 2021" in s.get("notes", "") for s in series)
+
+
+
+

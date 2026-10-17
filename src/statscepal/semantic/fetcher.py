@@ -153,6 +153,66 @@ class SemanticDataFetcher:
                         mask |= (col_upper == t_code.strip().upper())
                 filtered_df = filtered_df[mask]
 
+        # Build country lookup for mapping names and codes to standardized codes
+        code_by_name: dict[str, str] = {}
+        for c, n in zip(target_country_codes, target_country_names):
+            if c and n:
+                code_by_name[_strip_accents(n).lower()] = c.upper()
+                code_by_name[n.lower()] = c.upper()
+        if response.applied_filters.country_code and response.applied_filters.country_name:
+            code_by_name[_strip_accents(response.applied_filters.country_name).lower()] = response.applied_filters.country_code.upper()
+            code_by_name[response.applied_filters.country_name.lower()] = response.applied_filters.country_code.upper()
+
+        country_anchor_map: dict[str, dict[int, list[int]]] = {}
+        if response.temporal_info:
+            if getattr(response.temporal_info, "country_anchors", None):
+                for c_code, ca in response.temporal_info.country_anchors.items():
+                    c_key = c_code.upper()
+                    country_anchor_map[c_key] = {}
+                    if ca.country_name:
+                        code_by_name[_strip_accents(ca.country_name).lower()] = c_key
+                        code_by_name[ca.country_name.lower()] = c_key
+                    unobs = list(ca.unobserved_years) if ca.unobserved_years else (
+                        [response.temporal_info.requested_year] if response.temporal_info.requested_year else []
+                    )
+                    if ca.previous_anchor_year is not None:
+                        country_anchor_map[c_key][ca.previous_anchor_year] = unobs
+                    if ca.next_anchor_year is not None:
+                        country_anchor_map[c_key][ca.next_anchor_year] = unobs
+            elif (
+                response.temporal_info.previous_anchor_year is not None
+                or response.temporal_info.next_anchor_year is not None
+            ):
+                primary_code = (response.applied_filters.country_code or "").upper()
+                if primary_code:
+                    country_anchor_map[primary_code] = {}
+                    unobs = list(response.temporal_info.unobserved_years) if response.temporal_info.unobserved_years else (
+                        [response.temporal_info.requested_year] if response.temporal_info.requested_year else []
+                    )
+                    if response.temporal_info.previous_anchor_year is not None:
+                        country_anchor_map[primary_code][response.temporal_info.previous_anchor_year] = unobs
+                    if response.temporal_info.next_anchor_year is not None:
+                        country_anchor_map[primary_code][response.temporal_info.next_anchor_year] = unobs
+
+        def _get_row_country_code(row: pd.Series) -> str | None:
+            if country_col is not None and country_col in row and not pd.isna(row[country_col]):
+                c_val = str(row[country_col]).strip()
+                if c_val.upper() in country_anchor_map:
+                    return c_val.upper()
+                c_norm = _strip_accents(c_val).lower()
+                if c_norm in code_by_name:
+                    return code_by_name[c_norm]
+                if c_val.lower() in code_by_name:
+                    return code_by_name[c_val.lower()]
+                for target_code in target_country_codes:
+                    if c_val.upper() == target_code.strip().upper():
+                        return target_code.strip().upper()
+            if len(country_anchor_map) == 1:
+                return next(iter(country_anchor_map.keys()))
+            if response.applied_filters.country_code:
+                return response.applied_filters.country_code.upper()
+            return None
+
         # 2. Filter by resolved dimensions if specified
         if response.applied_filters.dimensions and not filtered_df.empty:
             for dim_filter in response.applied_filters.dimensions:
@@ -227,6 +287,13 @@ class SemanticDataFetcher:
                     year_col = col
                     break
 
+        has_rescued_anchors = False
+        requested_year_set: set[int] = (
+            set(target_years)
+            if target_years
+            else ({target_year} if target_year is not None else set())
+        )
+
         # 4. Filter by temporal constraints
         if not filtered_df.empty and year_col is not None:
             if time_mode == "RELATIVE_WINDOW":
@@ -252,6 +319,29 @@ class SemanticDataFetcher:
                     )
                     col_years = pd.to_numeric(filtered_df[year_col], errors="coerce")
                     filtered_df = filtered_df[col_years.isin(selected_years)]
+            elif country_anchor_map:
+                col_years = pd.to_numeric(filtered_df[year_col], errors="coerce")
+                normal_mask = col_years.isin(requested_year_set)
+
+                anchor_indices = []
+                for idx, row in filtered_df.iterrows():
+                    ry_raw = row.get(year_col)
+                    try:
+                        ry_val = int(float(str(ry_raw).split()[0]))
+                    except (ValueError, TypeError):
+                        continue
+
+                    row_c_code = _get_row_country_code(row)
+                    if row_c_code and row_c_code in country_anchor_map:
+                        if ry_val in country_anchor_map[row_c_code]:
+                            anchor_indices.append(idx)
+
+                if anchor_indices:
+                    has_rescued_anchors = True
+                    mask = normal_mask | filtered_df.index.isin(anchor_indices)
+                    filtered_df = filtered_df[mask]
+                else:
+                    filtered_df = filtered_df[normal_mask]
             elif target_years:
                 col_years = pd.to_numeric(filtered_df[year_col], errors="coerce")
                 filtered_df = filtered_df[col_years.isin(target_years)]
@@ -266,7 +356,7 @@ class SemanticDataFetcher:
 
         # 5. Format observation result
         if not filtered_df.empty:
-            if is_multi_year or has_breakdown or is_multi_country:
+            if is_multi_year or has_breakdown or is_multi_country or has_rescued_anchors:
                 if year_col is not None and year_col in filtered_df.columns:
                     sorted_df = filtered_df.assign(
                         _sort_year=pd.to_numeric(
@@ -343,6 +433,28 @@ class SemanticDataFetcher:
                         ]
                         if member_parts:
                             item_dict["member"] = " / ".join(member_parts)
+
+                    # Check if this row is a rescued anchor
+                    row_c_code = _get_row_country_code(row)
+                    is_anchor_row = False
+                    anchor_unobs_years: list[int] = []
+                    if (
+                        country_anchor_map
+                        and row_c_code
+                        and row_c_code in country_anchor_map
+                        and row_year not in requested_year_set
+                    ):
+                        if row_year in country_anchor_map[row_c_code]:
+                            is_anchor_row = True
+                            anchor_unobs_years = country_anchor_map[row_c_code][row_year]
+
+                    if is_anchor_row:
+                        item_dict["is_anchor"] = True
+                        item_dict["anchor_for_years"] = anchor_unobs_years
+                        anchor_tag = f"[Ancla oficial para {', '.join(str(y) for y in anchor_unobs_years)}]"
+                        item_dict["notes"] = f"{row_notes} {anchor_tag}".strip()
+                    else:
+                        item_dict["is_anchor"] = False
 
                     series.append(item_dict)
 
@@ -460,7 +572,7 @@ class SemanticDataFetcher:
                 "year": response.applied_filters.year,
                 "reason": "No observation available for the specified filters/period",
             }
-            if is_multi_year:
+            if is_multi_year or has_rescued_anchors:
                 payload["series"] = []
 
         response.empirical_data = payload
@@ -468,6 +580,10 @@ class SemanticDataFetcher:
             response.execution_trace.append(
                 f"[Stage 6: Empirical Extraction] Observation found: {payload['value']} {payload.get('unit', '')} for {payload.get('country')} ({payload.get('year')})"
             )
+            if has_rescued_anchors:
+                response.execution_trace.append(
+                    "[Stage 6: Empirical Extraction] Rescued official anchor observations for unobserved survey periods."
+                )
         else:
             response.execution_trace.append(
                 f"[Stage 6: Empirical Extraction] Observation unavailable: {payload.get('reason')}"
