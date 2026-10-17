@@ -201,6 +201,46 @@ DEFAULT_OFFICIAL_DIMENSIONS: dict[int, list[Dimension]] = {
 }
 
 
+# Synthetic member IDs defined in DEFAULT_OFFICIAL_DIMENSIONS for offline Stage 4 matching
+# that must not be sent as raw integer filters to the live CEPALSTAT API records endpoint.
+SYNTHETIC_DIMENSION_MEMBER_IDS: frozenset[int] = frozenset({
+    300, 301, 302,
+    327, 330, 331,
+    412, 413, 414, 415,
+    501, 502,
+    601, 602, 603, 604, 605, 610, 611, 612, 613,
+    701,
+    79578, 79580,
+})
+
+# Mapping from synthetic/placeholder official_25 indicator IDs to real CEPALSTAT master_indicators IDs
+EMPIRICAL_INDICATOR_ID_MAP: dict[int, int] = {
+    2928: 2484,  # Tasa de crecimiento anual del índice de precios al consumidor: diciembre a diciembre
+    2930: 4145,  # Tasa de crecimiento anual del índice de precios al consumidor subyacente: diciembre a diciembre
+    729: 2204,   # Producto interno bruto (PIB) total anual a precios constantes en dólares
+    730: 2206,   # Producto interno bruto (PIB) total anual por habitante a precios constantes en dólares
+    731: 286,    # Producto interno bruto trimestral por tipo del gasto a precios constantes
+    2447: 286,   # Producto interno bruto trimestral
+    3331: 5097,  # Tasa de desempleo, por sexo y edad - 19ª CIET (%)
+    3344: 5097,  # Tasa de desocupación según sexo y edad
+    128: 341,    # Salario medio real anual
+    3337: 340,   # Salario mínimo real
+    3339: 2287,  # Ingreso medio de la población ocupada, por sexo e inserción laboral
+    3345: 5698,  # Ingreso medio de la población ocupada, por sexo, autoidentificación étnico-racial y área
+    3340: 3390,  # Distribución del ingreso de los hogares, por deciles y área
+    1241: 1246,  # Operaciones del gobierno (clasificación económica), en porcentajes del PIB
+    1242: 821,   # Ingresos tributarios por tipo de impuestos en porcentajes del PIB
+    1243: 740,   # Saldo en cuenta corriente como porcentaje del producto interno bruto
+    1244: 883,   # Índices de la relación de precios del intercambio y poder de compra de las exportaciones
+    5683: 3154,  # Proporción de energía renovable en la oferta de energía primaria
+    4406: 460,   # Gasto público en educación
+    1318: 3097,  # Porcentaje de población que utiliza fuentes mejoradas de abastecimiento de agua
+    3333: 2288,  # Relación del ingreso medio entre mujeres y hombres, por grupo de edad y área
+    2949: 2050,  # Balanza de pagos
+    2954: 883,   # Índices de la relación de precios del intercambio
+}
+
+
 # Static registry for the 25 official indicators and vertical slice domain
 VERTICAL_SLICE_INDICATORS: dict[int, IndicatorMetadata] = {
     # 1. Pobreza por área

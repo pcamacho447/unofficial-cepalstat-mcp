@@ -300,3 +300,64 @@ def test_fetcher_multi_country_without_year_filters_to_latest_year_per_country()
     assert by_country["Chile"]["value"] == 6.5
 
 
+def test_fetcher_strips_synthetic_member_ids_to_prevent_api_country_collision():
+    """Verify synthetic member_id 79578 in 2929 is NOT passed to API get_dataframe, preventing Chile-only filtering."""
+    from unittest.mock import MagicMock
+    import pandas as pd
+    from statscepal.extractor import DataExtractor
+    from statscepal.semantic.engine import SemanticResolutionEngine
+    from statscepal.semantic.fetcher import SemanticDataFetcher
+
+    engine = SemanticResolutionEngine()
+    res = engine.resolve(
+        "necesito los datos de la inflacion de alimentos de mexico, peru, argentina, chile, colombia y paraguay del año 2018 al 2023"
+    )
+
+    mock_extractor = MagicMock(spec=DataExtractor)
+    mock_extractor.get_dataframe.return_value = pd.DataFrame([
+        {"iso3": "MEX", "Países_agregados regionales especiales VAR IPC": "México", "Años__ESTANDAR": 2022, "value": 14.1, "notes_ids": ""},
+        {"iso3": "PER", "Países_agregados regionales especiales VAR IPC": "Perú", "Años__ESTANDAR": 2022, "value": 15.2, "notes_ids": ""},
+        {"iso3": "CHL", "Países_agregados regionales especiales VAR IPC": "Chile", "Años__ESTANDAR": 2022, "value": 21.0, "notes_ids": ""},
+    ])
+
+    fetcher = SemanticDataFetcher(extractor=mock_extractor)
+    payload = fetcher.fetch_resolved_data(res)
+
+    # Synthetic member_id 79578 must be stripped so members=None is passed to get_dataframe
+    mock_extractor.get_dataframe.assert_called_once_with(2929, members=None)
+    assert payload["observation_exists"] is True
+    assert len(payload["series"]) == 3
+    assert [r["country"] for r in payload["series"]] == ["México", "Perú", "Chile"]
+
+
+def test_fetcher_maps_synthetic_indicator_2928_to_real_cepalstat_2484():
+    """Verify synthetic indicator ID 2928 (IPC general in official_25) maps to real CEPALSTAT ID 2484 during fetch."""
+    from unittest.mock import MagicMock
+    import pandas as pd
+    from statscepal.extractor import DataExtractor
+    from statscepal.semantic.engine import SemanticResolutionEngine
+    from statscepal.semantic.fetcher import SemanticDataFetcher
+
+    engine = SemanticResolutionEngine()
+    res = engine.resolve(
+        "necesito los datos de la inflacion de peru, argentina, chile, colombia y paraguay del año 2018 al 2023"
+    )
+    assert res.selected_candidate is not None
+    assert res.selected_candidate.indicator_id == 2928
+
+    mock_extractor = MagicMock(spec=DataExtractor)
+    mock_extractor.get_dataframe.return_value = pd.DataFrame([
+        {"iso3": "PER", "Países_agregados regionales especiales VAR IPC": "Perú", "Años__ESTANDAR": 2022, "value": 8.46, "notes_ids": ""},
+        {"iso3": "CHL", "Países_agregados regionales especiales VAR IPC": "Chile", "Años__ESTANDAR": 2022, "value": 12.8, "notes_ids": ""},
+    ])
+
+    fetcher = SemanticDataFetcher(extractor=mock_extractor)
+    payload = fetcher.fetch_resolved_data(res)
+
+    mock_extractor.get_dataframe.assert_called_once_with(2484, members=None)
+    assert payload["observation_exists"] is True
+    assert payload["empirical_indicator_id"] == 2484
+    assert len(payload["series"]) == 2
+
+
+

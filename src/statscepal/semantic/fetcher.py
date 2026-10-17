@@ -7,6 +7,11 @@ import pandas as pd
 from statscepal.client import CepalStatClient
 from statscepal.extractor import DataExtractor
 from statscepal.semantic.models import ResolutionStatus, SemanticResolutionResponse
+from statscepal.semantic.registry import (
+    EMPIRICAL_INDICATOR_ID_MAP,
+    SYNTHETIC_DIMENSION_MEMBER_IDS,
+)
+
 
 
 def _strip_accents(text: str) -> str:
@@ -142,6 +147,21 @@ class SemanticDataFetcher:
         return result
 
 
+    def _resolve_empirical_indicator_id(
+        self, response: SemanticResolutionResponse
+    ) -> int:
+        """Map synthetic vertical-slice indicator IDs to verified real CEPALSTAT indicator IDs."""
+        assert response.selected_candidate is not None
+        ind_id = response.selected_candidate.indicator_id
+        if ind_id == 3340:
+            estrato = response.applied_filters.facets.get("estrato", "")
+            if estrato == "RELACION_Q5_Q1":
+                return 3295
+            if "QUINTIL" in estrato:
+                return 3324
+            return 3390
+        return EMPIRICAL_INDICATOR_ID_MAP.get(ind_id, ind_id)
+
     def fetch_resolved_data(
         self, response: SemanticResolutionResponse
     ) -> dict[str, Any]:
@@ -169,14 +189,18 @@ class SemanticDataFetcher:
             return payload
 
         indicator_id = response.selected_candidate.indicator_id
-        member_ids: list[int] = []
+        empirical_id = self._resolve_empirical_indicator_id(response)
+        raw_member_ids: list[int] = []
         for f in response.applied_filters.dimensions:
             if getattr(f, "is_breakdown", False) and getattr(f, "member_ids", None):
-                member_ids.extend(f.member_ids)
+                raw_member_ids.extend(f.member_ids)
             elif f.member_id is not None:
-                member_ids.append(f.member_id)
+                raw_member_ids.append(f.member_id)
 
-        df = self._load_indicator_data(indicator_id, member_ids)
+        member_ids = [
+            m for m in raw_member_ids if m not in SYNTHETIC_DIMENSION_MEMBER_IDS
+        ]
+        df = self._load_indicator_data(empirical_id, member_ids)
 
         time_mode = getattr(response.applied_filters, "time_mode", "SINGLE")
         target_years = getattr(response.applied_filters, "years", []) or []
@@ -197,6 +221,7 @@ class SemanticDataFetcher:
             payload = {
                 "observation_exists": False,
                 "indicator_id": indicator_id,
+                "empirical_indicator_id": empirical_id,
                 "indicator_name": response.selected_candidate.name,
                 "unit": response.selected_candidate.unit,
                 "country": response.applied_filters.country_name
@@ -239,19 +264,21 @@ class SemanticDataFetcher:
                     break
 
             if country_col is None:
+                for col in filtered_df.columns:
+                    cl = col.lower()
+                    if ("pais" in cl or "país" in cl or "country" in cl) and not any(
+                        s in cl for s in ("iso3", "code", "codigo", "código")
+                    ):
+                        country_col = col
+                        break
+
+            if country_col is None:
                 for candidate in ("iso3", "country_code"):
                     for col in filtered_df.columns:
                         if col.lower() == candidate:
                             country_col = col
                             break
                     if country_col is not None:
-                        break
-
-            if country_col is None:
-                for col in filtered_df.columns:
-                    cl = col.lower()
-                    if "pais" in cl or "país" in cl or "country" in cl:
-                        country_col = col
                         break
 
             if country_col is not None:
@@ -810,6 +837,7 @@ class SemanticDataFetcher:
             if is_multi_year or has_rescued_anchors:
                 payload["series"] = []
 
+        payload["empirical_indicator_id"] = empirical_id
         response.empirical_data = payload
         if payload.get("observation_exists"):
             response.execution_trace.append(
