@@ -12,9 +12,13 @@ from statscepal.semantic.models import (
     TemporalAnchorInfo,
     TemporalAvailabilityStatus,
 )
+from statscepal.semantic.facet_ontology import (
+    DEFAULT_FACET_ONTOLOGY,
+    FacetOntology,
+)
 from statscepal.semantic.matcher import DynamicMemberMatcher
 from statscepal.semantic.parser import QueryParser
-from statscepal.semantic.registry import DEFAULT_OFFICIAL_DIMENSIONS, SemanticRegistry
+from statscepal.semantic.registry import SemanticRegistry
 
 
 class SemanticResolutionEngine:
@@ -26,11 +30,13 @@ class SemanticResolutionEngine:
         registry: SemanticRegistry | None = None,
         matcher: DynamicMemberMatcher | None = None,
         catalog_profile: str = "official_25",
+        ontology: FacetOntology | None = None,
     ):
         self.catalog_profile = catalog_profile
-        self.parser = parser or QueryParser(catalog_profile=catalog_profile)
-        self.registry = registry or SemanticRegistry(catalog_profile=catalog_profile)
-        self.matcher = matcher or DynamicMemberMatcher()
+        self.ontology = ontology or DEFAULT_FACET_ONTOLOGY
+        self.parser = parser or QueryParser(catalog_profile=catalog_profile, ontology=self.ontology)
+        self.registry = registry or SemanticRegistry(catalog_profile=catalog_profile, ontology=self.ontology)
+        self.matcher = matcher or DynamicMemberMatcher(ontology=self.ontology)
 
     def resolve_query(self, query: str) -> SemanticResolutionResponse:
         """Resolve a natural language query string."""
@@ -239,7 +245,9 @@ class SemanticResolutionEngine:
                 latency_ms=latency,
             )
 
-        # Dimensional Gate: Check if default supports required facets
+        # ----------------------------------------------------
+        # Stage 4: Dimensional Gate & Knowledge Graph Conmutation
+        # ----------------------------------------------------
         target_indicator_id = canonical_id
         swapped_from: int | None = None
         swap_relationship: RelationshipType | None = None
@@ -248,57 +256,47 @@ class SemanticResolutionEngine:
         assert default_meta is not None
 
         requested_facet_keys = set(intent.facets.keys())
-        # Filter out default aggregate facet values
-        unhandled_facets = requested_facet_keys - default_meta.supported_facets
-        for facet_k, default_v in [
-            ("area", "NACIONAL"),
-            ("severidad", "POBREZA_TOTAL"),
-            ("sexo", "TOTAL"),
-            ("sexo", "AMBOS_SEXOS"),
-        ]:
-            if facet_k != "etnia" and intent.facets.get(facet_k) == default_v:
-                unhandled_facets.discard(facet_k)
+        default_supported = self.registry.get_supported_facets(canonical_id)
+        unhandled_facets: set[str] = {
+            fk
+            for fk, fv in intent.facets.items()
+            if fk not in default_supported and self.ontology.is_critical_unhandled_facet(fk, fv)
+        }
 
-        # Check concrete dimensions if present for default indicator
         default_dims = self.registry.get_dimensions(canonical_id)
-        if default_dims and requested_facet_keys:
-            def_ok, _, def_unhandled = self.matcher.match_facets_to_dimensions(
+        if default_dims and intent.facets:
+            _, _, def_unhandled = self.matcher.match_facets_to_dimensions(
                 canonical_id, default_dims, intent.facets
             )
-            crit_def_unhandled = [
-                f for f in def_unhandled
-                if f == "etnia" or intent.facets.get(f) not in {"POBREZA_TOTAL", "TOTAL", "NACIONAL"}
-            ]
-            if crit_def_unhandled:
-                unhandled_facets = unhandled_facets | set(crit_def_unhandled)
-
-        # Ensure etnia is never discarded when canonical indicator lacks ethnic support
-        if "etnia" in requested_facet_keys and "etnia" not in default_meta.supported_facets:
-            unhandled_facets.add("etnia")
+            for fk in def_unhandled:
+                if self.ontology.is_critical_unhandled_facet(fk, intent.facets.get(fk, "")):
+                    unhandled_facets.add(fk)
 
         if unhandled_facets:
             trace.append(f"[Stage 4: Dimensional Gate] Canonical ID {canonical_id} lacks facets: {sorted(unhandled_facets)}. Traversing knowledge graph for 'breakdown_of' swap...")
-            # Need to find candidate with breakdown_of relationship that supports all facets
             found_swap = False
-            for cand_id, rel in default_meta.relationships.items():
+            candidate_rels = self.registry.get_relationships(canonical_id)
+            for cand_id, rel in candidate_rels.items():
                 if rel == RelationshipType.BREAKDOWN_OF:
                     cand_meta = self.registry.get_indicator(cand_id)
                     if not cand_meta:
                         continue
-                    # Candidate must support the facets that canonical lacked
-                    if not unhandled_facets.issubset(cand_meta.supported_facets):
+                    cand_supported = self.registry.get_supported_facets(cand_id)
+                    critical_requested = {
+                        fk for fk, fv in intent.facets.items()
+                        if self.ontology.is_critical_unhandled_facet(fk, fv)
+                    }
+                    if not unhandled_facets.issubset(cand_supported) or not critical_requested.issubset(cand_supported):
                         continue
 
                     cand_dims = self.registry.get_dimensions(cand_id)
-                    if not cand_dims and cand_id == 3342:
-                        cand_dims = DEFAULT_OFFICIAL_DIMENSIONS.get(3342, [])
                     if cand_dims:
                         cand_ok, _, cand_unhandled = self.matcher.match_facets_to_dimensions(
                             cand_id, cand_dims, intent.facets
                         )
                         crit_cand_unhandled = [
                             f for f in cand_unhandled
-                            if f == "etnia" or intent.facets.get(f) not in {"POBREZA_TOTAL", "TOTAL", "NACIONAL"}
+                            if self.ontology.is_critical_unhandled_facet(f, intent.facets.get(f, ""))
                         ]
                         if not crit_cand_unhandled:
                             target_indicator_id = cand_id
@@ -307,7 +305,7 @@ class SemanticResolutionEngine:
                             found_swap = True
                             trace.append(f"  - Swapped to ID {cand_id} ('{cand_meta.name}') via 'breakdown_of' (supports required facets)")
                             break
-                    elif requested_facet_keys.issubset(cand_meta.supported_facets):
+                    elif requested_facet_keys.issubset(cand_supported):
                         target_indicator_id = cand_id
                         swapped_from = canonical_id
                         swap_relationship = rel
@@ -317,12 +315,13 @@ class SemanticResolutionEngine:
 
             if not found_swap:
                 latency = (time.perf_counter() - t0) * 1000.0
-                trace.append(f"  - REJECTED: No valid conmutation supports facet '{list(unhandled_facets)[0]}'.")
+                unsupported_facet_name = sorted(unhandled_facets)[0]
+                trace.append(f"  - REJECTED: No valid conmutation supports facet '{unsupported_facet_name}'.")
                 return SemanticResolutionResponse(
                     status=ResolutionStatus.ABSTAINED,
                     query=query_str,
                     abstention_reason="UNSUPPORTED_FACET",
-                    unsupported_facet=list(unhandled_facets)[0],
+                    unsupported_facet=unsupported_facet_name,
                     polarity_info=intent.polarity_info,
                     execution_trace=trace,
                     latency_ms=latency,
@@ -333,8 +332,6 @@ class SemanticResolutionEngine:
 
         # Resolve dynamic dimensions and members for the chosen indicator
         target_dims = self.registry.get_dimensions(target_indicator_id)
-        if not target_dims and target_indicator_id == 3342:
-            target_dims = DEFAULT_OFFICIAL_DIMENSIONS.get(3342, [])
         if target_dims and intent.facets:
             success, matched_dims, unhandled = self.matcher.match_facets_to_dimensions(
                 target_indicator_id, target_dims, intent.facets
@@ -344,7 +341,7 @@ class SemanticResolutionEngine:
                 trace.append(f"[Stage 4: Member Matcher] Bound dimension '{f.dim_name}' (ID: {f.dim_id}) -> Member '{f.member_name}' (ID: {f.member_id})")
             critical_unhandled = [
                 f for f in unhandled
-                if f == "etnia" or intent.facets.get(f) not in {"POBREZA_TOTAL", "TOTAL", "NACIONAL"}
+                if self.ontology.is_critical_unhandled_facet(f, intent.facets.get(f, ""))
             ]
             if critical_unhandled:
                 latency = (time.perf_counter() - t0) * 1000.0

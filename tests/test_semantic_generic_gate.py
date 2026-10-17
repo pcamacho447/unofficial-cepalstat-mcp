@@ -130,3 +130,97 @@ def test_semantic_registry_builds_in_memory_index_from_sqlite_and_synthesizes_me
     assert rels_3328.get(90001) == RelationshipType.BREAKDOWN_OF
     assert rels_3328.get(3342) == RelationshipType.BREAKDOWN_OF
     assert rels_3328.get(3341) == RelationshipType.BREAKDOWN_OF
+
+
+def test_engine_stage4_has_zero_hardcoded_facet_or_indicator_literals():
+    from statscepal.semantic.engine import SemanticResolutionEngine
+
+    source = inspect.getsource(SemanticResolutionEngine.resolve)
+    assert '"etnia"' not in source, "SemanticResolutionEngine.resolve must not contain hardcoded \"etnia\""
+    assert "'etnia'" not in source, "SemanticResolutionEngine.resolve must not contain hardcoded 'etnia'"
+    assert "POBREZA_TOTAL" not in source, "SemanticResolutionEngine.resolve must not contain hardcoded POBREZA_TOTAL"
+    assert "3342" not in source, "SemanticResolutionEngine.resolve must not contain hardcoded 3342"
+    assert "DEFAULT_OFFICIAL_DIMENSIONS" not in source, "SemanticResolutionEngine.resolve must not contain hardcoded DEFAULT_OFFICIAL_DIMENSIONS"
+
+
+def test_engine_routes_generically_to_sqlite_inferred_breakdown_indicator(tmp_path: Path):
+    from statscepal.semantic.engine import SemanticResolutionEngine
+    from statscepal.semantic.graph_builder import GraphBuilder
+    from statscepal.semantic.models import RelationshipType, ResolutionStatus
+
+    db_path = tmp_path / "test_engine_sqlite_inferred.db"
+    store = CatalogStore(db_path=db_path)
+    store.init_tables()
+    store.init_semantic_tables()
+
+    # Insert 3328 and uncurated 90001 (poverty by education and area) into master_indicators
+    with store._get_connection() as conn:
+        conn.execute(
+            """
+            INSERT INTO master_indicators (indicator_id, name, theme, area, subarea, full_path)
+            VALUES
+            (3328, 'Población en situación de pobreza extrema y pobreza, por área', 'Sociales', 'Pobreza', '', 'Sociales > Pobreza'),
+            (90001, 'Población en situación de pobreza extrema y pobreza, por nivel de educación y área geográfica', 'Sociales', 'Pobreza', '', 'Sociales > Pobreza')
+            """
+        )
+
+    # Store dimensions for 3328 and 90001
+    dims_3328 = [
+        Dimension(
+            id=326,
+            name="Área geográfica",
+            members=[Member(id=327, name="Nacional"), Member(id=330, name="Urbano"), Member(id=331, name="Rural")],
+        ),
+        Dimension(
+            id=500,
+            name="Tipo de pobreza",
+            members=[Member(id=501, name="Pobreza extrema"), Member(id=502, name="Total pobreza")],
+        ),
+    ]
+    dims_90001 = [
+        Dimension(
+            id=326,
+            name="Área geográfica",
+            members=[Member(id=327, name="Nacional"), Member(id=330, name="Urbano"), Member(id=331, name="Rural")],
+        ),
+        Dimension(
+            id=500,
+            name="Tipo de pobreza",
+            members=[Member(id=501, name="Pobreza extrema"), Member(id=502, name="Total pobreza")],
+        ),
+        Dimension(
+            id=88001,
+            name="Nivel de educación",
+            members=[
+                Member(id=88010, name="Primaria"),
+                Member(id=88020, name="Secundaria"),
+                Member(id=88012, name="Universitaria"),
+            ],
+        ),
+    ]
+    store.store_indicator_dimensions(3328, dims_3328)
+    store.store_indicator_dimensions(90001, dims_90001)
+
+    # Run GraphBuilder.build_breakdown_graph() to infer (3328, 90001) as breakdown_of
+    builder = GraphBuilder(store=store)
+    report = builder.build_breakdown_graph(persist=True, seed_curated=False)
+    assert any((e.parent_id == 3328 and e.child_id == 90001) for e in report.inferred_edges)
+
+    # Resolve "pobreza segun educacion universitaria en colombia 2021" via engine
+    registry = SemanticRegistry(store=store)
+    engine = SemanticResolutionEngine(registry=registry)
+    resp = engine.resolve("pobreza segun educacion universitaria en colombia 2021")
+
+    # Assertions
+    assert resp.status == ResolutionStatus.RESOLVED
+    assert resp.selected_candidate is not None
+    assert resp.selected_candidate.indicator_id == 90001
+    assert resp.selected_candidate.swapped_from == 3328
+    assert resp.selected_candidate.swap_relationship == RelationshipType.BREAKDOWN_OF
+
+    # Assert dim_id == 88001 is bound to member 88012: Universitaria
+    edu_filter = next((f for f in resp.applied_filters.dimensions if f.dim_id == 88001), None)
+    assert edu_filter is not None
+    assert edu_filter.member_id == 88012
+    assert edu_filter.member_name == "Universitaria"
+
