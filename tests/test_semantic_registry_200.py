@@ -288,3 +288,17 @@ def test_default_official_dimensions_shared_dim_id_consistency():
                 dim_registry.setdefault(dim_id, {})[m_id] = m_val
 
 
+def test_vertical_slice_indicators_with_supported_facets_have_default_official_dimensions():
+    """Assert all indicators in VERTICAL_SLICE_INDICATORS declaring supported_facets have dimension entries."""
+    from statscepal.semantic.registry import DEFAULT_OFFICIAL_DIMENSIONS, VERTICAL_SLICE_INDICATORS
+
+    missing = []
+    for ind_id, info in VERTICAL_SLICE_INDICATORS.items():
+        facets = getattr(info, "supported_facets", None) or (info.get("supported_facets") if isinstance(info, dict) else None)
+        if facets:
+            if ind_id not in DEFAULT_OFFICIAL_DIMENSIONS:
+                missing.append(ind_id)
+    assert not missing, f"Indicators declare supported_facets but lack DEFAULT_OFFICIAL_DIMENSIONS: {missing}"
+
+
+

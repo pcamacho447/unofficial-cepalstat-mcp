@@ -13,9 +13,11 @@ from statscepal.semantic.models import (
     TemporalAnchorInfo,
     TemporalAvailabilityStatus,
 )
+from statscepal.dimensions import Dimension
 from statscepal.semantic.facet_ontology import (
     DEFAULT_FACET_ONTOLOGY,
     FacetOntology,
+    strip_accents,
 )
 from statscepal.semantic.matcher import DynamicMemberMatcher
 from statscepal.semantic.parser import QueryParser
@@ -61,6 +63,26 @@ class SemanticResolutionEngine:
         # 4. Canonical total population -> 4788
         return 4788
 
+    def _has_dimension_for_facet(self, dims: list[Dimension], facet_key: str) -> bool:
+        """Check whether any of the indicator's dimensions physically corresponds to facet_key."""
+        facet_def = self.ontology.get_facet(facet_key)
+        key_norm = strip_accents(facet_key)
+        if facet_def and facet_def.dimension_name_patterns:
+            key_patterns = list(facet_def.dimension_name_patterns)
+        else:
+            key_patterns = [key_norm]
+
+        for d in dims:
+            if self.ontology.classify_dimension(d.id, d.name) == facet_key:
+                return True
+            d_name_norm = strip_accents(d.name)
+            if facet_def is not None:
+                if d.id in facet_def.known_dimension_ids or any(kp in d_name_norm for kp in key_patterns):
+                    return True
+            else:
+                if any(kp in d_name_norm for kp in key_patterns):
+                    return True
+        return False
 
     def resolve_query(self, query: str) -> SemanticResolutionResponse:
         """Resolve a natural language query string."""
@@ -325,6 +347,8 @@ class SemanticResolutionEngine:
                 canonical_id, default_dims, intent.facets
             )
             for fk in def_unhandled:
+                if fk in default_supported and not self._has_dimension_for_facet(default_dims, fk):
+                    continue
                 if self.ontology.is_critical_unhandled_facet(fk, intent.facets.get(fk, "")):
                     unhandled_facets.add(fk)
 
@@ -352,7 +376,8 @@ class SemanticResolutionEngine:
                         )
                         crit_cand_unhandled = [
                             f for f in cand_unhandled
-                            if self.ontology.is_critical_unhandled_facet(f, intent.facets.get(f, ""))
+                            if not (f in cand_supported and not self._has_dimension_for_facet(cand_dims, f))
+                            and self.ontology.is_critical_unhandled_facet(f, intent.facets.get(f, ""))
                         ]
                         if not crit_cand_unhandled:
                             target_indicator_id = cand_id
@@ -415,7 +440,8 @@ class SemanticResolutionEngine:
                         unhandled.append(f_facet)
             critical_unhandled = [
                 f for f in unhandled
-                if self.ontology.is_critical_unhandled_facet(f, intent.facets.get(f, ""))
+                if not (f in selected_meta.supported_facets and not self._has_dimension_for_facet(target_dims, f))
+                and self.ontology.is_critical_unhandled_facet(f, intent.facets.get(f, ""))
             ]
             if critical_unhandled:
                 latency = (time.perf_counter() - t0) * 1000.0

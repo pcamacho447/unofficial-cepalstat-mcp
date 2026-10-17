@@ -148,6 +148,8 @@ class SemanticDataFetcher:
         filtered_dim_cols: set[str],
         country_col: str | None,
         year_col: str | None,
+        response: SemanticResolutionResponse | None = None,
+        breakdown_facets: set[str] | None = None,
     ) -> pd.DataFrame:
         """Collapse any non-structural DataFrame dimension column not in filtered_dim_cols to its aggregate member."""
         if df.empty:
@@ -156,6 +158,16 @@ class SemanticDataFetcher:
         norm_filtered_cols = {_strip_accents(c).lower() for c in filtered_dim_cols}
         norm_country_col = _strip_accents(country_col).lower() if country_col else None
         norm_year_col = _strip_accents(year_col).lower() if year_col else None
+
+        facet_keys_in_breakdown: set[str] = set()
+        if response is not None and getattr(response, "applied_filters", None):
+            facet_keys_in_breakdown = {
+                f_k.lower()
+                for f_k, f_v in getattr(response.applied_filters, "facets", {}).items()
+                if "_DESGLOSE" in str(f_v) or str(f_v) in ("ETNICO_TOTAL", "ETNICO")
+            }
+        if breakdown_facets is not None:
+            facet_keys_in_breakdown |= {bk.lower() for bk in breakdown_facets}
 
         for col in list(result.columns):
             if (
@@ -171,6 +183,9 @@ class SemanticDataFetcher:
                 or cl == norm_year_col
                 or cl in self._STRUCTURAL_AND_META_COLS
             ):
+                continue
+            if any(bk in cl for bk in facet_keys_in_breakdown):
+                # User explicitly requested breakdown for this dimension -> DO NOT collapse to aggregate!
                 continue
             unique_vals = result[col].dropna().astype(str).str.strip().unique()
             if len(unique_vals) <= 1:
@@ -255,10 +270,15 @@ class SemanticDataFetcher:
             time_mode in ("LIST", "RANGE", "RELATIVE_WINDOW")
             or len(target_years) > 1
         )
+        facet_keys_in_breakdown = {
+            f_k.lower()
+            for f_k, f_v in getattr(response.applied_filters, "facets", {}).items()
+            if "_DESGLOSE" in str(f_v) or str(f_v) in ("ETNICO_TOTAL", "ETNICO")
+        }
         has_breakdown = any(
             getattr(d, "is_breakdown", False)
             for d in response.applied_filters.dimensions
-        )
+        ) or bool(facet_keys_in_breakdown)
 
         if df is None or df.empty:
             payload = {
@@ -278,6 +298,14 @@ class SemanticDataFetcher:
             return payload
 
         filtered_df = df.copy()
+        if "value" not in filtered_df.columns:
+            for val_cand in ("valor", "val", "monto", "dato"):
+                for c in filtered_df.columns:
+                    if _strip_accents(c).lower() == val_cand:
+                        filtered_df["value"] = filtered_df[c]
+                        break
+                if "value" in filtered_df.columns:
+                    break
 
         # 1. Filter by country if specified
         target_country_names = list(
@@ -512,7 +540,12 @@ class SemanticDataFetcher:
                     break
 
         filtered_df = self._filter_unconstrained_dimensions(
-            filtered_df, filtered_dim_cols, country_col, year_col
+            filtered_df,
+            filtered_dim_cols,
+            country_col,
+            year_col,
+            response=response,
+            breakdown_facets=facet_keys_in_breakdown,
         )
 
         has_rescued_anchors = False
@@ -698,6 +731,15 @@ class SemanticDataFetcher:
                         if dim_filter.dim_id is not None and col == f"dim_{dim_filter.dim_id}":
                             breakdown_cols.append(col)
                             break
+
+                for col in sorted_df.columns:
+                    if col in breakdown_cols or col == country_col or col == year_col:
+                        continue
+                    cl = _strip_accents(col).lower()
+                    if cl in self._STRUCTURAL_AND_META_COLS:
+                        continue
+                    if any(bk in cl for bk in facet_keys_in_breakdown):
+                        breakdown_cols.append(col)
 
                 series: list[dict[str, Any]] = []
                 for _, row in sorted_df.iterrows():

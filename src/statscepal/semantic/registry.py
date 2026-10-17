@@ -265,6 +265,106 @@ DEFAULT_OFFICIAL_DIMENSIONS: dict[int, list[Dimension]] = {
             ],
         ),
     ],
+    127: [
+        Dimension(
+            id=144,
+            name="Sexo__ESTANDAR",
+            members=[Member(id=146, name="Ambos sexos"), Member(id=265, name="Hombres"), Member(id=266, name="Mujeres")],
+        ),
+    ],
+    3331: [
+        Dimension(
+            id=144,
+            name="Sexo__ESTANDAR",
+            members=[Member(id=146, name="Ambos sexos"), Member(id=265, name="Hombres"), Member(id=266, name="Mujeres")],
+        ),
+        Dimension(
+            id=43054,
+            name="Grupo de edad",
+            members=[
+                Member(id=43058, name="15 a 24 años"),
+            ],
+        ),
+    ],
+    3337: [
+        Dimension(
+            id=326,
+            name="Área geográfica",
+            members=[Member(id=327, name="Nacional"), Member(id=330, name="Urbano"), Member(id=331, name="Rural")],
+        ),
+    ],
+    5097: [
+        Dimension(
+            id=144,
+            name="Sexo__ESTANDAR",
+            members=[Member(id=146, name="Ambos sexos"), Member(id=265, name="Hombres"), Member(id=266, name="Mujeres")],
+        ),
+        Dimension(
+            id=43054,
+            name="Grupo de edad",
+            members=[
+                Member(id=43059, name="0 a 14 años"),
+                Member(id=43058, name="15 a 24 años"),
+                Member(id=43060, name="65 años y más"),
+            ],
+        ),
+    ],
+    119: [
+        Dimension(
+            id=144,
+            name="Sexo__ESTANDAR",
+            members=[Member(id=146, name="Ambos sexos"), Member(id=265, name="Hombres"), Member(id=266, name="Mujeres")],
+        ),
+        Dimension(
+            id=326,
+            name="Área geográfica",
+            members=[Member(id=327, name="Nacional"), Member(id=330, name="Urbano"), Member(id=331, name="Rural")],
+        ),
+    ],
+    340: [
+        Dimension(
+            id=326,
+            name="Área geográfica",
+            members=[Member(id=327, name="Nacional"), Member(id=330, name="Urbano"), Member(id=331, name="Rural")],
+        ),
+    ],
+    365: [
+        Dimension(
+            id=29281,
+            name="Rubro",
+            members=[Member(id=29282, name="General"), Member(id=29283, name="Salud")],
+        ),
+    ],
+    1684: [
+        Dimension(
+            id=79565,
+            name="Canasta de bienes",
+            members=[Member(id=79578, name="Alimentos y bebidas no alcohólicas")],
+        ),
+    ],
+    3344: [
+        Dimension(
+            id=144,
+            name="Sexo__ESTANDAR",
+            members=[Member(id=146, name="Ambos sexos"), Member(id=265, name="Hombres"), Member(id=266, name="Mujeres")],
+        ),
+        Dimension(
+            id=43054,
+            name="Grupo de edad",
+            members=[
+                Member(id=43059, name="0 a 14 años"),
+                Member(id=43058, name="15 a 24 años"),
+                Member(id=43060, name="65 años y más"),
+            ],
+        ),
+    ],
+    3333: [
+        Dimension(
+            id=144,
+            name="Sexo__ESTANDAR",
+            members=[Member(id=146, name="Ambos sexos"), Member(id=265, name="Hombres"), Member(id=266, name="Mujeres")],
+        ),
+    ],
 }
 
 
@@ -277,6 +377,7 @@ SYNTHETIC_DIMENSION_MEMBER_IDS: frozenset[int] = frozenset({
     501, 502,
     601, 602, 603, 604, 605, 610, 611, 612, 613,
     701,
+    29282, 29283,
     79578, 79580,
 })
 

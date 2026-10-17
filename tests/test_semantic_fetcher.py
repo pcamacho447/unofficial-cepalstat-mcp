@@ -528,6 +528,44 @@ def test_fetcher_step5_breakdown_cols_matches_accented_dataframe_columns():
     assert all("member" in item for item in payload["series"]), "Step 5 failed to assign member labels due to accent mismatch"
 
 
+def test_fetcher_does_not_collapse_dimension_when_requested_as_breakdown():
+    """Assert _filter_unconstrained_dimensions never collapses a dimension to aggregate if requested as breakdown."""
+    mock_extractor = MagicMock(spec=DataExtractor)
+    fetcher = SemanticDataFetcher(extractor=mock_extractor)
+    res = SemanticResolutionResponse(
+        query="tasa de desocupacion por sexo en chile 2022",
+        status=ResolutionStatus.RESOLVED,
+        selected_candidate=SelectedCandidate(
+            indicator_id=127,
+            name="Tasa de desocupación",
+            measure_type="TASA_DESOCUPACION",
+            unit="%",
+        ),
+        applied_filters=AppliedFilters(
+            country_code="CHL",
+            country_name="Chile",
+            years=[2022],
+            year=2022,
+            time_mode="SINGLE",
+            facets={"sexo": "SEXO_DESGLOSE"},
+            dimensions=[],  # Empty dimensions list because indicator lacked DEFAULT_OFFICIAL_DIMENSIONS
+        ),
+    )
+    df = pd.DataFrame([
+        {"País__ESTANDAR": "Chile", "Años_disponibles": "2022", "Sexo__ESTANDAR": "Hombres", "valor": 7.5},
+        {"País__ESTANDAR": "Chile", "Años_disponibles": "2022", "Sexo__ESTANDAR": "Mujeres", "valor": 9.1},
+        {"País__ESTANDAR": "Chile", "Años_disponibles": "2022", "Sexo__ESTANDAR": "Total", "valor": 8.2},
+    ])
+    mock_extractor.get_dataframe.return_value = df
+    payload = fetcher.fetch_resolved_data(res)
+    # The breakdown rows ('Hombres', 'Mujeres') must NOT have been filtered out to 'Total'
+    assert "series" in payload, f"Expected 'series' in payload, got {payload}"
+    series_members = [item.get("member") for item in payload["series"]]
+    assert len(payload["series"]) >= 2
+    assert "Hombres" in series_members or any(item.get("value") == 7.5 for item in payload["series"])
+
+
+
 
 
 
