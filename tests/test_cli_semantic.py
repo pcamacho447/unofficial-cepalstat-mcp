@@ -193,4 +193,11 @@ def test_cli_semantic_resolve_ethnic_poverty(capsys=None):
     assert "Tipo de etnia" in output or "etnia" in output.lower()
 
 
-
+def test_cli_semantic_resolve_displays_conversational_hint_on_alternative_proposed(capsys):
+    """Test CLI displays Hint with alternative indicator IDs when ALTERNATIVE_PROPOSED."""
+    ret = main(["semantic", "resolve", "cuentas fiscales de chile 2022"])
+    assert ret == 0
+    captured = capsys.readouterr().out
+    assert "ALTERNATIVE_PROPOSED" in captured
+    assert "Hint:" in captured
+    assert "1240" in captured

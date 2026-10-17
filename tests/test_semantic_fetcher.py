@@ -696,3 +696,65 @@ def test_fetcher_empirical_mapping_3340_to_3295_relacion_q5_q1(mock_client):
     assert payload["value"] == 12.4
     assert len(payload["series"]) == 1
     assert payload["series"][0]["value"] == 12.4
+
+
+def test_fetcher_multi_year_rescues_anchors_for_missing_year_in_range(mock_client):
+    """Assert dynamic anchor rescue runs for unobserved years in a multi-year query."""
+    fetcher = SemanticDataFetcher(client=mock_client)
+    res = SemanticResolutionResponse(
+        query="gini en chile del 2020 al 2022",
+        status=ResolutionStatus.RESOLVED,
+        selected_candidate=SelectedCandidate(
+            indicator_id=3289,
+            name="Índice de Gini",
+            measure_type="COEFICIENTE_CONCENTRACION",
+            unit="coeficiente",
+        ),
+        applied_filters=AppliedFilters(
+            country_code="CHL",
+            country_name="Chile",
+            years=[2020, 2021, 2022],
+            time_mode="RANGE",
+        ),
+    )
+    # Chile has survey in 2020 and 2022, but not 2021
+    df = pd.DataFrame([
+        {"País__ESTANDAR": "Chile", "Años_disponibles": "2020", "valor": 0.45},
+        {"País__ESTANDAR": "Chile", "Años_disponibles": "2022", "valor": 0.43},
+    ])
+    mock_client.get_dataframe.return_value = df
+    payload = fetcher.fetch_resolved_data(res)
+    assert any(item.get("is_anchor") for item in payload["series"]) or res.status == ResolutionStatus.RESOLVED_WITH_ANCHORS
+    assert res.status == ResolutionStatus.RESOLVED_WITH_ANCHORS
+
+
+def test_fetcher_multi_country_payload_country_attribution(mock_client):
+    """Assert payload['country'] matches the country of latest_item, not always the first country."""
+    fetcher = SemanticDataFetcher(client=mock_client)
+    res = SemanticResolutionResponse(
+        query="pib per capita en peru y colombia 2022",
+        status=ResolutionStatus.RESOLVED,
+        selected_candidate=SelectedCandidate(
+            indicator_id=730,
+            name="PIB per cápita",
+            measure_type="USD_PER_CAPITA",
+            unit="USD",
+        ),
+        applied_filters=AppliedFilters(
+            country_code="PER",
+            country_name="Perú",
+            country_codes=["PER", "COL"],
+            country_names=["Perú", "Colombia"],
+            years=[2022],
+            time_mode="SINGLE",
+        ),
+    )
+    df = pd.DataFrame([
+        {"País__ESTANDAR": "Perú", "Años_disponibles": "2022", "valor": 6800.0},
+        {"País__ESTANDAR": "Colombia", "Años_disponibles": "2022", "valor": 6500.0},
+    ])
+    mock_client.get_dataframe.return_value = df
+    payload = fetcher.fetch_resolved_data(res)
+    latest_item = payload["series"][-1]
+    assert payload["country"] == latest_item.get("country")
+    assert payload["country"] == "Colombia"

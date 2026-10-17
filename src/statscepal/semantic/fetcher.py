@@ -684,10 +684,10 @@ class SemanticDataFetcher:
                     .astype(int)
                 )
                 avail_years = set(num_years.unique())
-                observed_requested = avail_years.intersection(requested_year_set)
+                missing_requested = requested_year_set - avail_years
 
-                if not observed_requested and avail_years:
-                    for req_y in sorted(requested_year_set):
+                if missing_requested and avail_years:
+                    for req_y in sorted(missing_requested):
                         prev_anchor = max((y for y in avail_years if y < req_y), default=None)
                         next_anchor = min((y for y in avail_years if y > req_y), default=None)
                         if prev_anchor is not None or next_anchor is not None:
@@ -707,6 +707,7 @@ class SemanticDataFetcher:
                                     c_str = str(c_val).strip()
                                     code_by_name[_strip_accents(c_str).lower()] = c_code
                                     code_by_name[c_str.lower()] = c_code
+                            has_rescued_anchors = True
 
         # 4. Filter by temporal constraints
         if not filtered_df.empty and year_col is not None:
@@ -791,6 +792,9 @@ class SemanticDataFetcher:
                         if pd.notna(max_y):
                             all_years = _extract_numeric_years(filtered_df[year_col])
                             filtered_df = filtered_df[all_years == max_y]
+
+        if has_rescued_anchors and response.status == ResolutionStatus.RESOLVED:
+            response.status = ResolutionStatus.RESOLVED_WITH_ANCHORS
 
         # 5. Format observation result
         if not filtered_df.empty:
@@ -918,8 +922,11 @@ class SemanticDataFetcher:
                         "indicator_name": response.selected_candidate.name,
                         "value": latest_item["value"],
                         "unit": response.selected_candidate.unit,
-                        "country": response.applied_filters.country_name
-                        or response.applied_filters.country_code,
+                        "country": latest_item.get(
+                            "country",
+                            response.applied_filters.country_name
+                            or response.applied_filters.country_code,
+                        ),
                         "year": latest_item["year"],
                         "dimensions_applied": [
                             f.model_dump() for f in response.applied_filters.dimensions

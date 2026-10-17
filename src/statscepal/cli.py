@@ -645,8 +645,9 @@ def main(args: Sequence[str] | None = None) -> int:
                 else:
                     if res.abstention_reason:
                         print(f"Reason:    {res.abstention_reason}")
-                    if res.conversational_hint:
-                        print(f"Hint:      {res.conversational_hint}")
+
+                if res.conversational_hint:
+                    print(f"Hint:      {res.conversational_hint}")
 
                 if res.polarity_info:
                     print(
