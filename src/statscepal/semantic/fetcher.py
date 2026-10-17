@@ -34,11 +34,18 @@ class SemanticDataFetcher:
         self, indicator_id: int, member_ids: list[int] | None = None
     ) -> pd.DataFrame | None:
         """Load indicator dataframe using available extractor method."""
+        df: pd.DataFrame | None = None
         if hasattr(self.extractor, "fetch_indicator_dataframe"):
-            return self.extractor.fetch_indicator_dataframe(  # type: ignore[attr-defined]
+            df = self.extractor.fetch_indicator_dataframe(  # type: ignore[attr-defined]
                 indicator_id, members=member_ids or None
             )
-        return self.extractor.get_dataframe(indicator_id, members=member_ids or None)
+            if (df is None or df.empty) and member_ids:
+                df = self.extractor.fetch_indicator_dataframe(indicator_id, members=None)  # type: ignore[attr-defined]
+        else:
+            df = self.extractor.get_dataframe(indicator_id, members=member_ids or None)
+            if (df is None or df.empty) and member_ids:
+                df = self.extractor.get_dataframe(indicator_id, members=None)
+        return df
 
 
     def fetch_resolved_data(
