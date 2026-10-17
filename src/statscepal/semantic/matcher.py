@@ -59,6 +59,8 @@ class DynamicMemberMatcher:
             key_norm = strip_accents(facet_key)
             val_norm = strip_accents(facet_val).upper()
             facet_def = self.ontology.get_facet(facet_key)
+            is_breakdown = self.ontology.is_breakdown_value(facet_key, facet_val)
+            is_critical = self.ontology.is_critical_unhandled_facet(facet_key, facet_val)
 
             # Target member patterns for this facet value
             target_patterns = list(self._member_value_patterns.get(val_norm, []))
@@ -93,11 +95,44 @@ class DynamicMemberMatcher:
                 else:
                     candidate_dims_b.append(d)
 
+            if is_breakdown:
+                breakdown_match = self._resolve_breakdown_dimension(
+                    facet_key, candidate_dims_a, target_patterns
+                )
+                if breakdown_match:
+                    best_dim, selected_members = breakdown_match
+                    applied_filters.append(
+                        AppliedDimensionFilter(
+                            dim_id=best_dim.id,
+                            dim_name=best_dim.name,
+                            member_id=None,
+                            member_name=", ".join(m.name for m in selected_members),
+                            member_ids=[m.id for m in selected_members if m.id is not None],
+                            member_names=[m.name for m in selected_members],
+                            is_breakdown=True,
+                        )
+                    )
+                    used_dim_ids.add(best_dim.id)
+                else:
+                    unhandled_facets.append(facet_key)
+                continue
+
             # Try candidate group A first
-            match_found = self._find_best_match(candidate_dims_a, target_patterns)
+            match_found = self._find_best_match(
+                candidate_dims_a,
+                target_patterns,
+                facet_key=facet_key,
+                forbid_aggregate=is_critical,
+            )
             if not match_found:
                 # Try fallback group B
-                match_found = self._find_best_match(candidate_dims_b, target_patterns, min_score=60)
+                match_found = self._find_best_match(
+                    candidate_dims_b,
+                    target_patterns,
+                    min_score=60,
+                    facet_key=facet_key,
+                    forbid_aggregate=is_critical,
+                )
 
             if match_found:
                 best_dim, best_member = match_found
@@ -116,17 +151,55 @@ class DynamicMemberMatcher:
         all_matched = len(unhandled_facets) == 0
         return all_matched, applied_filters, unhandled_facets
 
+    def _resolve_breakdown_dimension(
+        self,
+        facet_key: str,
+        candidate_dims: list[Dimension],
+        target_patterns: list[str],
+    ) -> tuple[Dimension, list[Member]] | None:
+        """Select all breakdown members for a dimension, rejecting degenerate aggregate-only dimensions."""
+        for dim in candidate_dims:
+            non_agg_members = [
+                m
+                for m in dim.members
+                if not self.ontology.is_aggregate_member_name(facet_key, m.name)
+            ]
+            if not non_agg_members:
+                continue
+
+            pattern_matched = [
+                m
+                for m in non_agg_members
+                if self._score_member(m.name, target_patterns) >= 60
+            ]
+            if len(pattern_matched) >= 2:
+                selected_members = pattern_matched
+            else:
+                selected_members = list(dim.members)
+
+            return dim, selected_members
+
+        return None
+
     def _find_best_match(
         self,
         candidate_dims: list[Dimension],
         target_patterns: list[str],
         min_score: int = 1,
+        facet_key: str | None = None,
+        forbid_aggregate: bool = False,
     ) -> tuple[Dimension, Member] | None:
         best_candidate: tuple[Dimension, Member] | None = None
         highest_score = -1
 
         for dim in candidate_dims:
             for member in dim.members:
+                if (
+                    forbid_aggregate
+                    and facet_key is not None
+                    and self.ontology.is_aggregate_member_name(facet_key, member.name)
+                ):
+                    continue
                 score = self._score_member(member.name, target_patterns)
                 if score >= min_score and score > highest_score:
                     highest_score = score

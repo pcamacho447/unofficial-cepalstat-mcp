@@ -1130,6 +1130,9 @@ class SemanticRegistry:
 
     def get_supported_facets(self, indicator_id: int) -> set[str]:
         """Get set of supported facets for an indicator from metadata and dimensions."""
+        if indicator_id in self._indicators_cache:
+            return set(self._indicators_cache[indicator_id].supported_facets)
+
         facets: set[str] = set()
         meta = self.get_indicator(indicator_id)
         if meta and meta.supported_facets:

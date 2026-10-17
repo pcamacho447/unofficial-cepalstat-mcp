@@ -34,7 +34,7 @@ def test_member_matcher_resolves_ethnic_dimension():
     matcher = DynamicMemberMatcher()
     dims_3342 = DEFAULT_OFFICIAL_DIMENSIONS[3342]
 
-    # Test general ethnic facet -> Total etnia
+    # Test general ethnic facet -> Breakdown across all ethnic members (NEVER collapsed to just 'Total')
     success1, filters1, unhandled1 = matcher.match_facets_to_dimensions(
         3342, dims_3342, {"etnia": "ETNICO_TOTAL", "area": "NACIONAL"}
     )
@@ -42,7 +42,12 @@ def test_member_matcher_resolves_ethnic_dimension():
     assert len(unhandled1) == 0
     ethnic_filter1 = next((f for f in filters1 if f.dim_id == 43039), None)
     assert ethnic_filter1 is not None
-    assert ethnic_filter1.member_name in ("Total", "Afrodescendiente", "Indígena", "No indígena ni afrodescendiente")
+    assert ethnic_filter1.is_breakdown is True
+    assert ethnic_filter1.member_name != "Total"
+    assert {"Afrodescendiente", "Indígena", "No indígena ni afrodescendiente"}.issubset(
+        set(ethnic_filter1.member_names)
+    )
+    assert len(ethnic_filter1.member_ids) >= 3
 
     # Test specific indigenous facet
     success2, filters2, unhandled2 = matcher.match_facets_to_dimensions(
@@ -52,6 +57,7 @@ def test_member_matcher_resolves_ethnic_dimension():
     assert len(unhandled2) == 0
     ethnic_filter2 = next((f for f in filters2 if f.dim_id == 43039), None)
     assert ethnic_filter2 is not None
+    assert ethnic_filter2.is_breakdown is False
     assert ethnic_filter2.member_name == "Indígena"
 
     # Test specific afrodescendant facet
@@ -62,6 +68,7 @@ def test_member_matcher_resolves_ethnic_dimension():
     assert len(unhandled3) == 0
     ethnic_filter3 = next((f for f in filters3 if f.dim_id == 43039), None)
     assert ethnic_filter3 is not None
+    assert ethnic_filter3.is_breakdown is False
     assert ethnic_filter3.member_name == "Afrodescendiente"
 
     # Test specific no-indigena facet
@@ -72,6 +79,7 @@ def test_member_matcher_resolves_ethnic_dimension():
     assert len(unhandled4) == 0
     ethnic_filter4 = next((f for f in filters4 if f.dim_id == 43039), None)
     assert ethnic_filter4 is not None
+    assert ethnic_filter4.is_breakdown is False
     assert ethnic_filter4.member_name == "No indígena ni afrodescendiente"
 
 from statscepal.semantic.engine import SemanticResolutionEngine
@@ -89,10 +97,61 @@ def test_engine_resolves_ethnic_poverty_to_3342():
     assert resp.applied_filters.country_code == "PER"
     assert resp.applied_filters.year == 2020
 
-    # Ensure dimension 43039 (Tipo de etnia) is bound
+    # Ensure dimension 43039 (Tipo de etnia) is bound as a full breakdown, NOT collapsed to 'Total'
     ethnic_dim = next((f for f in resp.applied_filters.dimensions if f.dim_id == 43039), None)
     assert ethnic_dim is not None
-    assert ethnic_dim.member_name in ("Total", "Indígena", "Afrodescendiente", "No indígena ni afrodescendiente")
+    assert ethnic_dim.is_breakdown is True
+    assert ethnic_dim.member_name != "Total"
+    assert {"Afrodescendiente", "Indígena", "No indígena ni afrodescendiente"}.issubset(
+        set(ethnic_dim.member_names)
+    )
+
+
+def test_critical_facet_never_collapses_to_unrequested_aggregate_member():
+    """Fail if any critical facet ends up bound to its aggregate ('Total', 'Nacional', 'Ambos sexos') when not requested."""
+    from statscepal.dimensions import Dimension, Member
+    from statscepal.semantic.matcher import DynamicMemberMatcher
+
+    engine = SemanticResolutionEngine()
+
+    # 1. User's exact extreme ethnic poverty query must return all ethnic members, never just 'Total'
+    resp = engine.resolve("cual es la pobreza extrema etnica en el peru del 2020")
+    assert resp.status == ResolutionStatus.RESOLVED
+    assert resp.selected_candidate is not None
+    assert resp.selected_candidate.indicator_id == 3342
+
+    sev_dim = next((f for f in resp.applied_filters.dimensions if f.dim_id == 1361), None)
+    assert sev_dim is not None
+    assert sev_dim.member_name == "Pobreza extrema"
+
+    ethnic_dim = next((f for f in resp.applied_filters.dimensions if f.dim_id == 43039), None)
+    assert ethnic_dim is not None
+    assert ethnic_dim.member_name != "Total", "Critical facet 'etnia' must NEVER collapse to aggregate 'Total'"
+    assert ethnic_dim.is_breakdown is True
+    assert {"Afrodescendiente", "Indígena", "No indígena ni afrodescendiente"}.issubset(
+        set(ethnic_dim.member_names)
+    )
+
+    # 2. If a dimension only has an aggregate member ('Total') and lacks actual breakdown members,
+    # DynamicMemberMatcher must NOT bind 'Total' for a critical facet request.
+    matcher = DynamicMemberMatcher()
+    degenerate_dims = [
+        Dimension(id=43039, name="Tipo de etnia", members=[Member(id=43043, name="Total")]),
+    ]
+    ok_gen, filters_gen, unhandled_gen = matcher.match_facets_to_dimensions(
+        99999, degenerate_dims, {"etnia": "ETNICO_TOTAL"}
+    )
+    assert ok_gen is False
+    assert "etnia" in unhandled_gen
+    assert len(filters_gen) == 0
+
+    ok_spec, filters_spec, unhandled_spec = matcher.match_facets_to_dimensions(
+        99999, degenerate_dims, {"etnia": "INDIGENA"}
+    )
+    assert ok_spec is False
+    assert "etnia" in unhandled_spec
+    assert len(filters_spec) == 0
+
 
 
 def test_engine_resolves_indigenous_poverty_to_3342_with_member():

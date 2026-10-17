@@ -52,6 +52,7 @@ class FacetDefinition(BaseModel):
     dimension_name_patterns: tuple[str, ...] = Field(default_factory=tuple)
     member_value_patterns: dict[str, tuple[str, ...]] = Field(default_factory=dict)
     implicit_aggregate_values: frozenset[str] = Field(default_factory=frozenset)
+    breakdown_values: frozenset[str] = Field(default_factory=frozenset)
     total_member_patterns: tuple[str, ...] = Field(default_factory=tuple)
     query_triggers: tuple[QueryTriggerRule, ...] = Field(default_factory=tuple)
 
@@ -90,6 +91,32 @@ class FacetOntology:
         else:
             self._facets = {f.facet_key: f for f in facets}
 
+        self._compiled_triggers: dict[
+            str, list[tuple[str, re.Pattern[str] | None, tuple[str, ...]]]
+        ] = {}
+        self._normalized_total_patterns: dict[str, frozenset[str]] = {}
+        for fdef in self._facets.values():
+            self._normalized_total_patterns[fdef.facet_key] = frozenset(
+                strip_accents(p) for p in fdef.total_member_patterns if strip_accents(p)
+            )
+            if not fdef.query_triggers:
+                continue
+            rules_list: list[tuple[str, re.Pattern[str] | None, tuple[str, ...]]] = []
+            for rule in fdef.query_triggers:
+                norm_phrases = tuple(
+                    strip_accents(p) for p in rule.phrases if strip_accents(p)
+                )
+                if not norm_phrases:
+                    continue
+                if rule.require_word_boundary:
+                    joined = "|".join(re.escape(p) for p in norm_phrases)
+                    pat = re.compile(r"\b(?:" + joined + r")\b")
+                    rules_list.append((rule.canonical_value, pat, norm_phrases))
+                else:
+                    rules_list.append((rule.canonical_value, None, norm_phrases))
+            if rules_list:
+                self._compiled_triggers[fdef.facet_key] = rules_list
+
     def get_facet(self, facet_key: str) -> FacetDefinition | None:
         """Retrieve a facet definition by its canonical key."""
         return self._facets.get(strip_accents(facet_key).lower())
@@ -109,6 +136,25 @@ class FacetOntology:
             return True
         val_norm = strip_accents(facet_value).upper()
         return val_norm not in fdef.implicit_aggregate_values
+
+    def is_breakdown_value(self, facet_key: str, facet_value: str) -> bool:
+        """Return True if facet_value requests a full multi-member breakdown of the dimension."""
+        fdef = self.get_facet(facet_key)
+        if fdef is None:
+            return False
+        val_norm = strip_accents(facet_value).upper()
+        return val_norm in fdef.breakdown_values
+
+    def is_aggregate_member_name(self, facet_key: str, member_name: str) -> bool:
+        """Return True if member_name represents an aggregate/total member for the given facet."""
+        m_norm = strip_accents(member_name)
+        if not m_norm:
+            return False
+        key_clean = strip_accents(facet_key).lower()
+        norm_set = self._normalized_total_patterns.get(key_clean)
+        if norm_set is not None and len(norm_set) > 0:
+            return m_norm in norm_set
+        return m_norm in {"total", "nacional", "ambos sexos"}
 
     def is_structural_dimension(self, dim_id: int, dim_name: str) -> bool:
         """Return True if dimension is Country or Time structural dimension."""
@@ -246,25 +292,18 @@ class FacetOntology:
                             facets[fdef.facet_key] = cid
 
             # 2. QueryTriggerRules if not yet matched
-            if fdef.facet_key not in facets and fdef.query_triggers:
-                for rule in fdef.query_triggers:
-                    rule_matched = False
-                    for phrase in rule.phrases:
-                        phrase_norm = strip_accents(phrase)
-                        if not phrase_norm:
-                            continue
-                        if rule.require_word_boundary:
-                            pattern = r"\b" + re.escape(phrase_norm) + r"\b"
-                            if re.search(pattern, clean):
-                                rule_matched = True
+            if fdef.facet_key not in facets:
+                compiled_rules = self._compiled_triggers.get(fdef.facet_key)
+                if compiled_rules:
+                    for canonical_val, pat, norm_phrases in compiled_rules:
+                        if pat is not None:
+                            if pat.search(clean):
+                                facets[fdef.facet_key] = canonical_val
                                 break
                         else:
-                            if phrase_norm in clean:
-                                rule_matched = True
+                            if any(p in clean for p in norm_phrases):
+                                facets[fdef.facet_key] = canonical_val
                                 break
-                    if rule_matched:
-                        facets[fdef.facet_key] = rule.canonical_value
-                        break
 
         return facets
 
@@ -376,11 +415,12 @@ DEFAULT_FACETS: list[FacetDefinition] = [
             "INDIGENA": ("indigena", "indigenas", "pueblos indigenas", "originarios"),
             "AFRODESCENDIENTE": ("afrodescendiente", "afrodescendientes", "afro", "negros"),
             "NO_INDIGENA": ("no indigena", "no indigena ni afrodescendiente"),
-            "ETNICO_TOTAL": ("total", "nacional", "ambos", "etnia", "etnico", "etnica"),
-            "ETNICO": ("total", "nacional", "ambos", "etnia", "etnico", "etnica"),
+            "ETNICO_TOTAL": ("etnia", "etnico", "etnica"),
+            "ETNICO": ("etnia", "etnico", "etnica"),
         },
         implicit_aggregate_values=frozenset(),
-        total_member_patterns=("total", "nacional", "ambos"),
+        breakdown_values=frozenset({"ETNICO_TOTAL", "ETNICO"}),
+        total_member_patterns=("total", "nacional", "ambos", "ambos sexos"),
         query_triggers=(
             QueryTriggerRule(
                 canonical_value="INDIGENA",
@@ -468,8 +508,10 @@ DEFAULT_FACETS: list[FacetDefinition] = [
             "QUINTIL_3": ("quintil 3", "iii quintil", "tercer quintil", "q3", "3 quintil"),
             "QUINTIL_4": ("quintil 4", "iv quintil", "cuarto quintil", "q4", "4 quintil"),
             "QUINTIL_5": ("quintil 5", "v quintil", "quinto quintil", "q5", "5 quintil"),
+            "QUINTIL": ("quintil", "quintiles"),
         },
         implicit_aggregate_values=frozenset(),
+        breakdown_values=frozenset({"QUINTIL"}),
         total_member_patterns=("total", "nacional"),
         query_triggers=(),
     ),
@@ -492,6 +534,7 @@ DEFAULT_FACETS: list[FacetDefinition] = [
             "RELACION_Q5_Q1": ("relacion quintil 5 / quintil 1", "q5/q1", "q5 versus q1", "quintil 5 vs quintil 1", "quintil 5 versus quintil 1"),
         },
         implicit_aggregate_values=frozenset(),
+        breakdown_values=frozenset({"QUINTIL"}),
         total_member_patterns=("total", "nacional"),
         query_triggers=(
             QueryTriggerRule(

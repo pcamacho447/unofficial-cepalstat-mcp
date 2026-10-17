@@ -338,7 +338,25 @@ class SemanticResolutionEngine:
             )
             applied_filters.dimensions = matched_dims
             for f in matched_dims:
-                trace.append(f"[Stage 4: Member Matcher] Bound dimension '{f.dim_name}' (ID: {f.dim_id}) -> Member '{f.member_name}' (ID: {f.member_id})")
+                if f.is_breakdown and f.member_names:
+                    members_str = ", ".join(
+                        f"{n} (ID: {i})" for n, i in zip(f.member_names, f.member_ids)
+                    )
+                    trace.append(
+                        f"[Stage 4: Member Matcher] Bound dimension '{f.dim_name}' (ID: {f.dim_id}) -> Breakdown Members: [{members_str}]"
+                    )
+                else:
+                    trace.append(
+                        f"[Stage 4: Member Matcher] Bound dimension '{f.dim_name}' (ID: {f.dim_id}) -> Member '{f.member_name}' (ID: {f.member_id})"
+                    )
+                    f_facet = self.ontology.classify_dimension(f.dim_id, f.dim_name)
+                    if (
+                        f_facet
+                        and f_facet in intent.facets
+                        and self.ontology.is_critical_unhandled_facet(f_facet, intent.facets[f_facet])
+                        and self.ontology.is_aggregate_member_name(f_facet, f.member_name)
+                    ):
+                        unhandled.append(f_facet)
             critical_unhandled = [
                 f for f in unhandled
                 if self.ontology.is_critical_unhandled_facet(f, intent.facets.get(f, ""))

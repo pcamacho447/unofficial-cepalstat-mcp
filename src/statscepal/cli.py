@@ -688,7 +688,12 @@ def main(args: Sequence[str] | None = None) -> int:
                 if res.applied_filters.dimensions:
                     dim_parts = []
                     for d in res.applied_filters.dimensions:
-                        if d.member_id is not None:
+                        if getattr(d, "is_breakdown", False) and getattr(d, "member_names", None):
+                            members_fmt = ", ".join(
+                                f"{n} (ID: {i})" for n, i in zip(d.member_names, d.member_ids)
+                            )
+                            dim_parts.append(f"{d.dim_name}=[{members_fmt}] (Desglose)")
+                        elif d.member_id is not None:
                             dim_parts.append(
                                 f"{d.dim_name}={d.member_name} (ID: {d.member_id})"
                             )

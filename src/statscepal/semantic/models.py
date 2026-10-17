@@ -81,6 +81,9 @@ class AppliedDimensionFilter(BaseModel):
     dim_name: str
     member_id: int | None = None
     member_name: str
+    member_ids: list[int] = Field(default_factory=list)
+    member_names: list[str] = Field(default_factory=list)
+    is_breakdown: bool = False
 
 
 class AppliedFilters(BaseModel):

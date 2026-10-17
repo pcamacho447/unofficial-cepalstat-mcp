@@ -68,11 +68,12 @@ class SemanticDataFetcher:
             return payload
 
         indicator_id = response.selected_candidate.indicator_id
-        member_ids = [
-            f.member_id
-            for f in response.applied_filters.dimensions
-            if f.member_id is not None
-        ]
+        member_ids: list[int] = []
+        for f in response.applied_filters.dimensions:
+            if getattr(f, "is_breakdown", False) and getattr(f, "member_ids", None):
+                member_ids.extend(f.member_ids)
+            elif f.member_id is not None:
+                member_ids.append(f.member_id)
 
         df = self._load_indicator_data(indicator_id, member_ids)
 
@@ -166,26 +167,35 @@ class SemanticDataFetcher:
 
                 if dim_col is not None:
                     dim_mask = pd.Series(False, index=filtered_df.index)
-                    if dim_filter.member_name:
+                    candidate_names = (
+                        list(dim_filter.member_names)
+                        if getattr(dim_filter, "is_breakdown", False) and getattr(dim_filter, "member_names", None)
+                        else ([dim_filter.member_name] if dim_filter.member_name else [])
+                    )
+                    candidate_ids = (
+                        list(dim_filter.member_ids)
+                        if getattr(dim_filter, "is_breakdown", False) and getattr(dim_filter, "member_ids", None)
+                        else ([dim_filter.member_id] if dim_filter.member_id is not None else [])
+                    )
+                    for m_name in candidate_names:
                         dim_mask |= (
                             filtered_df[dim_col]
                             .astype(str)
                             .str.strip()
                             .str.lower()
-                            == dim_filter.member_name.strip().lower()
+                            == m_name.strip().lower()
                         )
-                        # Also compare accent-stripped for resilience
                         dim_mask |= (
                             filtered_df[dim_col]
                             .astype(str)
                             .str.strip()
                             .map(_strip_accents)
-                            == _strip_accents(dim_filter.member_name.strip())
+                            == _strip_accents(m_name.strip())
                         )
-                    if dim_filter.member_id is not None:
+                    for m_id in candidate_ids:
                         dim_mask |= (
                             filtered_df[dim_col].astype(str).str.strip()
-                            == str(dim_filter.member_id)
+                            == str(m_id)
                         )
                     filtered_df = filtered_df[dim_mask]
 
