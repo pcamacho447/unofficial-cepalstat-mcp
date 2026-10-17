@@ -666,9 +666,21 @@ def main(args: Sequence[str] | None = None) -> int:
                         else "None"
                     )
                     if getattr(ti, "requested_countries", None) and len(ti.requested_countries) > 1:
-                        print(
-                            f"Temporal:  {ti.temporal_status.value} (Observed Countries: {ti.observed_countries}, Unobserved: {ti.unobserved_countries})"
-                        )
+                        if ti.unobserved_countries:
+                            unobs_fmt = []
+                            for c in ti.unobserved_countries:
+                                if getattr(ti, "country_anchors", None) and c in ti.country_anchors:
+                                    ca = ti.country_anchors[c]
+                                    unobs_fmt.append(f"{c} (Prev={ca.previous_anchor_year}, Next={ca.next_anchor_year})")
+                                else:
+                                    unobs_fmt.append(str(c))
+                            print(
+                                f"Temporal:  {ti.temporal_status.value} (Observed Countries: {ti.observed_countries}, Unobserved: [{', '.join(unobs_fmt)}])"
+                            )
+                        else:
+                            print(
+                                f"Temporal:  {ti.temporal_status.value} (Observed Countries: {ti.observed_countries}, Unobserved: [])"
+                            )
                     elif getattr(ti, "requested_years", None) and len(ti.requested_years) > 1:
                         print(
                             f"Temporal:  {ti.temporal_status.value} (Observed: {ti.observed_years}, Unobserved: {ti.unobserved_years})"
@@ -755,8 +767,15 @@ def main(args: Sequence[str] | None = None) -> int:
                                 )
                                 c_str = str(item.get("country", ""))[:12]
                                 member_str = str(item.get("member", ""))[:26]
+                                year_val = item.get("year", "")
+                                year_str = f"{year_val}*" if item.get("is_anchor") else str(year_val)
+                                notes_val = str(item.get("notes", "")).strip() if item.get("notes") else ""
+                                if item.get("is_anchor") and "[Ancla" not in notes_val:
+                                    notes_val = f"{notes_val} [Ancla]".strip()
+                                unit_val = str(item.get("unit", "")).strip() if item.get("unit") else ""
+                                desc_str = f"{unit_val}  {notes_val}".strip() if notes_val else unit_val
                                 print(
-                                    f"  {c_str:<14} {item['year']:<8} {member_str:<28} {val_str:<12} {item.get('unit', '')}"
+                                    f"  {c_str:<14} {year_str:<8} {member_str:<28} {val_str:<12} {desc_str}"
                                 )
                         elif has_country_col:
                             print(f"  {'Country':<16} {'Year':<8} {'Value':<12} {'Unit'}")
@@ -768,8 +787,15 @@ def main(args: Sequence[str] | None = None) -> int:
                                     else str(item["value"])
                                 )
                                 c_str = str(item.get("country", ""))[:14]
+                                year_val = item.get("year", "")
+                                year_str = f"{year_val}*" if item.get("is_anchor") else str(year_val)
+                                notes_val = str(item.get("notes", "")).strip() if item.get("notes") else ""
+                                if item.get("is_anchor") and "[Ancla" not in notes_val:
+                                    notes_val = f"{notes_val} [Ancla]".strip()
+                                unit_val = str(item.get("unit", "")).strip() if item.get("unit") else ""
+                                desc_str = f"{unit_val}  {notes_val}".strip() if notes_val else unit_val
                                 print(
-                                    f"  {c_str:<16} {item['year']:<8} {val_str:<12} {item.get('unit', '')}"
+                                    f"  {c_str:<16} {year_str:<8} {val_str:<12} {desc_str}"
                                 )
                         elif has_member_col:
                             print(f"  {'Year':<8} {'Member / Group':<34} {'Value':<12} {'Unit'}")
@@ -781,8 +807,15 @@ def main(args: Sequence[str] | None = None) -> int:
                                     else str(item["value"])
                                 )
                                 member_str = str(item.get("member", ""))[:32]
+                                year_val = item.get("year", "")
+                                year_str = f"{year_val}*" if item.get("is_anchor") else str(year_val)
+                                notes_val = str(item.get("notes", "")).strip() if item.get("notes") else ""
+                                if item.get("is_anchor") and "[Ancla" not in notes_val:
+                                    notes_val = f"{notes_val} [Ancla]".strip()
+                                unit_val = str(item.get("unit", "")).strip() if item.get("unit") else ""
+                                desc_str = f"{unit_val}  {notes_val}".strip() if notes_val else unit_val
                                 print(
-                                    f"  {item['year']:<8} {member_str:<34} {val_str:<12} {item.get('unit', '')}"
+                                    f"  {year_str:<8} {member_str:<34} {val_str:<12} {desc_str}"
                                 )
                         else:
                             print(f"  {'Year':<8} {'Value':<12} {'Unit'}")
@@ -793,9 +826,17 @@ def main(args: Sequence[str] | None = None) -> int:
                                     if isinstance(item["value"], (int, float))
                                     else str(item["value"])
                                 )
+                                year_val = item.get("year", "")
+                                year_str = f"{year_val}*" if item.get("is_anchor") else str(year_val)
+                                notes_val = str(item.get("notes", "")).strip() if item.get("notes") else ""
+                                if item.get("is_anchor") and "[Ancla" not in notes_val:
+                                    notes_val = f"{notes_val} [Ancla]".strip()
+                                unit_val = str(item.get("unit", "")).strip() if item.get("unit") else ""
+                                desc_str = f"{unit_val}  {notes_val}".strip() if notes_val else unit_val
                                 print(
-                                    f"  {item['year']:<8} {val_str:<12} {item.get('unit', '')}"
+                                    f"  {year_str:<8} {val_str:<12} {desc_str}"
                                 )
+
                     elif emp.get("observation_exists"):
                         print("Empirical Observation:")
                         val = emp.get("value")

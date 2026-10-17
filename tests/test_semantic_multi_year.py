@@ -369,5 +369,49 @@ def test_fetcher_rescues_anchor_years_for_single_country_query():
     assert all("Ancla oficial para 2021" in s.get("notes", "") for s in series)
 
 
+def test_cli_displays_per_country_anchors_and_rescued_fetch_rows(capsys):
+    from statscepal.cli import main
+
+    ret = main([
+        "semantic",
+        "resolve",
+        "tasa de pobreza en peru colombia y chile en el 2021",
+        "--explain",
+    ])
+    assert ret == 0
+    out = capsys.readouterr().out
+    assert "CHL (Prev=2020, Next=2022)" in out
+    assert "Puntos ancla oficiales disponibles: 2020 y 2022" in out or "Puntos ancla oficiales" in out
+
+    mock_payload = {
+        "observation_exists": True,
+        "indicator_id": 3340,
+        "indicator_name": "Población en situación de pobreza",
+        "unit": "%",
+        "series": [
+            {"country": "PER", "year": 2021, "value": 25.9, "unit": "%", "notes": "", "is_anchor": False},
+            {"country": "COL", "year": 2021, "value": 39.3, "unit": "%", "notes": "", "is_anchor": False},
+            {"country": "CHL", "year": 2020, "value": 10.8, "unit": "%", "notes": "[Ancla oficial para 2021]", "is_anchor": True},
+            {"country": "CHL", "year": 2022, "value": 6.5, "unit": "%", "notes": "[Ancla oficial para 2021]", "is_anchor": True},
+        ],
+    }
+    with patch(
+        "statscepal.semantic.fetcher.SemanticDataFetcher.fetch_resolved_data",
+        return_value=mock_payload,
+    ):
+        ret_fetch = main([
+            "semantic",
+            "resolve",
+            "tasa de pobreza en peru colombia y chile en el 2021",
+            "--fetch",
+        ])
+    assert ret_fetch == 0
+    fetch_out = capsys.readouterr().out
+    assert "CHL" in fetch_out
+    assert "2020*" in fetch_out
+    assert "[Ancla oficial para 2021]" in fetch_out
+
+
+
 
 
