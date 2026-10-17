@@ -751,6 +751,12 @@ def main(args: Sequence[str] | None = None) -> int:
                 if parsed.fetch:
                     print("-" * 70)
                     emp = res.empirical_data or {}
+                    if (
+                        emp.get("empirical_indicator_id")
+                        and res.selected_candidate
+                        and emp.get("empirical_indicator_id") != res.selected_candidate.indicator_id
+                    ):
+                        print(f"CEPALSTAT API Table ID: {emp['empirical_indicator_id']}")
                     series = emp.get("series")
                     if series:
                         print(f"Empirical Series ({len(series)} observations):")
