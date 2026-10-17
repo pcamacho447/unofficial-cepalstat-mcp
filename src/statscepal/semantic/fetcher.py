@@ -14,17 +14,77 @@ from statscepal.semantic.registry import (
 )
 
 
+DIM_NAME_ALIASES: dict[str, list[str]] = {
+    "estrato de ingreso": [
+        "quintil",
+        "decil",
+        "estrato",
+        "quintiles",
+        "deciles",
+        "estratos",
+        "estrato de ingresos",
+    ],
+}
+
+MEMBER_VALUE_ALIASES: dict[str, list[str]] = {
+    "primer quintil": ["quintil 1", "i", "quintil i", "1", "q1", "i quintil"],
+    "segundo quintil": ["quintil 2", "ii", "quintil ii", "2", "q2", "ii quintil"],
+    "tercer quintil": ["quintil 3", "iii", "quintil iii", "3", "q3", "iii quintil"],
+    "cuarto quintil": ["quintil 4", "iv", "quintil iv", "4", "q4", "iv quintil"],
+    "quinto quintil": ["quintil 5", "v", "quintil v", "5", "q5", "v quintil"],
+    "primer decil": ["decil 1", "i", "decil i", "1", "d1", "i decil"],
+    "segundo decil": ["decil 2", "ii", "decil ii", "2", "d2", "ii decil"],
+    "tercer decil": ["decil 3", "iii", "decil iii", "3", "d3", "iii decil"],
+    "cuarto decil": ["decil 4", "iv", "decil iv", "4", "d4", "iv decil"],
+    "quinto decil": ["decil 5", "v", "decil v", "5", "d5", "v decil"],
+    "sexto decil": ["decil 6", "vi", "decil vi", "6", "d6", "vi decil"],
+    "septimo decil": ["decil 7", "vii", "decil vii", "7", "d7", "vii decil"],
+    "octavo decil": ["decil 8", "viii", "decil viii", "8", "d8", "viii decil"],
+    "noveno decil": ["decil 9", "ix", "decil ix", "9", "d9", "ix decil"],
+    "decimo decil": ["decil 10", "x", "decil x", "10", "d10", "x decil"],
+}
+
+
 def _strip_accents(text: str) -> str:
     """Normalize text by converting to lowercase, stripping whitespace and combining accents."""
     normalized = unicodedata.normalize("NFD", str(text).lower().strip())
     return "".join(c for c in normalized if unicodedata.category(c) != "Mn")
 
 
+def _normalize_member_text(text: str) -> str:
+    """Normalize member name or value for robust matching."""
+    return _strip_accents(str(text)).lower().strip()
+
+
+def _get_acceptable_member_forms(member_name: str) -> set[str]:
+    """Return all normalized acceptable aliases and representations for a member name."""
+    norm_m = _normalize_member_text(member_name)
+    acceptable = {norm_m}
+    if norm_m in MEMBER_VALUE_ALIASES:
+        for alias in MEMBER_VALUE_ALIASES[norm_m]:
+            acceptable.add(_normalize_member_text(alias))
+    for canonical, aliases in MEMBER_VALUE_ALIASES.items():
+        norm_aliases = {_normalize_member_text(a) for a in aliases}
+        if norm_m in norm_aliases:
+            acceptable.add(_normalize_member_text(canonical))
+            acceptable |= norm_aliases
+    return acceptable
+
+
 def _match_dim_column(col_name: str, target_name: str) -> bool:
     """Check if a DataFrame column name matches a target dimension name, ignoring case, accents, and __estandar."""
     cl = _strip_accents(col_name).lower().strip().replace("__estandar", "")
     dl = _strip_accents(target_name).lower().strip().replace("__estandar", "")
-    return cl == dl or cl.replace(" ", "") == dl.replace(" ", "")
+    if cl == dl or cl.replace(" ", "") == dl.replace(" ", ""):
+        return True
+    aliases_dl = DIM_NAME_ALIASES.get(dl, [])
+    if cl in aliases_dl or cl.replace(" ", "") in [a.replace(" ", "") for a in aliases_dl]:
+        return True
+    aliases_cl = DIM_NAME_ALIASES.get(cl, [])
+    if dl in aliases_cl or dl.replace(" ", "") in [a.replace(" ", "") for a in aliases_cl]:
+        return True
+    return False
+
 
 
 
@@ -123,24 +183,39 @@ class SemanticDataFetcher:
             self.client = client or getattr(extractor, "client", None)
         else:
             self.client = client or CepalStatClient()
-            self.extractor = DataExtractor(client=self.client)
+            if hasattr(self.client, "get_dataframe") and not isinstance(self.client, CepalStatClient):
+                self.extractor = self.client  # type: ignore[assignment]
+            else:
+                self.extractor = DataExtractor(client=self.client)
 
     def _load_indicator_data(
         self, indicator_id: int, member_ids: list[int] | None = None
     ) -> pd.DataFrame | None:
         """Load indicator dataframe using available extractor method."""
         df: pd.DataFrame | None = None
-        if hasattr(self.extractor, "fetch_indicator_dataframe"):
-            df = self.extractor.fetch_indicator_dataframe(  # type: ignore[attr-defined]
+        if hasattr(self.extractor, "get_dataframe"):
+            res = self.extractor.get_dataframe(indicator_id, members=member_ids or None)
+            if isinstance(res, pd.DataFrame):
+                df = res
+                if df.empty and member_ids:
+                    fallback_df = self.extractor.get_dataframe(indicator_id, members=None)
+                    if isinstance(fallback_df, pd.DataFrame):
+                        df = fallback_df
+        if (df is None or not isinstance(df, pd.DataFrame)) and hasattr(
+            self.extractor, "fetch_indicator_dataframe"
+        ):
+            res = self.extractor.fetch_indicator_dataframe(  # type: ignore[attr-defined]
                 indicator_id, members=member_ids or None
             )
-            if (df is None or df.empty) and member_ids:
-                df = self.extractor.fetch_indicator_dataframe(indicator_id, members=None)  # type: ignore[attr-defined]
-        else:
-            df = self.extractor.get_dataframe(indicator_id, members=member_ids or None)
-            if (df is None or df.empty) and member_ids:
-                df = self.extractor.get_dataframe(indicator_id, members=None)
-        return df
+            if isinstance(res, pd.DataFrame):
+                df = res
+                if df.empty and member_ids:
+                    fallback_df = self.extractor.fetch_indicator_dataframe(  # type: ignore[attr-defined]
+                        indicator_id, members=None
+                    )
+                    if isinstance(fallback_df, pd.DataFrame):
+                        df = fallback_df
+        return df if isinstance(df, pd.DataFrame) else None
 
     def _filter_unconstrained_dimensions(
         self,
@@ -283,7 +358,7 @@ class SemanticDataFetcher:
         if df is None or df.empty:
             payload = {
                 "observation_exists": False,
-                "indicator_id": indicator_id,
+                "indicator_id": empirical_id,
                 "empirical_indicator_id": empirical_id,
                 "indicator_name": response.selected_candidate.name,
                 "unit": response.selected_candidate.unit,
@@ -489,6 +564,9 @@ class SemanticDataFetcher:
                         if getattr(dim_filter, "is_breakdown", False) and getattr(dim_filter, "member_ids", None)
                         else ([dim_filter.member_id] if dim_filter.member_id is not None else [])
                     )
+                    if not candidate_names and not candidate_ids:
+                        if getattr(dim_filter, "is_breakdown", False):
+                            dim_mask = pd.Series(True, index=filtered_df.index)
                     for m_name in candidate_names:
                         dim_mask |= (
                             filtered_df[dim_col]
@@ -503,6 +581,14 @@ class SemanticDataFetcher:
                             .str.strip()
                             .map(_strip_accents)
                             == _strip_accents(m_name.strip())
+                        )
+                        acceptable_forms = _get_acceptable_member_forms(m_name)
+                        dim_mask |= (
+                            filtered_df[dim_col]
+                            .astype(str)
+                            .str.strip()
+                            .map(_normalize_member_text)
+                            .isin(acceptable_forms)
                         )
                     for m_id in candidate_ids:
                         dim_mask |= (
@@ -815,7 +901,7 @@ class SemanticDataFetcher:
                 if not series:
                     payload = {
                         "observation_exists": False,
-                        "indicator_id": indicator_id,
+                        "indicator_id": empirical_id,
                         "indicator_name": response.selected_candidate.name,
                         "unit": response.selected_candidate.unit,
                         "country": response.applied_filters.country_name
@@ -828,7 +914,7 @@ class SemanticDataFetcher:
                     latest_item = series[-1]
                     payload = {
                         "observation_exists": True,
-                        "indicator_id": indicator_id,
+                        "indicator_id": empirical_id,
                         "indicator_name": response.selected_candidate.name,
                         "value": latest_item["value"],
                         "unit": response.selected_candidate.unit,
@@ -868,7 +954,7 @@ class SemanticDataFetcher:
                 if val is None or pd.isna(val_raw):
                     payload = {
                         "observation_exists": False,
-                        "indicator_id": indicator_id,
+                        "indicator_id": empirical_id,
                         "indicator_name": response.selected_candidate.name,
                         "unit": response.selected_candidate.unit,
                         "country": response.applied_filters.country_name
@@ -896,9 +982,24 @@ class SemanticDataFetcher:
                             notes_val = str(row[n_col])
                             break
 
+                    single_item: dict[str, Any] = {
+                        "year": row_year,
+                        "value": val,
+                        "unit": response.selected_candidate.unit,
+                        "notes": notes_val,
+                    }
+                    if filtered_dim_cols:
+                        m_parts = [
+                            str(row[dc]).strip()
+                            for dc in filtered_dim_cols
+                            if dc in row and not pd.isna(row[dc])
+                        ]
+                        if m_parts:
+                            single_item["member"] = " / ".join(m_parts)
+
                     payload = {
                         "observation_exists": True,
-                        "indicator_id": indicator_id,
+                        "indicator_id": empirical_id,
                         "indicator_name": response.selected_candidate.name,
                         "value": val,
                         "unit": response.selected_candidate.unit,
@@ -909,11 +1010,12 @@ class SemanticDataFetcher:
                             f.model_dump() for f in response.applied_filters.dimensions
                         ],
                         "notes": notes_val,
+                        "series": [single_item],
                     }
         else:
             payload = {
                 "observation_exists": False,
-                "indicator_id": indicator_id,
+                "indicator_id": empirical_id,
                 "indicator_name": response.selected_candidate.name,
                 "unit": response.selected_candidate.unit,
                 "country": response.applied_filters.country_name

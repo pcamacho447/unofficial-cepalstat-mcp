@@ -565,8 +565,134 @@ def test_fetcher_does_not_collapse_dimension_when_requested_as_breakdown():
     assert "Hombres" in series_members or any(item.get("value") == 7.5 for item in payload["series"])
 
 
+@pytest.fixture
+def mock_client():
+    """Mock client providing get_dataframe interface."""
+    return MagicMock()
 
 
+def test_fetcher_empirical_mapping_3340_to_3324_matches_quintil_column_and_members(mock_client):
+    """Assert querying quintile on 3340 correctly remaps to 3324 and filters 'Quintil' column."""
+    fetcher = SemanticDataFetcher(client=mock_client)
+    res = SemanticResolutionResponse(
+        query="distribucion del ingreso primer quintil en chile 2022",
+        status=ResolutionStatus.RESOLVED,
+        selected_candidate=SelectedCandidate(
+            indicator_id=3340,
+            name="Distribución del ingreso por estratos",
+            measure_type="PORCENTAJE",
+            unit="%",
+        ),
+        applied_filters=AppliedFilters(
+            country_code="CHL",
+            country_name="Chile",
+            years=[2022],
+            year=2022,
+            time_mode="SINGLE",
+            facets={"estrato": "PRIMER_QUINTIL"},
+            dimensions=[
+                AppliedDimensionFilter(
+                    dim_id=33401,
+                    dim_name="Estrato de ingreso",
+                    member_id=33402,
+                    member_name="Primer quintil",
+                    is_breakdown=False,
+                    breakdown_members=[],
+                )
+            ],
+        ),
+    )
+    df_3324 = pd.DataFrame([
+        {"País__ESTANDAR": "Chile", "Años_disponibles": "2022", "Quintil": "Quintil 1", "valor": 4.5},
+        {"País__ESTANDAR": "Chile", "Años_disponibles": "2022", "Quintil": "Quintil 5", "valor": 45.2},
+    ])
+    mock_client.get_dataframe.return_value = df_3324
+    payload = fetcher.fetch_resolved_data(res)
+    assert payload["indicator_id"] == 3324
+    assert len(payload["series"]) == 1
+    assert payload["series"][0]["value"] == 4.5
 
 
+def test_fetcher_empirical_mapping_3340_to_3390_matches_decil_column_and_members(mock_client):
+    """Assert querying decile on 3340 correctly remaps to 3390 and filters 'Decil' column."""
+    fetcher = SemanticDataFetcher(client=mock_client)
+    res = SemanticResolutionResponse(
+        query="distribucion del ingreso primer decil en uruguay 2021",
+        status=ResolutionStatus.RESOLVED,
+        selected_candidate=SelectedCandidate(
+            indicator_id=3340,
+            name="Distribución del ingreso por estratos",
+            measure_type="PORCENTAJE",
+            unit="%",
+        ),
+        applied_filters=AppliedFilters(
+            country_code="URY",
+            country_name="Uruguay",
+            years=[2021],
+            year=2021,
+            time_mode="SINGLE",
+            facets={"estrato": "PRIMER_DECIL"},
+            dimensions=[
+                AppliedDimensionFilter(
+                    dim_id=33401,
+                    dim_name="Estrato de ingreso",
+                    member_id=33404,
+                    member_name="Primer decil",
+                    is_breakdown=False,
+                    breakdown_members=[],
+                )
+            ],
+        ),
+    )
+    df_3390 = pd.DataFrame([
+        {"País__ESTANDAR": "Uruguay", "Años_disponibles": "2021", "Decil": "Decil 1", "valor": 1.8},
+        {"País__ESTANDAR": "Uruguay", "Años_disponibles": "2021", "Decil": "Decil 10", "valor": 32.1},
+    ])
+    mock_client.get_dataframe.return_value = df_3390
+    payload = fetcher.fetch_resolved_data(res)
+    assert payload["indicator_id"] == 3390
+    assert len(payload["series"]) == 1
+    assert payload["series"][0]["value"] == 1.8
 
+
+def test_fetcher_empirical_mapping_3340_to_3295_relacion_q5_q1(mock_client):
+    """Assert querying Q5/Q1 ratio on 3340 correctly remaps to 3295 and fetches data."""
+    fetcher = SemanticDataFetcher(client=mock_client)
+    res = SemanticResolutionResponse(
+        query="relacion de ingresos quintil 5 y quintil 1 en chile 2022",
+        status=ResolutionStatus.RESOLVED,
+        selected_candidate=SelectedCandidate(
+            indicator_id=3340,
+            name="Distribución del ingreso por estratos",
+            measure_type="RATIO",
+            unit="ratio",
+        ),
+        applied_filters=AppliedFilters(
+            country_code="CHL",
+            country_name="Chile",
+            years=[2022],
+            year=2022,
+            time_mode="SINGLE",
+            facets={"estrato": "RELACION_Q5_Q1"},
+            dimensions=[
+                AppliedDimensionFilter(
+                    dim_id=600,
+                    dim_name="Estrato de ingreso",
+                    member_id=613,
+                    member_name="Relación quintil 5 / quintil 1",
+                    is_breakdown=False,
+                    breakdown_members=[],
+                )
+            ],
+        ),
+    )
+    df_3295 = pd.DataFrame([
+        {"País__ESTANDAR": "Chile", "Años_disponibles": "2022", "valor": 12.4},
+    ])
+    mock_client.get_dataframe.return_value = df_3295
+    payload = fetcher.fetch_resolved_data(res)
+    assert payload["indicator_id"] == 3295
+    assert payload["observation_exists"] is True
+    assert payload["value"] == 12.4
+    assert len(payload["series"]) == 1
+    assert payload["series"][0]["value"] == 12.4
