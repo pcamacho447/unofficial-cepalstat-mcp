@@ -224,3 +224,29 @@ def test_engine_routes_generically_to_sqlite_inferred_breakdown_indicator(tmp_pa
     assert edu_filter.member_id == 88012
     assert edu_filter.member_name == "Universitaria"
 
+
+def test_stage3_ambiguity_conversational_hint_matches_selected_and_alternative_indicators():
+    """Verify Stage 3 ambiguity conversational_hint describes the actual selected indicator and its alternatives, never hardcoding ID 127 for non-labor queries."""
+    from statscepal.semantic.engine import SemanticResolutionEngine
+    from statscepal.semantic.models import ResolutionStatus
+
+    engine = SemanticResolutionEngine()
+
+    for query, expected_primary_id, expected_alt_id in [
+        ("cuentas fiscales en colombia 2022", 1240, 1241),
+        ("economia de chile en 2022", 729, 730),
+        ("inflacion sectorial en peru 2022", 2928, 2929),
+        ("sector externo en mexico 2022", 1243, 1244),
+        ("emisiones de gases de efecto invernadero en brasil 2021", 5681, 5682),
+    ]:
+        res = engine.resolve(query)
+        assert res.status == ResolutionStatus.ALTERNATIVE_PROPOSED
+        assert res.selected_candidate is not None
+        assert res.selected_candidate.indicator_id == expected_primary_id
+        assert res.conversational_hint is not None
+        assert str(expected_primary_id) in res.conversational_hint
+        assert str(expected_alt_id) in res.conversational_hint
+        assert "127" not in res.conversational_hint
+        assert "119" not in res.conversational_hint
+
+

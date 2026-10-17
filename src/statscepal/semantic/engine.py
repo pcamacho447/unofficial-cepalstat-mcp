@@ -249,8 +249,19 @@ class SemanticResolutionEngine:
                     "Se seleccionó el índice del salario medio real (ID 128). "
                     "Alternativas disponibles: Salario mínimo real (ID 3337) e Ingreso medio per cápita de los hogares (ID 3345)."
                 )
+            elif intent.ambiguous_candidate == "URBAN_UNEMPLOYMENT":
+                conv_hint = (
+                    "Se seleccionó la tasa nacional armonizada (ID 127). "
+                    "Nota: también está disponible la serie urbana (ID 119)."
+                )
             else:
-                conv_hint = "Se seleccionó la tasa nacional armonizada (ID 127). Nota: también está disponible la serie urbana (ID 119)."
+                alt_summary = ", ".join(
+                    f"{a.name} (ID {a.indicator_id})" for a in alternatives
+                )
+                conv_hint = (
+                    f"Se seleccionó '{prim_meta.name}' (ID {primary_id}). "
+                    f"Alternativas metodológicas disponibles: {alt_summary}."
+                )
 
             return SemanticResolutionResponse(
                 status=ResolutionStatus.ALTERNATIVE_PROPOSED,
