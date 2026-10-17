@@ -227,3 +227,65 @@ def test_cli_displays_multi_year_range_and_breakdown_series(capsys):
     assert "Years=[2019, 2020, 2021]" in out
 
 
+def test_parser_extracts_multiple_countries_in_query_order():
+    from statscepal.semantic.parser import QueryParser
+
+    parser = QueryParser()
+    intent = parser.parse("cual fue el ingreso en peru colombia y chile en el 2022")
+    assert intent.country_codes == ["PER", "COL", "CHL"]
+    assert intent.country_names == ["Perú", "Colombia", "Chile"]
+    assert intent.country_code == "PER"
+    assert intent.country_name == "Perú"
+
+
+def test_engine_resolves_multi_country_query_and_audits_all_countries():
+    from statscepal.semantic.engine import SemanticResolutionEngine
+
+    engine = SemanticResolutionEngine()
+
+    # 1. User's motivating query with 3 countries
+    res1 = engine.resolve("cual fue el ingreso en peru colombia y chile en el 2022")
+    assert res1.applied_filters.country_codes == ["PER", "COL", "CHL"]
+    assert res1.applied_filters.country_names == ["Perú", "Colombia", "Chile"]
+    trace1 = "\n".join(res1.execution_trace)
+    assert "Perú (PER), Colombia (COL), Chile (CHL)" in trace1
+
+    # 2. Multi-country query where one country (Chile in 2021) has a survey gap
+    res2 = engine.resolve("tasa de pobreza en peru colombia y chile en el 2021")
+    assert res2.status == ResolutionStatus.RESOLVED_WITH_ANCHORS
+    assert res2.temporal_info is not None
+    assert res2.temporal_info.requested_countries == ["PER", "COL", "CHL"]
+    assert "PER" in res2.temporal_info.observed_countries
+    assert "COL" in res2.temporal_info.observed_countries
+    assert "CHL" in res2.temporal_info.unobserved_countries
+    assert "CHL" in res2.temporal_info.disclaimer or "Chile" in res2.temporal_info.disclaimer
+
+
+def test_fetcher_and_cli_support_multi_country_extraction(capsys):
+    from statscepal.cli import main
+    from statscepal.semantic.engine import SemanticResolutionEngine
+
+    ret = main(["semantic", "resolve", "cual fue el ingreso en peru colombia y chile en el 2022", "--explain"])
+    assert ret == 0
+    out = capsys.readouterr().out
+    assert "Country:   Perú (PER), Colombia (COL), Chile (CHL)" in out
+    assert "Geography: Perú (PER), Colombia (COL), Chile (CHL)" in out
+
+    engine = SemanticResolutionEngine()
+    res = engine.resolve("salario minimo real en peru colombia y chile en el 2022")
+    mock_df = pd.DataFrame([
+        {"iso3": "PER", "year": 2022, "value": 98.5, "notes": ""},
+        {"iso3": "COL", "year": 2022, "value": 103.1, "notes": ""},
+        {"iso3": "CHL", "year": 2022, "value": 106.4, "notes": ""},
+        {"iso3": "BRA", "year": 2022, "value": 101.0, "notes": ""},
+    ])
+    fetcher = SemanticDataFetcher()
+    with patch.object(fetcher, "_load_indicator_data", return_value=mock_df):
+        payload = fetcher.fetch_resolved_data(res)
+
+    assert payload["observation_exists"] is True
+    assert "series" in payload
+    assert len(payload["series"]) == 3
+    assert {item["country"] for item in payload["series"]} == {"PER", "COL", "CHL"}
+
+

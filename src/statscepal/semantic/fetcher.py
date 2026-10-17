@@ -107,10 +107,17 @@ class SemanticDataFetcher:
         filtered_df = df.copy()
 
         # 1. Filter by country if specified
-        target_country_name = response.applied_filters.country_name
-        target_country_code = response.applied_filters.country_code
-        if target_country_name or target_country_code:
-            country_col = None
+        target_country_names = list(
+            getattr(response.applied_filters, "country_names", [])
+            or ([response.applied_filters.country_name] if response.applied_filters.country_name else [])
+        )
+        target_country_codes = list(
+            getattr(response.applied_filters, "country_codes", [])
+            or ([response.applied_filters.country_code] if response.applied_filters.country_code else [])
+        )
+        is_multi_country = len(target_country_codes) > 1 or len(target_country_names) > 1
+        country_col = None
+        if target_country_names or target_country_codes:
             for col in filtered_df.columns:
                 cl = col.lower()
                 if cl in (
@@ -134,19 +141,16 @@ class SemanticDataFetcher:
 
             if country_col is not None:
                 mask = pd.Series(False, index=filtered_df.index)
-                if target_country_name:
-                    norm_target_name = _strip_accents(target_country_name)
-                    col_str = filtered_df[country_col].astype(str).str.strip()
+                col_str = filtered_df[country_col].astype(str).str.strip()
+                if target_country_names:
                     col_norm = col_str.map(_strip_accents)
-                    mask |= (col_norm == norm_target_name)
-                if target_country_code:
-                    mask |= (
-                        filtered_df[country_col]
-                        .astype(str)
-                        .str.strip()
-                        .str.upper()
-                        == target_country_code.strip().upper()
-                    )
+                    for t_name in target_country_names:
+                        norm_target_name = _strip_accents(t_name)
+                        mask |= (col_norm == norm_target_name)
+                if target_country_codes:
+                    col_upper = col_str.str.upper()
+                    for t_code in target_country_codes:
+                        mask |= (col_upper == t_code.strip().upper())
                 filtered_df = filtered_df[mask]
 
         # 2. Filter by resolved dimensions if specified
@@ -262,7 +266,7 @@ class SemanticDataFetcher:
 
         # 5. Format observation result
         if not filtered_df.empty:
-            if is_multi_year or has_breakdown:
+            if is_multi_year or has_breakdown or is_multi_country:
                 if year_col is not None and year_col in filtered_df.columns:
                     sorted_df = filtered_df.assign(
                         _sort_year=pd.to_numeric(
@@ -329,6 +333,8 @@ class SemanticDataFetcher:
                         "unit": response.selected_candidate.unit,
                         "notes": row_notes,
                     }
+                    if is_multi_country and country_col is not None and country_col in row and not pd.isna(row[country_col]):
+                        item_dict["country"] = str(row[country_col]).strip()
                     if breakdown_cols:
                         member_parts = [
                             str(row[bc]).strip()

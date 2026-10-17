@@ -91,6 +91,8 @@ class AppliedFilters(BaseModel):
 
     country_code: str | None = None
     country_name: str | None = None
+    country_codes: list[str] = Field(default_factory=list)
+    country_names: list[str] = Field(default_factory=list)
     year: int | None = None
     years: list[int] = Field(default_factory=list)
     time_mode: str = "SINGLE"  # "SINGLE", "LIST", "RANGE", "RELATIVE_WINDOW"
@@ -106,6 +108,9 @@ class TemporalAnchorInfo(BaseModel):
     requested_years: list[int] = Field(default_factory=list)
     observed_years: list[int] = Field(default_factory=list)
     unobserved_years: list[int] = Field(default_factory=list)
+    requested_countries: list[str] = Field(default_factory=list)
+    observed_countries: list[str] = Field(default_factory=list)
+    unobserved_countries: list[str] = Field(default_factory=list)
     temporal_status: TemporalAvailabilityStatus
     previous_anchor_year: int | None = None
     previous_anchor_value: float | None = None

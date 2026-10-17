@@ -50,6 +50,8 @@ class SemanticResolutionEngine:
         applied_filters = AppliedFilters(
             country_code=intent.country_code,
             country_name=intent.country_name,
+            country_codes=list(intent.country_codes),
+            country_names=list(intent.country_names),
             year=intent.year,
             years=intent.years,
             time_mode=intent.time_mode,
@@ -66,9 +68,16 @@ class SemanticResolutionEngine:
         else:
             time_trace_str = f"Year: {intent.year or 'N/A'}"
 
+        if len(intent.country_codes) > 1:
+            geo_trace_str = ", ".join(
+                f"{n} ({c})" for n, c in zip(intent.country_names, intent.country_codes)
+            )
+        else:
+            geo_trace_str = f"{intent.country_name or 'N/A'} ({intent.country_code or 'N/A'})"
+
         trace: list[str] = [
             f"[Stage 1: Intent Parsing] Query: '{query_str}'",
-            f"  - Geography: {intent.country_name or 'N/A'} ({intent.country_code or 'N/A'}), {time_trace_str}, Freq: {getattr(intent, 'frequency', 'ANUAL')}",
+            f"  - Geography: {geo_trace_str}, {time_trace_str}, Freq: {getattr(intent, 'frequency', 'ANUAL')}",
             f"  - Root Concept: '{intent.root_concept or 'None'}'",
             f"  - Normalized Facets: {intent.facets if intent.facets else 'None'}",
         ]
@@ -404,11 +413,87 @@ class SemanticResolutionEngine:
         temporal_info: TemporalAnchorInfo | None = None
         status = ResolutionStatus.RESOLVED
 
-        if intent.country_code and len(intent.years) > 1:
-            observed_years: list[int] = []
-            unobserved_years: list[int] = []
+        if len(intent.country_codes) > 1 and (intent.year or intent.years):
+            target_years = list(intent.years) if intent.years else ([intent.year] if intent.year else [])
+            observed_countries: list[str] = []
+            unobserved_countries: list[str] = []
+            observed_years_set: set[int] = set()
+            unobserved_years_set: set[int] = set()
             prev_anchor_first: int | None = None
             next_anchor_last: int | None = None
+
+            for c_code in intent.country_codes:
+                c_has_gap = False
+                for y in target_years:
+                    t_st, p_a, n_a = self.registry.check_temporal_availability(
+                        target_indicator_id,
+                        c_code,
+                        y,
+                    )
+                    if t_st == TemporalAvailabilityStatus.OBSERVATION_EXISTING:
+                        observed_years_set.add(y)
+                    else:
+                        c_has_gap = True
+                        unobserved_years_set.add(y)
+                        if prev_anchor_first is None and p_a is not None:
+                            prev_anchor_first = p_a
+                        if n_a is not None:
+                            next_anchor_last = n_a
+                if c_has_gap:
+                    unobserved_countries.append(c_code)
+                else:
+                    observed_countries.append(c_code)
+
+            obs_years_sorted = sorted(observed_years_set)
+            unobs_years_sorted = sorted(unobserved_years_set)
+
+            if unobserved_countries:
+                overall_temp_status = TemporalAvailabilityStatus.PERIOD_UNOBSERVED
+                status = ResolutionStatus.RESOLVED_WITH_ANCHORS
+                trace.append(
+                    f"[Stage 5: Temporal Audit] Countries={intent.country_codes}, Years={target_years} -> Status={overall_temp_status.value} (Observed Countries: {observed_countries}, Unobserved Countries: {unobserved_countries})"
+                )
+                trace.append(
+                    f"  - Sampling notice: Gaps in survey schedule for countries {unobserved_countries} in years {unobs_years_sorted}. Interpolation strictly forbidden."
+                )
+                temporal_info = TemporalAnchorInfo(
+                    requested_year=intent.year or target_years[-1],
+                    requested_years=target_years,
+                    observed_years=obs_years_sorted,
+                    unobserved_years=unobs_years_sorted,
+                    requested_countries=list(intent.country_codes),
+                    observed_countries=observed_countries,
+                    unobserved_countries=unobserved_countries,
+                    temporal_status=overall_temp_status,
+                    previous_anchor_year=prev_anchor_first,
+                    next_anchor_year=next_anchor_last,
+                    forbid_interpolation=True,
+                    disclaimer=(
+                        f"Entre los países solicitados ({', '.join(intent.country_names)}), presentan brechas de medición muestral: {unobserved_countries} en {unobs_years_sorted}. "
+                        f"Países con cobertura completa en el período: {observed_countries}. Se prohíbe la interpolación."
+                    ),
+                )
+            else:
+                overall_temp_status = TemporalAvailabilityStatus.OBSERVATION_EXISTING
+                trace.append(
+                    f"[Stage 5: Temporal Audit] Countries={intent.country_codes}, Years={target_years} -> Status={overall_temp_status.value} (Observed Countries: {observed_countries}, Unobserved Countries: [])"
+                )
+                temporal_info = TemporalAnchorInfo(
+                    requested_year=intent.year or target_years[-1],
+                    requested_years=target_years,
+                    observed_years=obs_years_sorted,
+                    unobserved_years=[],
+                    requested_countries=list(intent.country_codes),
+                    observed_countries=observed_countries,
+                    unobserved_countries=[],
+                    temporal_status=overall_temp_status,
+                    forbid_interpolation=True,
+                )
+        elif intent.country_code and len(intent.years) > 1:
+            observed_years: list[int] = []
+            unobserved_years: list[int] = []
+            prev_anchor_first = None
+            next_anchor_last = None
 
             for y in intent.years:
                 t_st, p_a, n_a = self.registry.check_temporal_availability(
@@ -439,6 +524,9 @@ class SemanticResolutionEngine:
                     requested_years=list(intent.years),
                     observed_years=observed_years,
                     unobserved_years=unobserved_years,
+                    requested_countries=[intent.country_code],
+                    observed_countries=[intent.country_code] if observed_years else [],
+                    unobserved_countries=[intent.country_code],
                     temporal_status=overall_temp_status,
                     previous_anchor_year=prev_anchor_first,
                     next_anchor_year=next_anchor_last,
@@ -458,6 +546,9 @@ class SemanticResolutionEngine:
                     requested_years=list(intent.years),
                     observed_years=observed_years,
                     unobserved_years=[],
+                    requested_countries=[intent.country_code],
+                    observed_countries=[intent.country_code],
+                    unobserved_countries=[],
                     temporal_status=overall_temp_status,
                     forbid_interpolation=True,
                 )
@@ -477,6 +568,9 @@ class SemanticResolutionEngine:
                     requested_years=[intent.year],
                     observed_years=[],
                     unobserved_years=[intent.year],
+                    requested_countries=[intent.country_code],
+                    observed_countries=[],
+                    unobserved_countries=[intent.country_code],
                     temporal_status=temp_status,
                     previous_anchor_year=prev_anchor,
                     next_anchor_year=next_anchor,
@@ -492,6 +586,9 @@ class SemanticResolutionEngine:
                     requested_years=[intent.year],
                     observed_years=[intent.year],
                     unobserved_years=[],
+                    requested_countries=[intent.country_code],
+                    observed_countries=[intent.country_code],
+                    unobserved_countries=[],
                     temporal_status=temp_status,
                     forbid_interpolation=True,
                 )

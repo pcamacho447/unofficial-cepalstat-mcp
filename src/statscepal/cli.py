@@ -665,7 +665,11 @@ def main(args: Sequence[str] | None = None) -> int:
                         if ti.next_anchor_year is not None
                         else "None"
                     )
-                    if getattr(ti, "requested_years", None) and len(ti.requested_years) > 1:
+                    if getattr(ti, "requested_countries", None) and len(ti.requested_countries) > 1:
+                        print(
+                            f"Temporal:  {ti.temporal_status.value} (Observed Countries: {ti.observed_countries}, Unobserved: {ti.unobserved_countries})"
+                        )
+                    elif getattr(ti, "requested_years", None) and len(ti.requested_years) > 1:
                         print(
                             f"Temporal:  {ti.temporal_status.value} (Observed: {ti.observed_years}, Unobserved: {ti.unobserved_years})"
                         )
@@ -678,10 +682,16 @@ def main(args: Sequence[str] | None = None) -> int:
                 else:
                     print("Temporal:  N/A")
 
-                country_name = res.applied_filters.country_name or "N/A"
-                country_code = res.applied_filters.country_code or "N/A"
-                print(f"Country:   {country_name} ({country_code})")
                 af = res.applied_filters
+                if getattr(af, "country_codes", None) and len(af.country_codes) > 1:
+                    countries_str = ", ".join(
+                        f"{n} ({c})" for n, c in zip(af.country_names, af.country_codes)
+                    )
+                    print(f"Country:   {countries_str}")
+                else:
+                    country_name = af.country_name or "N/A"
+                    country_code = af.country_code or "N/A"
+                    print(f"Country:   {country_name} ({country_code})")
                 if af.time_mode == "RANGE" and len(af.years) > 1:
                     years_csv = ", ".join(str(y) for y in af.years)
                     print(f"Year:      {af.years[0]}-{af.years[-1]} [{years_csv}] (Mode: RANGE)")
@@ -732,8 +742,36 @@ def main(args: Sequence[str] | None = None) -> int:
                     series = emp.get("series")
                     if series:
                         print(f"Empirical Series ({len(series)} observations):")
+                        has_country_col = any(item.get("country") for item in series)
                         has_member_col = any(item.get("member") for item in series)
-                        if has_member_col:
+                        if has_country_col and has_member_col:
+                            print(f"  {'Country':<14} {'Year':<8} {'Member / Group':<28} {'Value':<12} {'Unit'}")
+                            print(f"  {'-'*12} {'-'*6} {'-'*26} {'-'*10} {'-'*20}")
+                            for item in series:
+                                val_str = (
+                                    f"{item['value']:g}"
+                                    if isinstance(item["value"], (int, float))
+                                    else str(item["value"])
+                                )
+                                c_str = str(item.get("country", ""))[:12]
+                                member_str = str(item.get("member", ""))[:26]
+                                print(
+                                    f"  {c_str:<14} {item['year']:<8} {member_str:<28} {val_str:<12} {item.get('unit', '')}"
+                                )
+                        elif has_country_col:
+                            print(f"  {'Country':<16} {'Year':<8} {'Value':<12} {'Unit'}")
+                            print(f"  {'-'*14} {'-'*6} {'-'*10} {'-'*20}")
+                            for item in series:
+                                val_str = (
+                                    f"{item['value']:g}"
+                                    if isinstance(item["value"], (int, float))
+                                    else str(item["value"])
+                                )
+                                c_str = str(item.get("country", ""))[:14]
+                                print(
+                                    f"  {c_str:<16} {item['year']:<8} {val_str:<12} {item.get('unit', '')}"
+                                )
+                        elif has_member_col:
                             print(f"  {'Year':<8} {'Member / Group':<34} {'Value':<12} {'Unit'}")
                             print(f"  {'-'*6} {'-'*32} {'-'*10} {'-'*20}")
                             for item in series:

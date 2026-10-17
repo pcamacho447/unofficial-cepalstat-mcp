@@ -39,6 +39,20 @@ COUNTRY_LEXICON: dict[str, str] = {
     "panama": "PAN",
     "paraguay": "PRY",
     "honduras": "HND",
+    "guatemala": "GTM",
+    "el salvador": "SLV",
+    "nicaragua": "NIC",
+    "republica dominicana": "DOM",
+    "venezuela": "VEN",
+    "cuba": "CUB",
+    "haiti": "HTI",
+    "jamaica": "JAM",
+    "trinidad y tobago": "TTO",
+    "bahamas": "BHS",
+    "barbados": "BRB",
+    "belice": "BLZ",
+    "guyana": "GUY",
+    "surinam": "SUR",
     "lima": "PER",
 }
 
@@ -56,6 +70,20 @@ COUNTRY_NAMES: dict[str, str] = {
     "PAN": "Panamá",
     "PRY": "Paraguay",
     "HND": "Honduras",
+    "GTM": "Guatemala",
+    "SLV": "El Salvador",
+    "NIC": "Nicaragua",
+    "DOM": "República Dominicana",
+    "VEN": "Venezuela",
+    "CUB": "Cuba",
+    "HTI": "Haití",
+    "JAM": "Jamaica",
+    "TTO": "Trinidad y Tobago",
+    "BHS": "Bahamas",
+    "BRB": "Barbados",
+    "BLZ": "Belice",
+    "GUY": "Guyana",
+    "SUR": "Surinam",
 }
 
 
@@ -67,6 +95,8 @@ class ParsedIntent(BaseModel):
     root_concept: str | None = None
     country_code: str | None = None
     country_name: str | None = None
+    country_codes: list[str] = Field(default_factory=list)
+    country_names: list[str] = Field(default_factory=list)
     year: int | None = None
     years: list[int] = Field(default_factory=list)
     time_mode: str = "SINGLE"  # "SINGLE", "LIST", "RANGE", "RELATIVE_WINDOW"
@@ -243,13 +273,28 @@ class QueryParser:
 
 
         # ----------------------------------------------------
-        # 3. Extract Country
+        # 3. Extract Country (Single or Multi-Country in Query Order)
         # ----------------------------------------------------
+        matched_countries: list[tuple[int, str]] = []
         for name, code in COUNTRY_LEXICON.items():
-            if re.search(r"\b" + re.escape(name) + r"\b", clean):
-                intent.country_code = code
-                intent.country_name = COUNTRY_NAMES[code]
-                break
+            if name not in clean:
+                continue
+            m = re.search(r"\b" + re.escape(name) + r"\b", clean)
+            if m:
+                matched_countries.append((m.start(), code))
+
+        if matched_countries:
+            matched_countries.sort(key=lambda item: item[0])
+            seen_codes: set[str] = set()
+            ordered_codes: list[str] = []
+            for _, code in matched_countries:
+                if code not in seen_codes:
+                    seen_codes.add(code)
+                    ordered_codes.append(code)
+            intent.country_codes = ordered_codes
+            intent.country_names = [COUNTRY_NAMES[c] for c in ordered_codes]
+            intent.country_code = ordered_codes[0]
+            intent.country_name = COUNTRY_NAMES[ordered_codes[0]]
 
         # ----------------------------------------------------
         # 4. Extract Facets (with Regionalisms)
