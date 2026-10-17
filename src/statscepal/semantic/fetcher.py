@@ -295,33 +295,56 @@ class SemanticDataFetcher:
             return 3390
         return EMPIRICAL_INDICATOR_ID_MAP.get(ind_id, ind_id)
 
-    def fetch_resolved_data(
+    def _get_row_country_code(
+        self,
+        row: pd.Series,
+        country_col: str | None,
+        country_anchor_map: dict[str, Any],
+        code_by_name: dict[str, str],
+        target_country_codes: list[str] | None = None,
+        target_country_names: list[str] | None = None,
+        default_country_code: str | None = None,
+    ) -> str | None:
+        """Resolve country code for a specific DataFrame row using ISO columns and country lexicon."""
+        target_codes = target_country_codes or []
+        target_names = target_country_names or []
+        for iso_col in ("iso3", "country_code"):
+            if iso_col in row and not pd.isna(row[iso_col]):
+                iso_val = str(row[iso_col]).strip().upper()
+                if iso_val in country_anchor_map:
+                    return iso_val
+                if iso_val.lower() in code_by_name:
+                    return code_by_name[iso_val.lower()]
+                for target_code in target_codes:
+                    if iso_val == target_code.strip().upper():
+                        return target_code.strip().upper()
+        if country_col is not None and country_col in row and not pd.isna(row[country_col]):
+            c_val = str(row[country_col]).strip()
+            if c_val.upper() in country_anchor_map:
+                return c_val.upper()
+            c_norm = _strip_accents(c_val).lower()
+            if c_norm in code_by_name:
+                return code_by_name[c_norm]
+            if c_val.lower() in code_by_name:
+                return code_by_name[c_val.lower()]
+            for target_code, target_name in zip(target_codes, target_names):
+                norm_t_name = _strip_accents(target_name).lower()
+                if c_norm == norm_t_name or c_norm.startswith(norm_t_name + " ("):
+                    return target_code.strip().upper()
+            for target_code in target_codes:
+                if c_val.upper() == target_code.strip().upper():
+                    return target_code.strip().upper()
+        if len(country_anchor_map) == 1:
+            return next(iter(country_anchor_map.keys()))
+        if default_country_code:
+            return default_country_code.upper()
+        return None
+
+    def _prepare_empirical_fetch(
         self, response: SemanticResolutionResponse
-    ) -> dict[str, Any]:
-        """Fetch and filter concrete observation data for a resolved query response.
-
-        Args:
-            response: A SemanticResolutionResponse with resolved indicator and filters.
-
-        Returns:
-            Dictionary payload with observation data and provenance.
-        """
-        if (
-            response.status
-            not in (
-                ResolutionStatus.RESOLVED,
-                ResolutionStatus.RESOLVED_WITH_ANCHORS,
-            )
-            or not response.selected_candidate
-        ):
-            payload = {
-                "observation_exists": False,
-                "reason": "Query not resolved or abstained",
-            }
-            response.empirical_data = payload
-            return payload
-
-        indicator_id = response.selected_candidate.indicator_id
+    ) -> tuple[int, pd.DataFrame]:
+        """Resolve empirical indicator ID and fetch raw DataFrame with non-synthetic member IDs."""
+        assert response.selected_candidate is not None
         empirical_id = self._resolve_empirical_indicator_id(response)
         raw_member_ids: list[int] = []
         for f in response.applied_filters.dimensions:
@@ -334,55 +357,23 @@ class SemanticDataFetcher:
             m for m in raw_member_ids if m not in SYNTHETIC_DIMENSION_MEMBER_IDS
         ]
         df = self._load_indicator_data(empirical_id, member_ids)
-
-        time_mode = getattr(response.applied_filters, "time_mode", "SINGLE")
-        target_years = getattr(response.applied_filters, "years", []) or []
-        target_year = response.applied_filters.year
-        relative_window_size = getattr(
-            response.applied_filters, "relative_window_size", None
-        )
-        is_multi_year = (
-            time_mode in ("LIST", "RANGE", "RELATIVE_WINDOW")
-            or len(target_years) > 1
-        )
-        facet_keys_in_breakdown = {
-            f_k.lower()
-            for f_k, f_v in getattr(response.applied_filters, "facets", {}).items()
-            if "_DESGLOSE" in str(f_v) or str(f_v) in ("ETNICO_TOTAL", "ETNICO")
-        }
-        has_breakdown = any(
-            getattr(d, "is_breakdown", False)
-            for d in response.applied_filters.dimensions
-        ) or bool(facet_keys_in_breakdown)
-
-        if df is None or df.empty:
-            payload = {
-                "observation_exists": False,
-                "indicator_id": empirical_id,
-                "empirical_indicator_id": empirical_id,
-                "indicator_name": response.selected_candidate.name,
-                "unit": response.selected_candidate.unit,
-                "country": response.applied_filters.country_name
-                or response.applied_filters.country_code,
-                "year": response.applied_filters.year,
-                "reason": "No observation available for the specified filters/period",
-            }
-            if is_multi_year:
-                payload["series"] = []
-            response.empirical_data = payload
-            return payload
-
-        filtered_df = df.copy()
-        if "value" not in filtered_df.columns:
+        if df is None:
+            return empirical_id, pd.DataFrame()
+        df = df.copy()
+        if "value" not in df.columns:
             for val_cand in ("valor", "val", "monto", "dato"):
-                for c in filtered_df.columns:
+                for c in df.columns:
                     if _strip_accents(c).lower() == val_cand:
-                        filtered_df["value"] = filtered_df[c]
+                        df["value"] = df[c]
                         break
-                if "value" in filtered_df.columns:
+                if "value" in df.columns:
                     break
+        return empirical_id, df
 
-        # 1. Filter by country if specified
+    def _resolve_geography(
+        self, df: pd.DataFrame, response: SemanticResolutionResponse
+    ) -> tuple[str | None, list[str], list[str], bool, dict[str, str], dict[str, Any]]:
+        """Identify country columns, target countries, code mappings, and anchor configurations."""
         target_country_names = list(
             getattr(response.applied_filters, "country_names", [])
             or ([response.applied_filters.country_name] if response.applied_filters.country_name else [])
@@ -392,7 +383,8 @@ class SemanticDataFetcher:
             or ([response.applied_filters.country_code] if response.applied_filters.country_code else [])
         )
         is_multi_country = len(target_country_codes) > 1 or len(target_country_names) > 1
-        country_col = None
+        country_col: str | None = None
+
         if target_country_names or target_country_codes:
             for candidate in (
                 "país__estandar",
@@ -402,7 +394,7 @@ class SemanticDataFetcher:
                 "país",
                 "pais",
             ):
-                for col in filtered_df.columns:
+                for col in df.columns:
                     if col.lower() == candidate or _strip_accents(col).lower() == candidate:
                         country_col = col
                         break
@@ -410,7 +402,7 @@ class SemanticDataFetcher:
                     break
 
             if country_col is None:
-                for col in filtered_df.columns:
+                for col in df.columns:
                     cl = col.lower()
                     if ("pais" in cl or "país" in cl or "country" in cl) and not any(
                         s in cl for s in ("iso3", "code", "codigo", "código")
@@ -420,34 +412,13 @@ class SemanticDataFetcher:
 
             if country_col is None:
                 for candidate in ("iso3", "country_code"):
-                    for col in filtered_df.columns:
+                    for col in df.columns:
                         if col.lower() == candidate:
                             country_col = col
                             break
                     if country_col is not None:
                         break
 
-            mask = pd.Series(False, index=filtered_df.index)
-            if country_col is not None:
-                col_str = filtered_df[country_col].astype(str).str.strip()
-                if target_country_names:
-                    col_norm = col_str.map(_strip_accents)
-                    for t_name in target_country_names:
-                        norm_target_name = _strip_accents(t_name)
-                        mask |= (col_norm == norm_target_name) | col_norm.str.startswith(norm_target_name + " (")
-                if target_country_codes:
-                    col_upper = col_str.str.upper()
-                    for t_code in target_country_codes:
-                        mask |= (col_upper == t_code.strip().upper())
-            for iso_cand in ("iso3", "country_code"):
-                if iso_cand in filtered_df.columns and target_country_codes:
-                    iso_upper = filtered_df[iso_cand].astype(str).str.strip().str.upper()
-                    for t_code in target_country_codes:
-                        mask |= (iso_upper == t_code.strip().upper())
-            if country_col is not None or any(c in filtered_df.columns for c in ("iso3", "country_code")):
-                filtered_df = filtered_df[mask]
-
-        # Build country lookup for mapping names and codes to standardized codes
         code_by_name: dict[str, str] = {}
         for c, n in zip(target_country_codes, target_country_names):
             if c and n:
@@ -464,8 +435,8 @@ class SemanticDataFetcher:
             cc = response.applied_filters.country_code.strip().upper()
             code_by_name[cc.lower()] = cc
             code_by_name[cc] = cc
-        if country_col is not None and country_col in filtered_df.columns:
-            for c_val in filtered_df[country_col].dropna().unique():
+        if country_col is not None and country_col in df.columns:
+            for c_val in df[country_col].dropna().unique():
                 c_str = str(c_val).strip()
                 c_norm = _strip_accents(c_str).lower()
                 for target_code, target_name in zip(target_country_codes, target_country_names):
@@ -505,40 +476,52 @@ class SemanticDataFetcher:
                     if response.temporal_info.next_anchor_year is not None:
                         country_anchor_map[primary_code][response.temporal_info.next_anchor_year] = unobs
 
-        def _get_row_country_code(row: pd.Series) -> str | None:
-            for iso_col in ("iso3", "country_code"):
-                if iso_col in row and not pd.isna(row[iso_col]):
-                    iso_val = str(row[iso_col]).strip().upper()
-                    if iso_val in country_anchor_map:
-                        return iso_val
-                    if iso_val.lower() in code_by_name:
-                        return code_by_name[iso_val.lower()]
-                    for target_code in target_country_codes:
-                        if iso_val == target_code.strip().upper():
-                            return target_code.strip().upper()
-            if country_col is not None and country_col in row and not pd.isna(row[country_col]):
-                c_val = str(row[country_col]).strip()
-                if c_val.upper() in country_anchor_map:
-                    return c_val.upper()
-                c_norm = _strip_accents(c_val).lower()
-                if c_norm in code_by_name:
-                    return code_by_name[c_norm]
-                if c_val.lower() in code_by_name:
-                    return code_by_name[c_val.lower()]
-                for target_code, target_name in zip(target_country_codes, target_country_names):
-                    norm_t_name = _strip_accents(target_name).lower()
-                    if c_norm == norm_t_name or c_norm.startswith(norm_t_name + " ("):
-                        return target_code.strip().upper()
-                for target_code in target_country_codes:
-                    if c_val.upper() == target_code.strip().upper():
-                        return target_code.strip().upper()
-            if len(country_anchor_map) == 1:
-                return next(iter(country_anchor_map.keys()))
-            if response.applied_filters.country_code:
-                return response.applied_filters.country_code.upper()
-            return None
+        return (
+            country_col,
+            target_country_names,
+            target_country_codes,
+            is_multi_country,
+            code_by_name,
+            country_anchor_map,
+        )
 
-        # 2. Filter by resolved dimensions if specified
+    def _filter_geography(
+        self,
+        df: pd.DataFrame,
+        country_col: str | None,
+        target_country_names: list[str],
+        target_country_codes: list[str],
+    ) -> pd.DataFrame:
+        """Filter DataFrame rows to requested country targets."""
+        if df.empty or (not target_country_names and not target_country_codes):
+            return df
+
+        mask = pd.Series(False, index=df.index)
+        if country_col is not None:
+            col_str = df[country_col].astype(str).str.strip()
+            if target_country_names:
+                col_norm = col_str.map(_strip_accents)
+                for t_name in target_country_names:
+                    norm_target_name = _strip_accents(t_name)
+                    mask |= (col_norm == norm_target_name) | col_norm.str.startswith(norm_target_name + " (")
+            if target_country_codes:
+                col_upper = col_str.str.upper()
+                for t_code in target_country_codes:
+                    mask |= (col_upper == t_code.strip().upper())
+        for iso_cand in ("iso3", "country_code"):
+            if iso_cand in df.columns and target_country_codes:
+                iso_upper = df[iso_cand].astype(str).str.strip().str.upper()
+                for t_code in target_country_codes:
+                    mask |= (iso_upper == t_code.strip().upper())
+        if country_col is not None or any(c in df.columns for c in ("iso3", "country_code")):
+            return df[mask]
+        return df
+
+    def _apply_dimension_filters(
+        self, df: pd.DataFrame, response: SemanticResolutionResponse
+    ) -> tuple[pd.DataFrame, set[str]]:
+        """Filter DataFrame rows by resolved dimensions using aliases and acceptable forms."""
+        filtered_df = df
         filtered_dim_cols: set[str] = set()
         if response.applied_filters.dimensions and not filtered_df.empty:
             for dim_filter in response.applied_filters.dimensions:
@@ -596,8 +579,20 @@ class SemanticDataFetcher:
                             == str(m_id)
                         )
                     filtered_df = filtered_df[dim_mask]
+        return filtered_df, filtered_dim_cols
 
-        # 3. Identify year column
+    def _apply_temporal_and_anchors(
+        self,
+        df: pd.DataFrame,
+        response: SemanticResolutionResponse,
+        country_col: str | None,
+        filtered_dim_cols: set[str],
+        country_anchor_map: dict[str, Any],
+        is_multi_country: bool,
+        code_by_name: dict[str, str],
+    ) -> tuple[pd.DataFrame, str | None, bool, list[int]]:
+        """Identify year column, collapse unconstrained dimensions, discover dynamic anchors, and filter temporal range."""
+        filtered_df = df
         year_col = None
         for col in filtered_df.columns:
             cl = _strip_accents(col).lower().replace("ñ", "n")
@@ -625,6 +620,11 @@ class SemanticDataFetcher:
                     year_col = col
                     break
 
+        facet_keys_in_breakdown = {
+            f_k.lower()
+            for f_k, f_v in getattr(response.applied_filters, "facets", {}).items()
+            if "_DESGLOSE" in str(f_v) or str(f_v) in ("ETNICO_TOTAL", "ETNICO")
+        }
         filtered_df = self._filter_unconstrained_dimensions(
             filtered_df,
             filtered_dim_cols,
@@ -635,15 +635,24 @@ class SemanticDataFetcher:
         )
 
         has_rescued_anchors = False
+        target_years = getattr(response.applied_filters, "years", []) or []
+        target_year = response.applied_filters.year
         requested_year_set: set[int] = (
             set(target_years)
             if target_years
             else ({target_year} if target_year is not None else set())
         )
 
-        # Dynamic empirical anchor discovery:
-        # If requested_year_set is non-empty and a requested country has no observations in
-        # requested_year_set within filtered_df, inspect filtered_df for available years.
+        target_country_names = list(
+            getattr(response.applied_filters, "country_names", [])
+            or ([response.applied_filters.country_name] if response.applied_filters.country_name else [])
+        )
+        target_country_codes = list(
+            getattr(response.applied_filters, "country_codes", [])
+            or ([response.applied_filters.country_code] if response.applied_filters.country_code else [])
+        )
+
+        # Dynamic empirical anchor discovery
         if requested_year_set and not filtered_df.empty and year_col is not None:
             candidate_countries: list[str] = []
             if target_country_codes:
@@ -662,7 +671,15 @@ class SemanticDataFetcher:
                 if is_multi_country:
                     country_rows = [
                         idx for idx, row in filtered_df.iterrows()
-                        if _get_row_country_code(row) == c_code
+                        if self._get_row_country_code(
+                            row,
+                            country_col,
+                            country_anchor_map,
+                            code_by_name,
+                            target_country_codes,
+                            target_country_names,
+                            response.applied_filters.country_code,
+                        ) == c_code
                     ]
                     country_df = filtered_df.loc[country_rows]
                 else:
@@ -709,7 +726,16 @@ class SemanticDataFetcher:
                                     code_by_name[c_str.lower()] = c_code
                             has_rescued_anchors = True
 
-        # 4. Filter by temporal constraints
+        # Filter by temporal constraints
+        time_mode = getattr(response.applied_filters, "time_mode", "SINGLE")
+        relative_window_size = getattr(
+            response.applied_filters, "relative_window_size", None
+        )
+        has_breakdown = any(
+            getattr(d, "is_breakdown", False)
+            for d in response.applied_filters.dimensions
+        ) or bool(facet_keys_in_breakdown)
+
         if not filtered_df.empty and year_col is not None:
             if time_mode == "RELATIVE_WINDOW":
                 window_size = relative_window_size or 5
@@ -744,7 +770,15 @@ class SemanticDataFetcher:
                     if ry_val is None:
                         continue
 
-                    row_c_code = _get_row_country_code(row)
+                    row_c_code = self._get_row_country_code(
+                        row,
+                        country_col,
+                        country_anchor_map,
+                        code_by_name,
+                        target_country_codes,
+                        target_country_names,
+                        response.applied_filters.country_code,
+                    )
                     if row_c_code and row_c_code in country_anchor_map:
                         if ry_val in country_anchor_map[row_c_code]:
                             anchor_indices.append(idx)
@@ -796,7 +830,42 @@ class SemanticDataFetcher:
         if has_rescued_anchors and response.status == ResolutionStatus.RESOLVED:
             response.status = ResolutionStatus.RESOLVED_WITH_ANCHORS
 
-        # 5. Format observation result
+        return filtered_df, year_col, has_rescued_anchors, sorted(requested_year_set)
+
+    def _format_payload(
+        self,
+        df: pd.DataFrame,
+        response: SemanticResolutionResponse,
+        empirical_id: int,
+        year_col: str | None,
+        country_col: str | None,
+        is_multi_country: bool,
+        is_multi_year: bool,
+        has_breakdown: bool,
+        has_rescued_anchors: bool,
+        country_anchor_map: dict[str, Any],
+        requested_year_set: set[int],
+        code_by_name: dict[str, str],
+        target_year: int | None,
+        filtered_dim_cols: set[str] | None = None,
+    ) -> dict[str, Any]:
+        """Format series items and observation metadata into structured empirical payload."""
+        filtered_df = df
+        dim_cols = filtered_dim_cols or set()
+        target_country_names = list(
+            getattr(response.applied_filters, "country_names", [])
+            or ([response.applied_filters.country_name] if response.applied_filters.country_name else [])
+        )
+        target_country_codes = list(
+            getattr(response.applied_filters, "country_codes", [])
+            or ([response.applied_filters.country_code] if response.applied_filters.country_code else [])
+        )
+        facet_keys_in_breakdown = {
+            f_k.lower()
+            for f_k, f_v in getattr(response.applied_filters, "facets", {}).items()
+            if "_DESGLOSE" in str(f_v) or str(f_v) in ("ETNICO_TOTAL", "ETNICO")
+        }
+
         if not filtered_df.empty:
             if is_multi_year or has_breakdown or is_multi_country or has_rescued_anchors:
                 if year_col is not None and year_col in filtered_df.columns:
@@ -879,7 +948,15 @@ class SemanticDataFetcher:
                             item_dict["member"] = " / ".join(member_parts)
 
                     # Check if this row is a rescued anchor
-                    row_c_code = _get_row_country_code(row)
+                    row_c_code = self._get_row_country_code(
+                        row,
+                        country_col,
+                        country_anchor_map,
+                        code_by_name,
+                        target_country_codes,
+                        target_country_names,
+                        response.applied_filters.country_code,
+                    )
                     is_anchor_row = False
                     anchor_unobs_years: list[int] = []
                     if (
@@ -995,10 +1072,10 @@ class SemanticDataFetcher:
                         "unit": response.selected_candidate.unit,
                         "notes": notes_val,
                     }
-                    if filtered_dim_cols:
+                    if dim_cols:
                         m_parts = [
                             str(row[dc]).strip()
-                            for dc in filtered_dim_cols
+                            for dc in dim_cols
                             if dc in row and not pd.isna(row[dc])
                         ]
                         if m_parts:
@@ -1032,6 +1109,103 @@ class SemanticDataFetcher:
             }
             if is_multi_year or has_rescued_anchors:
                 payload["series"] = []
+
+        return payload
+
+    def fetch_resolved_data(
+        self, response: SemanticResolutionResponse
+    ) -> dict[str, Any]:
+        """Fetch and filter concrete observation data for a resolved query response.
+
+        Args:
+            response: A SemanticResolutionResponse with resolved indicator and filters.
+
+        Returns:
+            Dictionary payload with observation data and provenance.
+        """
+        if (
+            response.status
+            not in (
+                ResolutionStatus.RESOLVED,
+                ResolutionStatus.RESOLVED_WITH_ANCHORS,
+            )
+            or not response.selected_candidate
+        ):
+            payload = {
+                "observation_exists": False,
+                "reason": "Query not resolved or abstained",
+            }
+            response.empirical_data = payload
+            return payload
+
+        time_mode = getattr(response.applied_filters, "time_mode", "SINGLE")
+        target_years = getattr(response.applied_filters, "years", []) or []
+        target_year = response.applied_filters.year
+        is_multi_year = (
+            time_mode in ("LIST", "RANGE", "RELATIVE_WINDOW")
+            or len(target_years) > 1
+        )
+        facet_keys_in_breakdown = {
+            f_k.lower()
+            for f_k, f_v in getattr(response.applied_filters, "facets", {}).items()
+            if "_DESGLOSE" in str(f_v) or str(f_v) in ("ETNICO_TOTAL", "ETNICO")
+        }
+        has_breakdown = any(
+            getattr(d, "is_breakdown", False)
+            for d in response.applied_filters.dimensions
+        ) or bool(facet_keys_in_breakdown)
+
+        empirical_id, df = self._prepare_empirical_fetch(response)
+
+        if df is None or df.empty:
+            payload = {
+                "observation_exists": False,
+                "indicator_id": empirical_id,
+                "empirical_indicator_id": empirical_id,
+                "indicator_name": response.selected_candidate.name,
+                "unit": response.selected_candidate.unit,
+                "country": response.applied_filters.country_name
+                or response.applied_filters.country_code,
+                "year": response.applied_filters.year,
+                "reason": "No observation available for the specified filters/period",
+            }
+            if is_multi_year:
+                payload["series"] = []
+            response.empirical_data = payload
+            return payload
+
+        country_col, target_names, target_codes, is_multi_country, code_by_name, country_anchor_map = (
+            self._resolve_geography(df, response)
+        )
+        df = self._filter_geography(df, country_col, target_names, target_codes)
+        df, filtered_dim_cols = self._apply_dimension_filters(df, response)
+        df, year_col, has_rescued_anchors, requested_years = (
+            self._apply_temporal_and_anchors(
+                df,
+                response,
+                country_col,
+                filtered_dim_cols,
+                country_anchor_map,
+                is_multi_country,
+                code_by_name,
+            )
+        )
+        payload = self._format_payload(
+            df=df,
+            response=response,
+            empirical_id=empirical_id,
+            year_col=year_col,
+            country_col=country_col,
+            is_multi_country=is_multi_country,
+            is_multi_year=is_multi_year,
+            has_breakdown=has_breakdown,
+            has_rescued_anchors=has_rescued_anchors,
+            country_anchor_map=country_anchor_map,
+            requested_year_set=set(requested_years),
+            code_by_name=code_by_name,
+            target_year=target_year,
+            filtered_dim_cols=filtered_dim_cols,
+        )
 
         payload["empirical_indicator_id"] = empirical_id
         response.empirical_data = payload

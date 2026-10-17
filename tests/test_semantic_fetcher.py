@@ -281,7 +281,7 @@ def test_fetcher_multi_country_without_year_filters_to_latest_year_per_country()
 
     mock_df = pd.DataFrame([
         {"iso3": "PER", "País__ESTANDAR": "Perú", "Años__ESTANDAR": 2019, "Área geográfica": "Nacional", "Tipo de pobreza": "Total pobreza", "value": 20.2, "notes_ids": ""},
-        {"iso3": "PER", "País__ESTANDAR": "Perú", "Años__ESTANDAR": 2022, "Área geográfica": "Nacional", "Tipo de pobreza": "Total pobreza", "value": 27.5, "notes_ids": ""},
+        {"iso3": "PER", "País__ESTANDAR": "Perú", "Años__ESTANDAR": 2021, "Área geográfica": "Nacional", "Tipo de pobreza": "Total pobreza", "value": 27.5, "notes_ids": ""},
         {"iso3": "CHL", "País__ESTANDAR": "Chile", "Años__ESTANDAR": 2017, "Área geográfica": "Nacional", "Tipo de pobreza": "Total pobreza", "value": 10.7, "notes_ids": ""},
         {"iso3": "CHL", "País__ESTANDAR": "Chile", "Años__ESTANDAR": 2022, "Área geográfica": "Nacional", "Tipo de pobreza": "Total pobreza", "value": 6.5, "notes_ids": ""},
     ])
@@ -294,7 +294,7 @@ def test_fetcher_multi_country_without_year_filters_to_latest_year_per_country()
     series = payload["series"]
     assert len(series) == 2
     by_country = {item["country"]: item for item in series}
-    assert by_country["Perú"]["year"] == 2022
+    assert by_country["Perú"]["year"] == 2021
     assert by_country["Perú"]["value"] == 27.5
     assert by_country["Chile"]["year"] == 2022
     assert by_country["Chile"]["value"] == 6.5
@@ -758,3 +758,84 @@ def test_fetcher_multi_country_payload_country_attribution(mock_client):
     latest_item = payload["series"][-1]
     assert payload["country"] == latest_item.get("country")
     assert payload["country"] == "Colombia"
+
+
+def test_fetcher_decomposed_helper_methods_contract(mock_client):
+    """Verify contracts of decomposed helper methods on SemanticDataFetcher."""
+    fetcher = SemanticDataFetcher(client=mock_client)
+    res = SemanticResolutionResponse(
+        query="pib per capita en peru y colombia 2022",
+        status=ResolutionStatus.RESOLVED,
+        selected_candidate=SelectedCandidate(
+            indicator_id=730,
+            name="PIB per cápita",
+            measure_type="USD_PER_CAPITA",
+            unit="USD",
+        ),
+        applied_filters=AppliedFilters(
+            country_code="PER",
+            country_name="Perú",
+            country_codes=["PER", "COL"],
+            country_names=["Perú", "Colombia"],
+            years=[2022],
+            time_mode="SINGLE",
+        ),
+    )
+    df_raw = pd.DataFrame([
+        {"País__ESTANDAR": "Perú", "Años_disponibles": "2022", "valor": 6800.0},
+        {"País__ESTANDAR": "Colombia", "Años_disponibles": "2022", "valor": 6500.0},
+    ])
+    mock_client.get_dataframe.return_value = df_raw
+
+    # 1. _prepare_empirical_fetch
+    emp_id, prep_df = fetcher._prepare_empirical_fetch(res)
+    assert emp_id == 2206
+    assert not prep_df.empty
+    assert "value" in prep_df.columns
+
+    # 2. _resolve_geography
+    country_col, target_names, target_codes, is_multi, code_by_name, anchor_map = fetcher._resolve_geography(prep_df, res)
+    assert country_col == "País__ESTANDAR"
+    assert is_multi is True
+    assert "peru" in code_by_name
+    assert "colombia" in code_by_name
+
+    # 3. _filter_geography
+    geo_df = fetcher._filter_geography(prep_df, country_col, target_names, target_codes)
+    assert len(geo_df) == 2
+
+    # 4. _apply_dimension_filters
+    dim_df, filtered_dim_cols = fetcher._apply_dimension_filters(geo_df, res)
+    assert len(dim_df) == 2
+    assert len(filtered_dim_cols) == 0
+
+    # 5. _apply_temporal_and_anchors
+    temp_df, year_col, has_anchors, req_years = fetcher._apply_temporal_and_anchors(
+        dim_df, res, country_col, filtered_dim_cols, anchor_map, is_multi, code_by_name
+    )
+    assert year_col == "Años_disponibles"
+    assert has_anchors is False
+    assert req_years == [2022]
+    assert len(temp_df) == 2
+
+    # 6. _format_payload
+    payload = fetcher._format_payload(
+        df=temp_df,
+        response=res,
+        empirical_id=emp_id,
+        year_col=year_col,
+        country_col=country_col,
+        is_multi_country=is_multi,
+        is_multi_year=False,
+        has_breakdown=False,
+        has_rescued_anchors=has_anchors,
+        country_anchor_map=anchor_map,
+        requested_year_set=set(req_years),
+        code_by_name=code_by_name,
+        target_year=2022,
+        filtered_dim_cols=filtered_dim_cols,
+    )
+    assert payload["observation_exists"] is True
+    assert len(payload["series"]) == 2
+    assert payload["country"] == "Colombia"
+
