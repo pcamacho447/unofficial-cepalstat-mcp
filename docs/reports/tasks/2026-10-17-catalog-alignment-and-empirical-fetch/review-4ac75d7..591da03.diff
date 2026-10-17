@@ -1,0 +1,227 @@
+﻿diff --git a/src/statscepal/semantic/fetcher.py b/src/statscepal/semantic/fetcher.py
+index 1e1cacc..1580e22 100644
+--- a/src/statscepal/semantic/fetcher.py
++++ b/src/statscepal/semantic/fetcher.py
+@@ -7,6 +7,11 @@ import pandas as pd
+ from statscepal.client import CepalStatClient
+ from statscepal.extractor import DataExtractor
+ from statscepal.semantic.models import ResolutionStatus, SemanticResolutionResponse
++from statscepal.semantic.registry import (
++    EMPIRICAL_INDICATOR_ID_MAP,
++    SYNTHETIC_DIMENSION_MEMBER_IDS,
++)
++
+ 
+ 
+ def _strip_accents(text: str) -> str:
+@@ -142,6 +147,21 @@ class SemanticDataFetcher:
+         return result
+ 
+ 
++    def _resolve_empirical_indicator_id(
++        self, response: SemanticResolutionResponse
++    ) -> int:
++        """Map synthetic vertical-slice indicator IDs to verified real CEPALSTAT indicator IDs."""
++        assert response.selected_candidate is not None
++        ind_id = response.selected_candidate.indicator_id
++        if ind_id == 3340:
++            estrato = response.applied_filters.facets.get("estrato", "")
++            if estrato == "RELACION_Q5_Q1":
++                return 3295
++            if "QUINTIL" in estrato:
++                return 3324
++            return 3390
++        return EMPIRICAL_INDICATOR_ID_MAP.get(ind_id, ind_id)
++
+     def fetch_resolved_data(
+         self, response: SemanticResolutionResponse
+     ) -> dict[str, Any]:
+@@ -169,14 +189,18 @@ class SemanticDataFetcher:
+             return payload
+ 
+         indicator_id = response.selected_candidate.indicator_id
+-        member_ids: list[int] = []
++        empirical_id = self._resolve_empirical_indicator_id(response)
++        raw_member_ids: list[int] = []
+         for f in response.applied_filters.dimensions:
+             if getattr(f, "is_breakdown", False) and getattr(f, "member_ids", None):
+-                member_ids.extend(f.member_ids)
++                raw_member_ids.extend(f.member_ids)
+             elif f.member_id is not None:
+-                member_ids.append(f.member_id)
++                raw_member_ids.append(f.member_id)
+ 
+-        df = self._load_indicator_data(indicator_id, member_ids)
++        member_ids = [
++            m for m in raw_member_ids if m not in SYNTHETIC_DIMENSION_MEMBER_IDS
++        ]
++        df = self._load_indicator_data(empirical_id, member_ids)
+ 
+         time_mode = getattr(response.applied_filters, "time_mode", "SINGLE")
+         target_years = getattr(response.applied_filters, "years", []) or []
+@@ -197,6 +221,7 @@ class SemanticDataFetcher:
+             payload = {
+                 "observation_exists": False,
+                 "indicator_id": indicator_id,
++                "empirical_indicator_id": empirical_id,
+                 "indicator_name": response.selected_candidate.name,
+                 "unit": response.selected_candidate.unit,
+                 "country": response.applied_filters.country_name
+@@ -238,6 +263,15 @@ class SemanticDataFetcher:
+                 if country_col is not None:
+                     break
+ 
++            if country_col is None:
++                for col in filtered_df.columns:
++                    cl = col.lower()
++                    if ("pais" in cl or "pa├¡s" in cl or "country" in cl) and not any(
++                        s in cl for s in ("iso3", "code", "codigo", "c├│digo")
++                    ):
++                        country_col = col
++                        break
++
+             if country_col is None:
+                 for candidate in ("iso3", "country_code"):
+                     for col in filtered_df.columns:
+@@ -247,13 +281,6 @@ class SemanticDataFetcher:
+                     if country_col is not None:
+                         break
+ 
+-            if country_col is None:
+-                for col in filtered_df.columns:
+-                    cl = col.lower()
+-                    if "pais" in cl or "pa├¡s" in cl or "country" in cl:
+-                        country_col = col
+-                        break
+-
+             if country_col is not None:
+                 mask = pd.Series(False, index=filtered_df.index)
+                 col_str = filtered_df[country_col].astype(str).str.strip()
+@@ -810,6 +837,7 @@ class SemanticDataFetcher:
+             if is_multi_year or has_rescued_anchors:
+                 payload["series"] = []
+ 
++        payload["empirical_indicator_id"] = empirical_id
+         response.empirical_data = payload
+         if payload.get("observation_exists"):
+             response.execution_trace.append(
+diff --git a/src/statscepal/semantic/registry.py b/src/statscepal/semantic/registry.py
+index c77c10e..1555c4f 100644
+--- a/src/statscepal/semantic/registry.py
++++ b/src/statscepal/semantic/registry.py
+@@ -201,6 +201,46 @@ DEFAULT_OFFICIAL_DIMENSIONS: dict[int, list[Dimension]] = {
+ }
+ 
+ 
++# Synthetic member IDs defined in DEFAULT_OFFICIAL_DIMENSIONS for offline Stage 4 matching
++# that must not be sent as raw integer filters to the live CEPALSTAT API records endpoint.
++SYNTHETIC_DIMENSION_MEMBER_IDS: frozenset[int] = frozenset({
++    300, 301, 302,
++    327, 330, 331,
++    412, 413, 414, 415,
++    501, 502,
++    601, 602, 603, 604, 605, 610, 611, 612, 613,
++    701,
++    79578, 79580,
++})
++
++# Mapping from synthetic/placeholder official_25 indicator IDs to real CEPALSTAT master_indicators IDs
++EMPIRICAL_INDICATOR_ID_MAP: dict[int, int] = {
++    2928: 2484,  # Tasa de crecimiento anual del ├¡ndice de precios al consumidor: diciembre a diciembre
++    2930: 4145,  # Tasa de crecimiento anual del ├¡ndice de precios al consumidor subyacente: diciembre a diciembre
++    729: 2204,   # Producto interno bruto (PIB) total anual a precios constantes en d├│lares
++    730: 2206,   # Producto interno bruto (PIB) total anual por habitante a precios constantes en d├│lares
++    731: 286,    # Producto interno bruto trimestral por tipo del gasto a precios constantes
++    2447: 286,   # Producto interno bruto trimestral
++    3331: 5097,  # Tasa de desempleo, por sexo y edad - 19┬¬ CIET (%)
++    3344: 5097,  # Tasa de desocupaci├│n seg├║n sexo y edad
++    128: 341,    # Salario medio real anual
++    3337: 340,   # Salario m├¡nimo real
++    3339: 2287,  # Ingreso medio de la poblaci├│n ocupada, por sexo e inserci├│n laboral
++    3345: 5698,  # Ingreso medio de la poblaci├│n ocupada, por sexo, autoidentificaci├│n ├®tnico-racial y ├írea
++    3340: 3390,  # Distribuci├│n del ingreso de los hogares, por deciles y ├írea
++    1241: 1246,  # Operaciones del gobierno (clasificaci├│n econ├│mica), en porcentajes del PIB
++    1242: 821,   # Ingresos tributarios por tipo de impuestos en porcentajes del PIB
++    1243: 740,   # Saldo en cuenta corriente como porcentaje del producto interno bruto
++    1244: 883,   # ├ìndices de la relaci├│n de precios del intercambio y poder de compra de las exportaciones
++    5683: 3154,  # Proporci├│n de energ├¡a renovable en la oferta de energ├¡a primaria
++    4406: 460,   # Gasto p├║blico en educaci├│n
++    1318: 3097,  # Porcentaje de poblaci├│n que utiliza fuentes mejoradas de abastecimiento de agua
++    3333: 2288,  # Relaci├│n del ingreso medio entre mujeres y hombres, por grupo de edad y ├írea
++    2949: 2050,  # Balanza de pagos
++    2954: 883,   # ├ìndices de la relaci├│n de precios del intercambio
++}
++
++
+ # Static registry for the 25 official indicators and vertical slice domain
+ VERTICAL_SLICE_INDICATORS: dict[int, IndicatorMetadata] = {
+     # 1. Pobreza por ├írea
+diff --git a/tests/test_semantic_fetcher.py b/tests/test_semantic_fetcher.py
+index dbad6a9..1efd597 100644
+--- a/tests/test_semantic_fetcher.py
++++ b/tests/test_semantic_fetcher.py
+@@ -300,3 +300,64 @@ def test_fetcher_multi_country_without_year_filters_to_latest_year_per_country()
+     assert by_country["Chile"]["value"] == 6.5
+ 
+ 
++def test_fetcher_strips_synthetic_member_ids_to_prevent_api_country_collision():
++    """Verify synthetic member_id 79578 in 2929 is NOT passed to API get_dataframe, preventing Chile-only filtering."""
++    from unittest.mock import MagicMock
++    import pandas as pd
++    from statscepal.extractor import DataExtractor
++    from statscepal.semantic.engine import SemanticResolutionEngine
++    from statscepal.semantic.fetcher import SemanticDataFetcher
++
++    engine = SemanticResolutionEngine()
++    res = engine.resolve(
++        "necesito los datos de la inflacion de alimentos de mexico, peru, argentina, chile, colombia y paraguay del a├▒o 2018 al 2023"
++    )
++
++    mock_extractor = MagicMock(spec=DataExtractor)
++    mock_extractor.get_dataframe.return_value = pd.DataFrame([
++        {"iso3": "MEX", "Pa├¡ses_agregados regionales especiales VAR IPC": "M├®xico", "A├▒os__ESTANDAR": 2022, "value": 14.1, "notes_ids": ""},
++        {"iso3": "PER", "Pa├¡ses_agregados regionales especiales VAR IPC": "Per├║", "A├▒os__ESTANDAR": 2022, "value": 15.2, "notes_ids": ""},
++        {"iso3": "CHL", "Pa├¡ses_agregados regionales especiales VAR IPC": "Chile", "A├▒os__ESTANDAR": 2022, "value": 21.0, "notes_ids": ""},
++    ])
++
++    fetcher = SemanticDataFetcher(extractor=mock_extractor)
++    payload = fetcher.fetch_resolved_data(res)
++
++    # Synthetic member_id 79578 must be stripped so members=None is passed to get_dataframe
++    mock_extractor.get_dataframe.assert_called_once_with(2929, members=None)
++    assert payload["observation_exists"] is True
++    assert len(payload["series"]) == 3
++    assert [r["country"] for r in payload["series"]] == ["M├®xico", "Per├║", "Chile"]
++
++
++def test_fetcher_maps_synthetic_indicator_2928_to_real_cepalstat_2484():
++    """Verify synthetic indicator ID 2928 (IPC general in official_25) maps to real CEPALSTAT ID 2484 during fetch."""
++    from unittest.mock import MagicMock
++    import pandas as pd
++    from statscepal.extractor import DataExtractor
++    from statscepal.semantic.engine import SemanticResolutionEngine
++    from statscepal.semantic.fetcher import SemanticDataFetcher
++
++    engine = SemanticResolutionEngine()
++    res = engine.resolve(
++        "necesito los datos de la inflacion de peru, argentina, chile, colombia y paraguay del a├▒o 2018 al 2023"
++    )
++    assert res.selected_candidate is not None
++    assert res.selected_candidate.indicator_id == 2928
++
++    mock_extractor = MagicMock(spec=DataExtractor)
++    mock_extractor.get_dataframe.return_value = pd.DataFrame([
++        {"iso3": "PER", "Pa├¡ses_agregados regionales especiales VAR IPC": "Per├║", "A├▒os__ESTANDAR": 2022, "value": 8.46, "notes_ids": ""},
++        {"iso3": "CHL", "Pa├¡ses_agregados regionales especiales VAR IPC": "Chile", "A├▒os__ESTANDAR": 2022, "value": 12.8, "notes_ids": ""},
++    ])
++
++    fetcher = SemanticDataFetcher(extractor=mock_extractor)
++    payload = fetcher.fetch_resolved_data(res)
++
++    mock_extractor.get_dataframe.assert_called_once_with(2484, members=None)
++    assert payload["observation_exists"] is True
++    assert payload["empirical_indicator_id"] == 2484
++    assert len(payload["series"]) == 2
++
++
++

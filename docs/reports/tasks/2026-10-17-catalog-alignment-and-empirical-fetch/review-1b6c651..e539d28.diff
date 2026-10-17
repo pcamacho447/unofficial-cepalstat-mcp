@@ -1,0 +1,401 @@
+﻿diff --git a/src/statscepal/semantic/engine.py b/src/statscepal/semantic/engine.py
+index e53ed87..eaf61ad 100644
+--- a/src/statscepal/semantic/engine.py
++++ b/src/statscepal/semantic/engine.py
+@@ -39,6 +39,19 @@ class SemanticResolutionEngine:
+         self.registry = registry or SemanticRegistry(catalog_profile=catalog_profile, ontology=self.ontology)
+         self.matcher = matcher or DynamicMemberMatcher(ontology=self.ontology)
+ 
++    @staticmethod
++    def _route_population_indicator(facets: dict[str, str]) -> int:
++        """Route demographic population queries to specialized breakdown indicators based on facets."""
++        if facets.get("etnia") == "AFRODESCENDIENTE":
++            return 4969
++        if ("estrato" in facets or "quintil" in facets) and "etnia" in facets:
++            return 4639
++        if "etnia" in facets:
++            return 4968
++        if "area" in facets:
++            return 4992
++        return 4788
++
+     def resolve_query(self, query: str) -> SemanticResolutionResponse:
+         """Resolve a natural language query string."""
+         return self.resolve(query)
+@@ -172,6 +185,9 @@ class SemanticResolutionEngine:
+                 latency_ms=latency,
+             )
+ 
++        if intent.root_concept == "POBLACION":
++            canonical_id = self._route_population_indicator(intent.facets)
++
+         trace.append(f"[Stage 2: Hard Abstention] PASSED: Root concept '{intent.root_concept}' recognized, facets valid.")
+         trace.append(f"[Stage 3: Candidate Selection] Canonical indicator candidate: ID {canonical_id}")
+ 
+diff --git a/src/statscepal/semantic/facet_ontology.py b/src/statscepal/semantic/facet_ontology.py
+index 5551020..2caac3a 100644
+--- a/src/statscepal/semantic/facet_ontology.py
++++ b/src/statscepal/semantic/facet_ontology.py
+@@ -437,7 +437,7 @@ DEFAULT_FACETS: list[FacetDefinition] = [
+         facet_key="etnia",
+         description="Pertenencia ├®tnica o racial (ind├¡gena, afrodescendiente)",
+         synset_domain="facet_etnia",
+-        known_dimension_ids=frozenset({43039}),
++        known_dimension_ids=frozenset({43039, 78149, 140625}),
+         dimension_name_patterns=(
+             "etnia",
+             "tipo de etnia",
+@@ -445,12 +445,23 @@ DEFAULT_FACETS: list[FacetDefinition] = [
+             "etnico",
+             "etnico-racial",
+             "raza",
++            "condicion indigena",
++            "condicion afrodescendiente",
+         ),
+         member_value_patterns={
+             "INDIGENA": ("indigena", "indigenas", "pueblos indigenas", "originarios"),
+             "AFRODESCENDIENTE": ("afrodescendiente", "afrodescendientes", "afro", "negros"),
+             "NO_INDIGENA": ("no indigena", "no indigena ni afrodescendiente"),
+-            "ETNICO_TOTAL": ("etnia", "etnico", "etnica"),
++            "ETNICO_TOTAL": (
++                "indigena",
++                "no indigena",
++                "afrodescendiente",
++                "no afrodescendiente",
++                "no indigena ni afrodescendiente",
++                "etnia",
++                "etnico",
++                "etnica",
++            ),
+             "ETNICO": ("etnia", "etnico", "etnica"),
+         },
+         implicit_aggregate_values=frozenset(),
+diff --git a/src/statscepal/semantic/parser.py b/src/statscepal/semantic/parser.py
+index c3967da..5dd7d29 100644
+--- a/src/statscepal/semantic/parser.py
++++ b/src/statscepal/semantic/parser.py
+@@ -54,6 +54,96 @@ COUNTRY_LEXICON: dict[str, str] = {
+     "guyana": "GUY",
+     "surinam": "SUR",
+     "lima": "PER",
++    # Demonyms (gentilicios latinoamericanos)
++    "brasile├▒o": "BRA",
++    "brasile├▒a": "BRA",
++    "brasileno": "BRA",
++    "brasilena": "BRA",
++    "brasilenos": "BRA",
++    "brasilenas": "BRA",
++    "colombiano": "COL",
++    "colombiana": "COL",
++    "colombianos": "COL",
++    "colombianas": "COL",
++    "chileno": "CHL",
++    "chilena": "CHL",
++    "chilenos": "CHL",
++    "chilenas": "CHL",
++    "mexicano": "MEX",
++    "mexicana": "MEX",
++    "mexicanos": "MEX",
++    "mexicanas": "MEX",
++    "argentino": "ARG",
++    "argentinos": "ARG",
++    "argentinas": "ARG",
++    "uruguayo": "URY",
++    "uruguaya": "URY",
++    "uruguayos": "URY",
++    "uruguayas": "URY",
++    "costarricense": "CRI",
++    "costarricenses": "CRI",
++    "peruano": "PER",
++    "peruana": "PER",
++    "peruanos": "PER",
++    "peruanas": "PER",
++    "ecuatoriano": "ECU",
++    "ecuatoriana": "ECU",
++    "ecuatorianos": "ECU",
++    "ecuatorianas": "ECU",
++    "boliviano": "BOL",
++    "boliviana": "BOL",
++    "bolivianos": "BOL",
++    "bolivianas": "BOL",
++    "panameno": "PAN",
++    "panamena": "PAN",
++    "panamenos": "PAN",
++    "panamenas": "PAN",
++    "paname├▒o": "PAN",
++    "paname├▒a": "PAN",
++    "paname├▒os": "PAN",
++    "paname├▒as": "PAN",
++    "paraguayo": "PRY",
++    "paraguaya": "PRY",
++    "paraguayos": "PRY",
++    "paraguayas": "PRY",
++    "hondureno": "HND",
++    "hondurena": "HND",
++    "hondurenos": "HND",
++    "hondurenas": "HND",
++    "hondure├▒o": "HND",
++    "hondure├▒a": "HND",
++    "hondure├▒os": "HND",
++    "hondure├▒as": "HND",
++    "guatemalteco": "GTM",
++    "guatemalteca": "GTM",
++    "guatemaltecos": "GTM",
++    "guatemaltecas": "GTM",
++    "salvadoreno": "SLV",
++    "salvadorena": "SLV",
++    "salvadorenos": "SLV",
++    "salvadorenas": "SLV",
++    "salvadore├▒o": "SLV",
++    "salvadore├▒a": "SLV",
++    "salvadore├▒os": "SLV",
++    "salvadore├▒as": "SLV",
++    "nicaraguense": "NIC",
++    "nicaraguenses": "NIC",
++    "dominicano": "DOM",
++    "dominicana": "DOM",
++    "dominicanos": "DOM",
++    "dominicanas": "DOM",
++    "venezolano": "VEN",
++    "venezolana": "VEN",
++    "venezolanos": "VEN",
++    "venezolanas": "VEN",
++    "cubano": "CUB",
++    "cubana": "CUB",
++    "cubanos": "CUB",
++    "cubanas": "CUB",
++    "haitiano": "HTI",
++    "haitiana": "HTI",
++    "haitianos": "HTI",
++    "haitianas": "HTI",
+ }
+ 
+ COUNTRY_NAMES: dict[str, str] = {
+@@ -714,6 +804,8 @@ class QueryParser:
+ 
+         elif "gini" in clean or "desigualdad" in clean:
+             intent.root_concept = "GINI"
++        elif any(term in clean for term in ["poblacion", "habitantes", "demografia", "demografico", "demograficos"]):
++            intent.root_concept = "POBLACION"
+ 
+         intent.facets = facets
+         return intent
+diff --git a/src/statscepal/semantic/registry.py b/src/statscepal/semantic/registry.py
+index 1555c4f..625e23e 100644
+--- a/src/statscepal/semantic/registry.py
++++ b/src/statscepal/semantic/registry.py
+@@ -198,6 +198,73 @@ DEFAULT_OFFICIAL_DIMENSIONS: dict[int, list[Dimension]] = {
+             members=[Member(id=79580, name="Transporte y energ├¡a")],
+         ),
+     ],
++    4788: [
++        Dimension(
++            id=88622,
++            name="Sexo",
++            members=[Member(id=88623, name="Ambos sexos"), Member(id=88626, name="Hombres"), Member(id=88627, name="Mujeres")],
++        ),
++    ],
++    4968: [
++        Dimension(
++            id=48525,
++            name="Area Geografica",
++            members=[Member(id=48529, name="Total"), Member(id=48526, name="Urbano"), Member(id=48528, name="Rural")],
++        ),
++        Dimension(
++            id=78149,
++            name="Condici├│n Ind├¡gena",
++            members=[Member(id=78150, name="Ind├¡gena"), Member(id=78152, name="No Ind├¡gena"), Member(id=78154, name="Total")],
++        ),
++    ],
++    4969: [
++        Dimension(
++            id=48525,
++            name="Area Geografica",
++            members=[Member(id=48529, name="Total"), Member(id=48526, name="Urbano"), Member(id=48528, name="Rural")],
++        ),
++        Dimension(
++            id=140625,
++            name="Condici├│n Afrodescendiente",
++            members=[Member(id=140626, name="Afrodescendiente"), Member(id=140627, name="No Afrodescendiente"), Member(id=140629, name="Total")],
++        ),
++    ],
++    4992: [
++        Dimension(
++            id=48525,
++            name="Area Geografica",
++            members=[Member(id=48529, name="Total"), Member(id=48526, name="Urbano"), Member(id=48528, name="Rural")],
++        ),
++    ],
++    4639: [
++        Dimension(
++            id=144,
++            name="Sexo__ESTANDAR",
++            members=[Member(id=146, name="Ambos sexos"), Member(id=265, name="Hombres"), Member(id=266, name="Mujeres")],
++        ),
++        Dimension(
++            id=378,
++            name="Quintil",
++            members=[
++                Member(id=380, name="Quintil 1"),
++                Member(id=382, name="Quintil 2"),
++                Member(id=383, name="Quintil 3"),
++                Member(id=384, name="Quintil 4"),
++                Member(id=381, name="Quintil 5"),
++                Member(id=379, name="Total quintiles"),
++            ],
++        ),
++        Dimension(
++            id=43039,
++            name="Tipo de etnia",
++            members=[
++                Member(id=77477, name="Ind├¡gena"),
++                Member(id=43044, name="Afrodescendiente"),
++                Member(id=43043, name="No ind├¡gena ni afrodescendiente"),
++                Member(id=43040, name="Total"),
++            ],
++        ),
++    ],
+ }
+ 
+ 
+@@ -751,10 +818,74 @@ VERTICAL_SLICE_INDICATORS: dict[int, IndicatorMetadata] = {
+             340: RelationshipType.RELATED_CONCEPT,
+         },
+     ),
++    # Demographic / Population Indicators
++    4788: IndicatorMetadata(
++        indicator_id=4788,
++        name="Poblaci├│n total",
++        concept="POBLACION",
++        measure_type=MeasureType.VOLUMEN_REAL,
++        unit="personas",
++        supported_facets={"sexo"},
++        relationships={
++            4968: RelationshipType.BREAKDOWN_OF,
++            4969: RelationshipType.BREAKDOWN_OF,
++            4992: RelationshipType.BREAKDOWN_OF,
++            4639: RelationshipType.BREAKDOWN_OF,
++        },
++    ),
++    4968: IndicatorMetadata(
++        indicator_id=4968,
++        name="Poblaci├│n ind├¡gena y no ind├¡gena seg├║n ├írea de residencia",
++        concept="POBLACION",
++        measure_type=MeasureType.VOLUMEN_REAL,
++        unit="personas",
++        supported_facets={"area", "etnia"},
++        relationships={
++            4788: RelationshipType.BREAKDOWN_OF,
++            4992: RelationshipType.BREAKDOWN_OF,
++        },
++    ),
++    4969: IndicatorMetadata(
++        indicator_id=4969,
++        name="Poblaci├│n afrodescendiente seg├║n ├írea de residencia",
++        concept="POBLACION",
++        measure_type=MeasureType.VOLUMEN_REAL,
++        unit="personas",
++        supported_facets={"area", "etnia"},
++        relationships={
++            4788: RelationshipType.BREAKDOWN_OF,
++            4992: RelationshipType.BREAKDOWN_OF,
++        },
++    ),
++    4992: IndicatorMetadata(
++        indicator_id=4992,
++        name="Poblaci├│n seg├║n ├írea urbana y rural",
++        concept="POBLACION",
++        measure_type=MeasureType.VOLUMEN_REAL,
++        unit="personas",
++        supported_facets={"area"},
++        relationships={
++            4788: RelationshipType.BREAKDOWN_OF,
++            4968: RelationshipType.BREAKDOWN_OF,
++            4969: RelationshipType.BREAKDOWN_OF,
++        },
++    ),
++    4639: IndicatorMetadata(
++        indicator_id=4639,
++        name="Poblaci├│n por quintil de ingreso y etnia",
++        concept="POBLACION",
++        measure_type=MeasureType.VOLUMEN_REAL,
++        unit="personas",
++        supported_facets={"sexo", "estrato", "quintil", "etnia"},
++        relationships={
++            4788: RelationshipType.BREAKDOWN_OF,
++        },
++    ),
+ }
+ 
+ # Concept to Canonical Default mappings
+ OFFICIAL_25_CANONICAL_DEFAULTS: dict[str, int] = {
++    "POBLACION": 4788,
+     "POBREZA": 3328,
+     "POBREZA_BRECHA": 3329,
+     "POBREZA_FEMINIDAD": 3330,
+@@ -796,6 +927,7 @@ OFFICIAL_25_CANONICAL_DEFAULTS: dict[str, int] = {
+ }
+ 
+ LEGACY_50_CANONICAL_DEFAULTS: dict[str, int] = {
++    "POBLACION": 4788,
+     "POBREZA": 3328,
+     "POBREZA_BRECHA": 3329,
+     "POBREZA_FEMINIDAD": 3330,
+diff --git a/tests/test_semantic_breakdowns.py b/tests/test_semantic_breakdowns.py
+index e8a3969..63e06fd 100644
+--- a/tests/test_semantic_breakdowns.py
++++ b/tests/test_semantic_breakdowns.py
+@@ -278,3 +278,53 @@ def test_generic_breakdowns_for_sexo_area_edad_and_deciles():
+     assert {"Primer decil", "D├®cimo decil", "Deciles"}.issubset(set(decil_dim.member_names))
+ 
+ 
++def test_ethnic_population_query_with_demonym_resolves_to_indigenous_population_breakdown():
++    """Verify 'necesito datos etnicos de la poblacion peruana' extracts PER from 'peruana' and resolves to 4968 with ethnic breakdown."""
++    from statscepal.semantic.engine import SemanticResolutionEngine
++    from statscepal.semantic.models import ResolutionStatus
++
++    engine = SemanticResolutionEngine()
++
++    res = engine.resolve("necesito datos etnicos de la poblacion peruana")
++    assert res.status == ResolutionStatus.RESOLVED
++    assert res.applied_filters.country_code == "PER"
++    assert res.applied_filters.country_name == "Per├║"
++    assert res.selected_candidate is not None
++    assert res.selected_candidate.indicator_id == 4968
++    assert res.applied_filters.facets.get("etnia") == "ETNICO_TOTAL"
++    etnia_dims = [
++        d for d in res.applied_filters.dimensions
++        if "ind├¡gena" in d.dim_name.lower() or "etnia" in d.dim_name.lower()
++    ]
++    assert len(etnia_dims) == 1
++    assert etnia_dims[0].is_breakdown is True
++    assert "Ind├¡gena" in etnia_dims[0].member_names
++
++
++def test_specific_population_queries_route_to_total_indigenous_and_afrodescendant_indicators():
++    """Verify total, indigenous, and afrodescendant population queries resolve to 4788, 4968, and 4969."""
++    from statscepal.semantic.engine import SemanticResolutionEngine
++    from statscepal.semantic.models import ResolutionStatus
++
++    engine = SemanticResolutionEngine()
++
++    res_tot = engine.resolve("poblacion total de chile en 2022")
++    assert res_tot.status == ResolutionStatus.RESOLVED
++    assert res_tot.selected_candidate is not None
++    assert res_tot.selected_candidate.indicator_id == 4788
++    assert res_tot.applied_filters.country_code == "CHL"
++
++    res_ind = engine.resolve("poblacion indigena en bolivia")
++    assert res_ind.status == ResolutionStatus.RESOLVED
++    assert res_ind.selected_candidate is not None
++    assert res_ind.selected_candidate.indicator_id == 4968
++    assert res_ind.applied_filters.country_code == "BOL"
++
++    res_afro = engine.resolve("poblacion afrodescendiente en brasil")
++    assert res_afro.status == ResolutionStatus.RESOLVED
++    assert res_afro.selected_candidate is not None
++    assert res_afro.selected_candidate.indicator_id == 4969
++    assert res_afro.applied_filters.country_code == "BRA"
++
++
++

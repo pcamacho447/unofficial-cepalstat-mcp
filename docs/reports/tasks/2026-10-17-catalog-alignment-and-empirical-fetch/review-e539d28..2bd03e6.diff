@@ -1,0 +1,87 @@
+﻿diff --git a/src/statscepal/cli.py b/src/statscepal/cli.py
+index 2ef7d6c..e204c87 100644
+--- a/src/statscepal/cli.py
++++ b/src/statscepal/cli.py
+@@ -751,6 +751,12 @@ def main(args: Sequence[str] | None = None) -> int:
+                 if parsed.fetch:
+                     print("-" * 70)
+                     emp = res.empirical_data or {}
++                    if (
++                        emp.get("empirical_indicator_id")
++                        and res.selected_candidate
++                        and emp.get("empirical_indicator_id") != res.selected_candidate.indicator_id
++                    ):
++                        print(f"CEPALSTAT API Table ID: {emp['empirical_indicator_id']}")
+                     series = emp.get("series")
+                     if series:
+                         print(f"Empirical Series ({len(series)} observations):")
+diff --git a/tests/test_semantic_fetcher.py b/tests/test_semantic_fetcher.py
+index c92f8ef..9c045d6 100644
+--- a/tests/test_semantic_fetcher.py
++++ b/tests/test_semantic_fetcher.py
+@@ -427,5 +427,65 @@ def test_fetcher_parses_decada_column_as_temporal_dimension():
+     assert payload["value"] == 26500000.0
+ 
+ 
++def test_end_to_end_ethnic_population_peru_fetch_with_decada_and_breakdown():
++    """Verify 'necesito datos etnicos de la poblacion peruana' resolves to 4968 and fetches Indigenous vs No Ind├¡gena breakdown for latest decade."""
++    import pandas as pd
++    from statscepal.semantic.engine import SemanticResolutionEngine
++    from statscepal.semantic.fetcher import SemanticDataFetcher
++    from statscepal.semantic.models import ResolutionStatus
++
++    engine = SemanticResolutionEngine()
++    res = engine.resolve("necesito datos etnicos de la poblacion peruana")
++    assert res.status == ResolutionStatus.RESOLVED
++    assert res.selected_candidate is not None
++    assert res.selected_candidate.indicator_id == 4968
++
++    mock_df = pd.DataFrame([
++        {"iso3": "PER", "Pa├¡s__ESTANDAR": "Per├║", "D├®cada": "D├®cada 2010", "Area Geografica": "Total", "Condici├│n Ind├¡gena": "Ind├¡gena", "value": 6383284.0, "notes_ids": "8651"},
++        {"iso3": "PER", "Pa├¡s__ESTANDAR": "Per├║", "D├®cada": "D├®cada 2010", "Area Geografica": "Total", "Condici├│n Ind├¡gena": "No Ind├¡gena", "value": 17437316.0, "notes_ids": "8651"},
++        {"iso3": "PER", "Pa├¡s__ESTANDAR": "Per├║", "D├®cada": "D├®cada 2010", "Area Geografica": "Total", "Condici├│n Ind├¡gena": "Total", "value": 23820599.0, "notes_ids": "8651"},
++        {"iso3": "PER", "Pa├¡s__ESTANDAR": "Per├║", "D├®cada": "D├®cada 2010", "Area Geografica": "Urbano", "Condici├│n Ind├¡gena": "Ind├¡gena", "value": 4525633.0, "notes_ids": "8651"},
++    ])
++
++    fetcher = SemanticDataFetcher()
++    fetcher._load_indicator_data = lambda ind_id, member_ids=None: mock_df
++
++    payload = fetcher.fetch_resolved_data(res)
++    assert payload["observation_exists"] is True
++    series = payload.get("series", [])
++    assert len(series) == 2
++    by_dim = {r.get("dimension") or r.get("member"): r["value"] for r in series}
++    assert by_dim == {"Ind├¡gena": 6383284.0, "No Ind├¡gena": 17437316.0}
++
++
++def test_cli_displays_empirical_indicator_id_when_mapped(capsys, monkeypatch):
++    """Verify CLI displays CEPALSTAT API Table ID when empirical_indicator_id differs from selected candidate ID."""
++    from statscepal.cli import main
++    from statscepal.semantic.fetcher import SemanticDataFetcher
++
++    def mock_fetch(self, response):
++        payload = {
++            "observation_exists": True,
++            "indicator_id": 2928,
++            "empirical_indicator_id": 2484,
++            "indicator_name": "Variaci├│n del ├¡ndice de precios al consumidor (IPC)",
++            "value": 8.46,
++            "unit": "%",
++            "country": "Per├║",
++            "year": 2022,
++            "notes": "",
++        }
++        response.empirical_data = payload
++        return payload
++
++    monkeypatch.setattr(SemanticDataFetcher, "fetch_resolved_data", mock_fetch)
++
++    ret = main(["semantic", "resolve", "inflacion de peru en 2022", "--fetch"])
++    assert ret == 0
++    captured = capsys.readouterr()
++    assert "CEPALSTAT API Table ID: 2484" in captured.out
++
++
++
+ 
+ 
