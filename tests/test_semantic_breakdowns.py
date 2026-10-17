@@ -327,4 +327,43 @@ def test_specific_population_queries_route_to_total_indigenous_and_afrodescendan
     assert res_afro.applied_filters.country_code == "BRA"
 
 
+@pytest.fixture
+def engine():
+    from statscepal.semantic.engine import SemanticResolutionEngine
+
+    return SemanticResolutionEngine()
+
+
+def test_poblacion_por_quintil_y_etnia_routes_to_indicator_4639(engine):
+    """Assert 'poblacion indigena por quintil en peru 2021' routes to 4639, not 3340."""
+    from statscepal.semantic.models import ResolutionStatus
+
+    res = engine.resolve("poblacion indigena por quintil en peru 2021")
+    assert res.status == ResolutionStatus.RESOLVED
+    assert res.selected_candidate is not None
+    assert res.selected_candidate.indicator_id == 4639
+    assert res.applied_filters.country_code == "PER"
+
+
+def test_poblacion_especifica_afrodescendiente_no_bloqueada_por_etnico_total(engine):
+    """Assert 'poblacion del grupo etnico afrodescendiente en brasil 2020' routes to 4969."""
+    from statscepal.semantic.models import ResolutionStatus
+
+    res = engine.resolve("poblacion del grupo etnico afrodescendiente en brasil 2020")
+    assert res.status == ResolutionStatus.RESOLVED
+    assert res.selected_candidate is not None
+    assert res.selected_candidate.indicator_id == 4969
+
+
+def test_poblacion_por_area_urbana_rural_routes_to_indicator_4992(engine):
+    """Assert 'poblacion por area urbana y rural en colombia 2022' routes to 4992."""
+    from statscepal.semantic.models import ResolutionStatus
+
+    res = engine.resolve("poblacion por area en colombia 2022")
+    assert res.status == ResolutionStatus.RESOLVED
+    assert res.selected_candidate is not None
+    assert res.selected_candidate.indicator_id == 4992
+
+
+
 

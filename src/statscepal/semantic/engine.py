@@ -42,15 +42,25 @@ class SemanticResolutionEngine:
     @staticmethod
     def _route_population_indicator(facets: dict[str, str]) -> int:
         """Route demographic population queries to specialized breakdown indicators based on facets."""
+        has_etnia = "etnia" in facets
+        has_estrato = "estrato" in facets or "quintil" in facets
+        area_val = facets.get("area")
+        has_area = "area" in facets and area_val not in (None, "NACIONAL", "TOTAL", "AMBOS")
+
+        # 1. Quintiles and ethnicity -> 4639 (highest specificity)
+        if has_estrato and has_etnia:
+            return 4639
+        # 2. Specific ethnicity breakdowns:
         if facets.get("etnia") == "AFRODESCENDIENTE":
             return 4969
-        if ("estrato" in facets or "quintil" in facets) and "etnia" in facets:
-            return 4639
-        if "etnia" in facets:
+        if has_etnia:
             return 4968
-        if "area" in facets:
+        # 3. Area breakdown without ethnicity -> 4992
+        if has_area:
             return 4992
+        # 4. Canonical total population -> 4788
         return 4788
+
 
     def resolve_query(self, query: str) -> SemanticResolutionResponse:
         """Resolve a natural language query string."""

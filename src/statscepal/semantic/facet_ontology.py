@@ -276,6 +276,28 @@ class FacetOntology:
             # 1. Check QueryTriggerRules for breakdown values first (e.g., 'urbano y rural', 'por sexo')
             compiled_rules = self._compiled_triggers.get(fdef.facet_key)
             if compiled_rules:
+                # Specific ethnic group patterns must not be shadowed by generic breakdown triggers (e.g. 'etnico')
+                if fdef.facet_key == "etnia":
+                    specific_match = None
+                    for c_val, pat, norm_phrases in compiled_rules:
+                        if c_val in ("INDIGENA", "AFRODESCENDIENTE", "NO_INDIGENA"):
+                            if pat is not None:
+                                if pat.search(clean):
+                                    specific_match = c_val
+                                    break
+                            else:
+                                if any(p in clean for p in norm_phrases):
+                                    specific_match = c_val
+                                    break
+                    if not specific_match and thesaurus is not None and fdef.synset_domain:
+                        t_match = thesaurus.match_synset(fdef.synset_domain, clean)
+                        if t_match and t_match.canonical_id in ("INDIGENA", "AFRODESCENDIENTE", "NO_INDIGENA"):
+                            specific_match = t_match.canonical_id
+
+                    if specific_match:
+                        facets[fdef.facet_key] = specific_match
+                        continue
+
                 for canonical_val, pat, norm_phrases in compiled_rules:
                     if canonical_val in fdef.breakdown_values:
                         if pat is not None:
@@ -288,6 +310,7 @@ class FacetOntology:
                                 break
             if fdef.facet_key in facets:
                 continue
+
 
             # 2. Thesaurus synset match if domain is defined
             if thesaurus is not None and fdef.synset_domain:
@@ -578,8 +601,8 @@ DEFAULT_FACETS: list[FacetDefinition] = [
         facet_key="estrato",
         description="Estratificación socioeconómica o nivel de ingreso",
         synset_domain="facet_estrato",
-        known_dimension_ids=frozenset(),
-        dimension_name_patterns=("estrato", "estratificacion", "nivel socioeconomico"),
+        known_dimension_ids=frozenset({378, 600}),
+        dimension_name_patterns=("estrato", "estratificacion", "nivel socioeconomico", "quintil", "decil"),
         member_value_patterns={
             "QUINTIL_1": ("quintil 1", "i quintil", "primer quintil", "q1", "1 quintil"),
             "QUINTIL_2": ("quintil 2", "ii quintil", "segundo quintil", "q2", "2 quintil"),

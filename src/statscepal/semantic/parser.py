@@ -748,7 +748,13 @@ class QueryParser:
             "reparto del billete",
             "20 por ciento mas rico",
         ]):
-            intent.root_concept = "DISTRIBUCION_INGRESO"
+            if any(term in clean for term in ["poblacion", "habitantes", "personas", "indigena", "afrodescendiente", "demografia", "demografico", "demograficos"]) or "etnia" in facets:
+                intent.root_concept = "POBLACION"
+                if "estrato" not in facets and any(term in clean for term in ["quintil", "quintiles"]):
+                    facets["estrato"] = "QUINTIL"
+            else:
+                intent.root_concept = "DISTRIBUCION_INGRESO"
+
 
         # Mercado Laboral & Pobreza & Brecha Salarial
         elif "brecha salarial" in clean:
