@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import sqlite3
 from typing import TYPE_CHECKING, Any
 from statscepal.dimensions import Dimension, Member
+from statscepal.semantic.facet_ontology import DEFAULT_FACET_ONTOLOGY, FacetOntology
 from statscepal.semantic.models import (
     MeasureType,
     RelationshipType,
@@ -136,6 +138,11 @@ DEFAULT_OFFICIAL_DIMENSIONS: dict[int, list[Dimension]] = {
     ],
     3340: [
         Dimension(
+            id=326,
+            name="Área geográfica",
+            members=[Member(id=327, name="Nacional"), Member(id=330, name="Urbano"), Member(id=331, name="Rural")],
+        ),
+        Dimension(
             id=600,
             name="Estrato de ingreso",
             members=[
@@ -144,6 +151,10 @@ DEFAULT_OFFICIAL_DIMENSIONS: dict[int, list[Dimension]] = {
                 Member(id=603, name="Tercer quintil"),
                 Member(id=604, name="Cuarto quintil"),
                 Member(id=605, name="Quinto quintil"),
+                Member(id=610, name="Primer decil"),
+                Member(id=611, name="Décimo decil"),
+                Member(id=612, name="Deciles"),
+                Member(id=613, name="Relación quintil 5 / quintil 1"),
             ],
         ),
     ],
@@ -846,35 +857,233 @@ class SemanticRegistry:
         relationships: dict[Any, Any] | None = None,
         temporal_availability: dict[tuple[int, str, int], tuple[Any, int | None, int | None]] | None = None,
         catalog_profile: str = "official_25",
+        ontology: FacetOntology | None = None,
     ) -> None:
         self.store = store
         self.catalog_profile = catalog_profile
+        self.ontology = ontology or DEFAULT_FACET_ONTOLOGY
         self._dimensions = dimensions or {}
         self._relationships = relationships or {}
         self._temporal_availability = temporal_availability or {}
 
+        self._indicators_cache: dict[int, IndicatorMetadata] = {}
+        self._dimensions_cache: dict[int, list[Dimension]] = {}
+        self._relationships_cache: dict[int, dict[int, RelationshipType]] = {}
+        self._relationship_provenance: dict[tuple[int, int], str] = {}
+
+        self._build_in_memory_index(explicit_dimensions=dimensions, explicit_relationships=relationships)
+
+    def _build_in_memory_index(
+        self,
+        explicit_dimensions: dict[int, list[Dimension]] | None = None,
+        explicit_relationships: dict[Any, Any] | None = None,
+    ) -> None:
+        """Build ultra-fast in-memory index from static fallback seeds overlaid with SQLite store."""
+        # 1. Static Fallback Seeds
+        self._indicators_cache = {
+            k: IndicatorMetadata(
+                indicator_id=v.indicator_id,
+                name=v.name,
+                concept=v.concept,
+                measure_type=v.measure_type,
+                unit=v.unit,
+                supported_facets=set(v.supported_facets),
+                relationships=dict(v.relationships),
+            )
+            for k, v in VERTICAL_SLICE_INDICATORS.items()
+        }
+        self._dimensions_cache = {k: list(v) for k, v in DEFAULT_OFFICIAL_DIMENSIONS.items()}
+        self._relationships_cache = {}
+        self._relationship_provenance = {}
+
+        for k, v in VERTICAL_SLICE_INDICATORS.items():
+            self._relationships_cache[k] = {}
+            if v.relationships:
+                for target, r in v.relationships.items():
+                    r_enum = r if isinstance(r, RelationshipType) else RelationshipType(r)
+                    self._relationships_cache[k][target] = r_enum
+                    self._relationship_provenance[(k, target)] = "curated"
+
+        # 2. SQLite CatalogStore Overlay (if self.store is not None)
+        if self.store is not None:
+            # Dimensions overlay: overriding fallback seeds for indicators present in SQLite
+            store_dims = self.store.get_all_indicator_dimensions()
+            for ind_id, dims in store_dims.items():
+                self._dimensions_cache[ind_id] = dims
+
+            # Indicator metadata overlay: update or create IndicatorMetadata
+            store_meta = self.store.get_all_indicator_metadata()
+            for ind_id, m_dict in store_meta.items():
+                if ind_id in self._indicators_cache:
+                    meta = self._indicators_cache[ind_id]
+                    meta.name = m_dict["name"]
+                    meta.concept = m_dict["concept"]
+                    meta.measure_type = m_dict["measure_type"]
+                    meta.unit = m_dict["unit"]
+                    meta.supported_facets.update(m_dict["supported_facets"])
+                else:
+                    self._indicators_cache[ind_id] = IndicatorMetadata(
+                        indicator_id=ind_id,
+                        name=m_dict["name"],
+                        concept=m_dict["concept"],
+                        measure_type=m_dict["measure_type"],
+                        unit=m_dict["unit"],
+                        supported_facets=set(m_dict["supported_facets"]),
+                        relationships={},
+                    )
+
+            # Query master_indicators from self.store: synthesize IndicatorMetadata if not present
+            master_indicators = self.store.get_all_master_indicators()
+            for row in master_indicators:
+                ind_id = int(row["indicator_id"])
+                if ind_id not in self._indicators_cache:
+                    concept_val = row.get("subarea") or row.get("area") or "GENERAL"
+                    self._indicators_cache[ind_id] = IndicatorMetadata(
+                        indicator_id=ind_id,
+                        name=str(row["name"]),
+                        concept=concept_val,
+                        measure_type="SERIE_ESTADISTICA",
+                        unit="",
+                        supported_facets=set(),
+                        relationships={},
+                    )
+
+            # Classify dimensions for every indicator in _indicators_cache and union non-structural facets
+            for ind_id, meta in self._indicators_cache.items():
+                dims = self._dimensions_cache.get(ind_id, [])
+                for d in dims:
+                    f = self.ontology.classify_dimension(d.id, d.name)
+                    if f and f != "__structural__":
+                        meta.supported_facets.add(f)
+
+            # Load self.store.get_all_relationships() respecting curated precedence
+            store_rels = self.store.get_all_relationships()
+            for rel in store_rels:
+                ind_a = int(rel["indicator_a"])
+                ind_b = int(rel["indicator_b"])
+                raw_type = rel["rel_type"]
+                prov = rel.get("provenance") or "curated"
+
+                existing_prov = self._relationship_provenance.get((ind_a, ind_b))
+                if existing_prov == "curated" and prov == "inferred":
+                    continue
+
+                try:
+                    r_enum = RelationshipType(raw_type) if not isinstance(raw_type, RelationshipType) else raw_type
+                except ValueError:
+                    try:
+                        r_enum = RelationshipType[str(raw_type).upper()]
+                    except KeyError:
+                        continue
+
+                self._relationships_cache.setdefault(ind_a, {})[ind_b] = r_enum
+                self._relationship_provenance[(ind_a, ind_b)] = prov
+                if ind_a in self._indicators_cache:
+                    self._indicators_cache[ind_a].relationships[ind_b] = r_enum
+        else:
+            # If store is None, still classify dimensions for indicators in fallback seeds
+            for ind_id, meta in self._indicators_cache.items():
+                dims = self._dimensions_cache.get(ind_id, [])
+                for d in dims:
+                    f = self.ontology.classify_dimension(d.id, d.name)
+                    if f and f != "__structural__":
+                        meta.supported_facets.add(f)
+
+        # 3. Constructor Explicit Overrides
+        dims_override = explicit_dimensions if explicit_dimensions is not None else self._dimensions
+        if dims_override:
+            self._dimensions_cache.update(dims_override)
+            for ind_id, dims in dims_override.items():
+                if ind_id in self._indicators_cache:
+                    meta = self._indicators_cache[ind_id]
+                    for d in dims:
+                        f = self.ontology.classify_dimension(d.id, d.name)
+                        if f and f != "__structural__":
+                            meta.supported_facets.add(f)
+
+        rels_override = explicit_relationships if explicit_relationships is not None else self._relationships
+        if rels_override:
+            for k, val in rels_override.items():
+                if isinstance(val, dict):
+                    ind_a = k
+                    for target, r in val.items():
+                        r_enum = r if isinstance(r, RelationshipType) else RelationshipType(r)
+                        self._relationships_cache.setdefault(ind_a, {})[target] = r_enum
+                        if ind_a in self._indicators_cache:
+                            self._indicators_cache[ind_a].relationships[target] = r_enum
+                elif isinstance(k, tuple) and len(k) == 2:
+                    ind_a, target = k
+                    r_enum = val if isinstance(val, RelationshipType) else RelationshipType(val)
+                    self._relationships_cache.setdefault(ind_a, {})[target] = r_enum
+                    if ind_a in self._indicators_cache:
+                        self._indicators_cache[ind_a].relationships[target] = r_enum
+
+    def reload_from_store(self) -> None:
+        """Rebuild in-memory index from store."""
+        self._build_in_memory_index(explicit_dimensions=self._dimensions, explicit_relationships=self._relationships)
+
     def get_indicator(self, indicator_id: int) -> IndicatorMetadata | None:
-        """Get indicator metadata from in-memory registry or attached SQLite store."""
-        if indicator_id in VERTICAL_SLICE_INDICATORS:
-            return VERTICAL_SLICE_INDICATORS[indicator_id]
+        """Get indicator metadata from in-memory index or attached SQLite store on cache miss."""
+        if indicator_id in self._indicators_cache:
+            return self._indicators_cache[indicator_id]
 
         if self.store is not None:
             raw = self.store.get_indicator_metadata(indicator_id)
             if raw:
                 store_rels = self.store.get_relationships(indicator_id)
-                typed_rels = {
-                    t: (RelationshipType(r) if r in RelationshipType._value2member_map_ else RelationshipType[str(r).upper()])
-                    for t, r in store_rels.items()
-                }
-                return IndicatorMetadata(
+                typed_rels: dict[int, RelationshipType] = {}
+                for t, r in store_rels.items():
+                    try:
+                        typed_rels[t] = RelationshipType(r) if not isinstance(r, RelationshipType) else r
+                    except ValueError:
+                        try:
+                            typed_rels[t] = RelationshipType[str(r).upper()]
+                        except KeyError:
+                            pass
+                meta = IndicatorMetadata(
                     indicator_id=raw["indicator_id"],
                     name=raw["name"],
                     concept=raw["concept"],
                     measure_type=raw["measure_type"],
                     unit=raw["unit"],
-                    supported_facets=raw["supported_facets"],
+                    supported_facets=set(raw["supported_facets"]),
                     relationships=typed_rels,
                 )
+                for d in self.get_dimensions(indicator_id):
+                    f = self.ontology.classify_dimension(d.id, d.name)
+                    if f and f != "__structural__":
+                        meta.supported_facets.add(f)
+                self._indicators_cache[indicator_id] = meta
+                return meta
+
+            # Check master_indicators on miss
+            with self.store._get_connection() as conn:
+                try:
+                    row = conn.execute(
+                        "SELECT indicator_id, name, theme, area, subarea FROM master_indicators WHERE indicator_id = ?",
+                        (indicator_id,),
+                    ).fetchone()
+                    if row:
+                        subarea = row["subarea"] if "subarea" in row.keys() else ""
+                        area = row["area"] if "area" in row.keys() else ""
+                        concept_val = subarea or area or "GENERAL"
+                        meta = IndicatorMetadata(
+                            indicator_id=int(row["indicator_id"]),
+                            name=str(row["name"]),
+                            concept=concept_val,
+                            measure_type="SERIE_ESTADISTICA",
+                            unit="",
+                            supported_facets=set(),
+                            relationships={},
+                        )
+                        for d in self.get_dimensions(indicator_id):
+                            f = self.ontology.classify_dimension(d.id, d.name)
+                            if f and f != "__structural__":
+                                meta.supported_facets.add(f)
+                        self._indicators_cache[indicator_id] = meta
+                        return meta
+                except sqlite3.OperationalError:
+                    pass
 
         return None
 
@@ -885,50 +1094,53 @@ class SemanticRegistry:
         return OFFICIAL_25_CANONICAL_DEFAULTS.get(concept)
 
     def get_dimensions(self, indicator_id: int) -> list[Dimension]:
-        """Get dimensions for an indicator, checking store or custom dict."""
+        """Get dimensions for an indicator, checking in-memory cache then store."""
+        if indicator_id in self._dimensions_cache:
+            return self._dimensions_cache[indicator_id]
         if self.store is not None:
             dims = self.store.get_indicator_dimensions(indicator_id)
             if dims:
+                self._dimensions_cache[indicator_id] = dims
                 return dims
         return self._dimensions.get(indicator_id, [])
 
     def get_relationships(self, indicator_id: int) -> dict[int, RelationshipType]:
         """Get all typed relationships originating from indicator_id across all sources."""
-        rels: dict[int, RelationshipType] = {}
+        cached = self._relationships_cache.get(indicator_id)
+        if cached:
+            return dict(cached)
 
-        # 1. Base metadata registry
-        ind = VERTICAL_SLICE_INDICATORS.get(indicator_id)
-        if ind and ind.relationships:
-            for target, r in ind.relationships.items():
-                r_enum = r if isinstance(r, RelationshipType) else RelationshipType(r)
-                rels[target] = r_enum
-
-        # 2. In-memory relationships overrides
-        if indicator_id in self._relationships and isinstance(self._relationships[indicator_id], dict):
-            for target, r in self._relationships[indicator_id].items():
-                r_enum = r if isinstance(r, RelationshipType) else RelationshipType(r)
-                rels[target] = r_enum
-
-        for key, r in self._relationships.items():
-            if isinstance(key, tuple) and len(key) == 2 and key[0] == indicator_id:
-                target = key[1]
-                r_enum = r if isinstance(r, RelationshipType) else RelationshipType(r)
-                rels[target] = r_enum
-
-        # 3. SQLite CatalogStore if attached
         if self.store is not None:
             store_rels = self.store.get_relationships(indicator_id)
-            for target, r in store_rels.items():
-                try:
-                    r_enum = RelationshipType(r) if not isinstance(r, RelationshipType) else r
-                except ValueError:
+            if store_rels:
+                typed_rels: dict[int, RelationshipType] = {}
+                for target, r in store_rels.items():
                     try:
-                        r_enum = RelationshipType[str(r).upper()]
-                    except KeyError:
-                        continue
-                rels[target] = r_enum
+                        r_enum = RelationshipType(r) if not isinstance(r, RelationshipType) else r
+                    except ValueError:
+                        try:
+                            r_enum = RelationshipType[str(r).upper()]
+                        except KeyError:
+                            continue
+                    typed_rels[target] = r_enum
+                self._relationships_cache.setdefault(indicator_id, {}).update(typed_rels)
+                return dict(self._relationships_cache[indicator_id])
 
-        return rels
+        return dict(self._relationships_cache.get(indicator_id, {}))
+
+    def get_supported_facets(self, indicator_id: int) -> set[str]:
+        """Get set of supported facets for an indicator from metadata and dimensions."""
+        facets: set[str] = set()
+        meta = self.get_indicator(indicator_id)
+        if meta and meta.supported_facets:
+            facets.update(meta.supported_facets)
+
+        for d in self.get_dimensions(indicator_id):
+            f = self.ontology.classify_dimension(d.id, d.name)
+            if f and f != "__structural__":
+                facets.add(f)
+
+        return facets
 
     def get_target_indicators(self, indicator_id: int, rel_type: str | RelationshipType) -> list[int]:
         """Get target indicators related to indicator_id by a specific relationship type."""

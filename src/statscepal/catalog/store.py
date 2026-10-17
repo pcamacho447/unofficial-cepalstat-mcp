@@ -3,6 +3,7 @@
 from collections.abc import Generator
 from contextlib import contextmanager
 from datetime import datetime, timezone
+import json
 from pathlib import Path
 import sqlite3
 from typing import Any
@@ -415,6 +416,37 @@ class CatalogStore:
                 )
             return dimensions
 
+    def get_all_indicator_dimensions(self) -> dict[int, list[Dimension]]:
+        """Retrieve all indicator dimensions and members from SQLite in bulk."""
+        with self._get_connection() as conn:
+            try:
+                dim_rows = conn.execute(
+                    "SELECT indicator_id, dim_id, dim_name FROM indicator_dimensions ORDER BY indicator_id, dim_id"
+                ).fetchall()
+                member_rows = conn.execute(
+                    "SELECT indicator_id, dim_id, member_id, member_name FROM dimension_members ORDER BY indicator_id, dim_id, member_id"
+                ).fetchall()
+            except sqlite3.OperationalError:
+                return {}
+
+            members_by_ind_dim: dict[tuple[int, int], list[Member]] = {}
+            for m in member_rows:
+                key = (int(m["indicator_id"]), int(m["dim_id"]))
+                members_by_ind_dim.setdefault(key, []).append(
+                    Member(id=int(m["member_id"]), name=str(m["member_name"]))
+                )
+
+            dims_by_ind: dict[int, list[Dimension]] = {}
+            for d in dim_rows:
+                ind_id = int(d["indicator_id"])
+                dim_id = int(d["dim_id"])
+                members = members_by_ind_dim.get((ind_id, dim_id), [])
+                dims_by_ind.setdefault(ind_id, []).append(
+                    Dimension(id=dim_id, name=str(d["dim_name"]), members=members)
+                )
+
+            return dims_by_ind
+
     def store_relationship(
         self,
         indicator_a: int,
@@ -577,6 +609,65 @@ class CatalogStore:
                 "unit": row["unit"],
                 "supported_facets": facets,
             }
+
+    def get_all_indicator_metadata(self) -> dict[int, dict[str, Any]]:
+        """Retrieve all indicator metadata from SQLite in bulk."""
+        with self._get_connection() as conn:
+            try:
+                rows = conn.execute(
+                    "SELECT indicator_id, name, concept, measure_type, unit, supported_facets FROM indicator_metadata"
+                ).fetchall()
+            except sqlite3.OperationalError:
+                return {}
+
+            results: dict[int, dict[str, Any]] = {}
+            for row in rows:
+                raw_facets = row["supported_facets"]
+                facets: set[str] = set()
+                if raw_facets:
+                    raw_str = str(raw_facets).strip()
+                    if raw_str.startswith("[") or raw_str.startswith("{"):
+                        try:
+                            parsed = json.loads(raw_str)
+                            if isinstance(parsed, (list, set)):
+                                facets = {str(x) for x in parsed}
+                        except Exception:
+                            facets = {x.strip() for x in raw_str.split(",") if x.strip()}
+                    else:
+                        facets = {x.strip() for x in raw_str.split(",") if x.strip()}
+
+                results[int(row["indicator_id"])] = {
+                    "indicator_id": int(row["indicator_id"]),
+                    "name": str(row["name"]),
+                    "concept": row["concept"],
+                    "measure_type": row["measure_type"],
+                    "unit": row["unit"],
+                    "supported_facets": facets,
+                }
+            return results
+
+    def get_all_master_indicators(self) -> list[dict[str, Any]]:
+        """Retrieve all master indicators from SQLite."""
+        with self._get_connection() as conn:
+            try:
+                rows = conn.execute(
+                    "SELECT indicator_id, name, order_num, theme, area, subarea, full_path, updated_at FROM master_indicators"
+                ).fetchall()
+                return [
+                    {
+                        "indicator_id": int(r["indicator_id"]),
+                        "name": str(r["name"]),
+                        "order_num": r["order_num"],
+                        "theme": str(r["theme"]),
+                        "area": str(r["area"]),
+                        "subarea": str(r["subarea"] or "") if r["subarea"] is not None else "",
+                        "full_path": str(r["full_path"]),
+                        "updated_at": str(r["updated_at"] or "") if r["updated_at"] is not None else "",
+                    }
+                    for r in rows
+                ]
+            except sqlite3.OperationalError:
+                return []
 
     def populate_official_indicators(self) -> None:
         """Seed SQLite semantic tables with the 25 official CEPALSTAT indicators, dimensions, and relationships."""
