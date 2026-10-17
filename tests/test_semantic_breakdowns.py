@@ -278,3 +278,53 @@ def test_generic_breakdowns_for_sexo_area_edad_and_deciles():
     assert {"Primer decil", "Décimo decil", "Deciles"}.issubset(set(decil_dim.member_names))
 
 
+def test_ethnic_population_query_with_demonym_resolves_to_indigenous_population_breakdown():
+    """Verify 'necesito datos etnicos de la poblacion peruana' extracts PER from 'peruana' and resolves to 4968 with ethnic breakdown."""
+    from statscepal.semantic.engine import SemanticResolutionEngine
+    from statscepal.semantic.models import ResolutionStatus
+
+    engine = SemanticResolutionEngine()
+
+    res = engine.resolve("necesito datos etnicos de la poblacion peruana")
+    assert res.status == ResolutionStatus.RESOLVED
+    assert res.applied_filters.country_code == "PER"
+    assert res.applied_filters.country_name == "Perú"
+    assert res.selected_candidate is not None
+    assert res.selected_candidate.indicator_id == 4968
+    assert res.applied_filters.facets.get("etnia") == "ETNICO_TOTAL"
+    etnia_dims = [
+        d for d in res.applied_filters.dimensions
+        if "indígena" in d.dim_name.lower() or "etnia" in d.dim_name.lower()
+    ]
+    assert len(etnia_dims) == 1
+    assert etnia_dims[0].is_breakdown is True
+    assert "Indígena" in etnia_dims[0].member_names
+
+
+def test_specific_population_queries_route_to_total_indigenous_and_afrodescendant_indicators():
+    """Verify total, indigenous, and afrodescendant population queries resolve to 4788, 4968, and 4969."""
+    from statscepal.semantic.engine import SemanticResolutionEngine
+    from statscepal.semantic.models import ResolutionStatus
+
+    engine = SemanticResolutionEngine()
+
+    res_tot = engine.resolve("poblacion total de chile en 2022")
+    assert res_tot.status == ResolutionStatus.RESOLVED
+    assert res_tot.selected_candidate is not None
+    assert res_tot.selected_candidate.indicator_id == 4788
+    assert res_tot.applied_filters.country_code == "CHL"
+
+    res_ind = engine.resolve("poblacion indigena en bolivia")
+    assert res_ind.status == ResolutionStatus.RESOLVED
+    assert res_ind.selected_candidate is not None
+    assert res_ind.selected_candidate.indicator_id == 4968
+    assert res_ind.applied_filters.country_code == "BOL"
+
+    res_afro = engine.resolve("poblacion afrodescendiente en brasil")
+    assert res_afro.status == ResolutionStatus.RESOLVED
+    assert res_afro.selected_candidate is not None
+    assert res_afro.selected_candidate.indicator_id == 4969
+    assert res_afro.applied_filters.country_code == "BRA"
+
+
+

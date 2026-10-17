@@ -39,6 +39,19 @@ class SemanticResolutionEngine:
         self.registry = registry or SemanticRegistry(catalog_profile=catalog_profile, ontology=self.ontology)
         self.matcher = matcher or DynamicMemberMatcher(ontology=self.ontology)
 
+    @staticmethod
+    def _route_population_indicator(facets: dict[str, str]) -> int:
+        """Route demographic population queries to specialized breakdown indicators based on facets."""
+        if facets.get("etnia") == "AFRODESCENDIENTE":
+            return 4969
+        if ("estrato" in facets or "quintil" in facets) and "etnia" in facets:
+            return 4639
+        if "etnia" in facets:
+            return 4968
+        if "area" in facets:
+            return 4992
+        return 4788
+
     def resolve_query(self, query: str) -> SemanticResolutionResponse:
         """Resolve a natural language query string."""
         return self.resolve(query)
@@ -171,6 +184,9 @@ class SemanticResolutionEngine:
                 execution_trace=trace,
                 latency_ms=latency,
             )
+
+        if intent.root_concept == "POBLACION":
+            canonical_id = self._route_population_indicator(intent.facets)
 
         trace.append(f"[Stage 2: Hard Abstention] PASSED: Root concept '{intent.root_concept}' recognized, facets valid.")
         trace.append(f"[Stage 3: Candidate Selection] Canonical indicator candidate: ID {canonical_id}")

@@ -198,6 +198,73 @@ DEFAULT_OFFICIAL_DIMENSIONS: dict[int, list[Dimension]] = {
             members=[Member(id=79580, name="Transporte y energía")],
         ),
     ],
+    4788: [
+        Dimension(
+            id=88622,
+            name="Sexo",
+            members=[Member(id=88623, name="Ambos sexos"), Member(id=88626, name="Hombres"), Member(id=88627, name="Mujeres")],
+        ),
+    ],
+    4968: [
+        Dimension(
+            id=48525,
+            name="Area Geografica",
+            members=[Member(id=48529, name="Total"), Member(id=48526, name="Urbano"), Member(id=48528, name="Rural")],
+        ),
+        Dimension(
+            id=78149,
+            name="Condición Indígena",
+            members=[Member(id=78150, name="Indígena"), Member(id=78152, name="No Indígena"), Member(id=78154, name="Total")],
+        ),
+    ],
+    4969: [
+        Dimension(
+            id=48525,
+            name="Area Geografica",
+            members=[Member(id=48529, name="Total"), Member(id=48526, name="Urbano"), Member(id=48528, name="Rural")],
+        ),
+        Dimension(
+            id=140625,
+            name="Condición Afrodescendiente",
+            members=[Member(id=140626, name="Afrodescendiente"), Member(id=140627, name="No Afrodescendiente"), Member(id=140629, name="Total")],
+        ),
+    ],
+    4992: [
+        Dimension(
+            id=48525,
+            name="Area Geografica",
+            members=[Member(id=48529, name="Total"), Member(id=48526, name="Urbano"), Member(id=48528, name="Rural")],
+        ),
+    ],
+    4639: [
+        Dimension(
+            id=144,
+            name="Sexo__ESTANDAR",
+            members=[Member(id=146, name="Ambos sexos"), Member(id=265, name="Hombres"), Member(id=266, name="Mujeres")],
+        ),
+        Dimension(
+            id=378,
+            name="Quintil",
+            members=[
+                Member(id=380, name="Quintil 1"),
+                Member(id=382, name="Quintil 2"),
+                Member(id=383, name="Quintil 3"),
+                Member(id=384, name="Quintil 4"),
+                Member(id=381, name="Quintil 5"),
+                Member(id=379, name="Total quintiles"),
+            ],
+        ),
+        Dimension(
+            id=43039,
+            name="Tipo de etnia",
+            members=[
+                Member(id=77477, name="Indígena"),
+                Member(id=43044, name="Afrodescendiente"),
+                Member(id=43043, name="No indígena ni afrodescendiente"),
+                Member(id=43040, name="Total"),
+            ],
+        ),
+    ],
 }
 
 
@@ -751,10 +818,74 @@ VERTICAL_SLICE_INDICATORS: dict[int, IndicatorMetadata] = {
             340: RelationshipType.RELATED_CONCEPT,
         },
     ),
+    # Demographic / Population Indicators
+    4788: IndicatorMetadata(
+        indicator_id=4788,
+        name="Población total",
+        concept="POBLACION",
+        measure_type=MeasureType.VOLUMEN_REAL,
+        unit="personas",
+        supported_facets={"sexo"},
+        relationships={
+            4968: RelationshipType.BREAKDOWN_OF,
+            4969: RelationshipType.BREAKDOWN_OF,
+            4992: RelationshipType.BREAKDOWN_OF,
+            4639: RelationshipType.BREAKDOWN_OF,
+        },
+    ),
+    4968: IndicatorMetadata(
+        indicator_id=4968,
+        name="Población indígena y no indígena según área de residencia",
+        concept="POBLACION",
+        measure_type=MeasureType.VOLUMEN_REAL,
+        unit="personas",
+        supported_facets={"area", "etnia"},
+        relationships={
+            4788: RelationshipType.BREAKDOWN_OF,
+            4992: RelationshipType.BREAKDOWN_OF,
+        },
+    ),
+    4969: IndicatorMetadata(
+        indicator_id=4969,
+        name="Población afrodescendiente según área de residencia",
+        concept="POBLACION",
+        measure_type=MeasureType.VOLUMEN_REAL,
+        unit="personas",
+        supported_facets={"area", "etnia"},
+        relationships={
+            4788: RelationshipType.BREAKDOWN_OF,
+            4992: RelationshipType.BREAKDOWN_OF,
+        },
+    ),
+    4992: IndicatorMetadata(
+        indicator_id=4992,
+        name="Población según área urbana y rural",
+        concept="POBLACION",
+        measure_type=MeasureType.VOLUMEN_REAL,
+        unit="personas",
+        supported_facets={"area"},
+        relationships={
+            4788: RelationshipType.BREAKDOWN_OF,
+            4968: RelationshipType.BREAKDOWN_OF,
+            4969: RelationshipType.BREAKDOWN_OF,
+        },
+    ),
+    4639: IndicatorMetadata(
+        indicator_id=4639,
+        name="Población por quintil de ingreso y etnia",
+        concept="POBLACION",
+        measure_type=MeasureType.VOLUMEN_REAL,
+        unit="personas",
+        supported_facets={"sexo", "estrato", "quintil", "etnia"},
+        relationships={
+            4788: RelationshipType.BREAKDOWN_OF,
+        },
+    ),
 }
 
 # Concept to Canonical Default mappings
 OFFICIAL_25_CANONICAL_DEFAULTS: dict[str, int] = {
+    "POBLACION": 4788,
     "POBREZA": 3328,
     "POBREZA_BRECHA": 3329,
     "POBREZA_FEMINIDAD": 3330,
@@ -796,6 +927,7 @@ OFFICIAL_25_CANONICAL_DEFAULTS: dict[str, int] = {
 }
 
 LEGACY_50_CANONICAL_DEFAULTS: dict[str, int] = {
+    "POBLACION": 4788,
     "POBREZA": 3328,
     "POBREZA_BRECHA": 3329,
     "POBREZA_FEMINIDAD": 3330,
