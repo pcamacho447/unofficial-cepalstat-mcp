@@ -486,6 +486,49 @@ def test_cli_displays_empirical_indicator_id_when_mapped(capsys, monkeypatch):
     assert "CEPALSTAT API Table ID: 2484" in captured.out
 
 
+def test_fetcher_step5_breakdown_cols_matches_accented_dataframe_columns():
+    """Assert that Step 5 matches breakdown column with diacritics ('Área geográfica' vs 'Area Geografica')."""
+    mock_extractor = MagicMock(spec=DataExtractor)
+    fetcher = SemanticDataFetcher(extractor=mock_extractor)
+    res = SemanticResolutionResponse(
+        query="poblacion indigena por area en peru 2020",
+        status=ResolutionStatus.RESOLVED,
+        selected_candidate=SelectedCandidate(
+            indicator_id=4968,
+            name="Población indígena según área geográfica",
+            measure_type="INCIDENCIA",
+            unit="%",
+        ),
+        applied_filters=AppliedFilters(
+            country_code="PER",
+            country_name="Perú",
+            years=[2020],
+            year=2020,
+            time_mode="SINGLE",
+            facets={"etnia": "INDIGENA", "area": "AREA_DESGLOSE"},
+            dimensions=[
+                AppliedDimensionFilter(
+                    dim_id=78153,
+                    dim_name="Area Geografica",
+                    member_id=None,
+                    member_name="",
+                    is_breakdown=True,
+                    member_names=["Urbana", "Rural"],
+                )
+            ],
+        ),
+    )
+    df = pd.DataFrame([
+        {"País__ESTANDAR": "Perú", "Años_disponibles": "2020", "Área geográfica": "Urbana", "value": 500000.0},
+        {"País__ESTANDAR": "Perú", "Años_disponibles": "2020", "Área geográfica": "Rural", "value": 1200000.0},
+    ])
+    mock_extractor.get_dataframe.return_value = df
+    payload = fetcher.fetch_resolved_data(res)
+    assert len(payload["series"]) == 2
+    assert all("member" in item for item in payload["series"]), "Step 5 failed to assign member labels due to accent mismatch"
+
+
+
 
 
 

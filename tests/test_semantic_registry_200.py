@@ -260,3 +260,31 @@ def test_registry_contains_ethnic_poverty_indicator_3342():
     dim_names = [d.name for d in dims]
     assert any("etnia" in d.lower() for d in dim_names)
 
+
+def test_default_official_dimensions_shared_dim_id_consistency():
+    """Assert that whenever a dim_id is shared across indicators, its member IDs do not conflict."""
+    from statscepal.semantic.registry import DEFAULT_OFFICIAL_DIMENSIONS
+
+    dim_registry: dict[int, dict[int, str]] = {}
+    for ind_id, dims in DEFAULT_OFFICIAL_DIMENSIONS.items():
+        for d in dims:
+            dim_id = d.id if hasattr(d, "id") else d["dim_id"]
+            if hasattr(d, "members"):
+                members_dict = {m.id: m.name for m in d.members}
+            elif "members_by_value" in d:
+                members_dict = {m_id: m_val for m_val, m_id in d["members_by_value"].items()}
+            elif "members" in d:
+                members_dict = d["members"]
+            else:
+                members_dict = {}
+
+            for m_id, m_val in members_dict.items():
+                if dim_id in dim_registry and m_id in dim_registry[dim_id]:
+                    existing_val = dim_registry[dim_id][m_id]
+                    assert existing_val == m_val, (
+                        f"Conflict in dim_id={dim_id}: member_id={m_id} mapped to '{existing_val}' "
+                        f"in previous indicator, but '{m_val}' in indicator {ind_id}."
+                    )
+                dim_registry.setdefault(dim_id, {})[m_id] = m_val
+
+

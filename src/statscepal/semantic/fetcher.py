@@ -20,6 +20,14 @@ def _strip_accents(text: str) -> str:
     return "".join(c for c in normalized if unicodedata.category(c) != "Mn")
 
 
+def _match_dim_column(col_name: str, target_name: str) -> bool:
+    """Check if a DataFrame column name matches a target dimension name, ignoring case, accents, and __estandar."""
+    cl = _strip_accents(col_name).lower().strip().replace("__estandar", "")
+    dl = _strip_accents(target_name).lower().strip().replace("__estandar", "")
+    return cl == dl or cl.replace(" ", "") == dl.replace(" ", "")
+
+
+
 def _extract_numeric_years(series: pd.Series) -> pd.Series:
     """Convert a year or decade Series (e.g., 2020 or 'Década 2010') into numeric years."""
     num = pd.to_numeric(series, errors="coerce")
@@ -433,14 +441,7 @@ class SemanticDataFetcher:
             for dim_filter in response.applied_filters.dimensions:
                 dim_col = None
                 for col in filtered_df.columns:
-                    cl = col.lower()
-                    dl = dim_filter.dim_name.lower()
-                    if (
-                        cl == dl
-                        or cl.replace("__estandar", "") == dl.replace("__estandar", "")
-                        or _strip_accents(cl).replace("__estandar", "")
-                        == _strip_accents(dl).replace("__estandar", "")
-                    ):
+                    if _match_dim_column(col, dim_filter.dim_name):
                         dim_col = col
                         break
                 if dim_col is None and dim_filter.dim_id is not None:
@@ -691,9 +692,7 @@ class SemanticDataFetcher:
                     if not getattr(dim_filter, "is_breakdown", False):
                         continue
                     for col in sorted_df.columns:
-                        cl = col.lower()
-                        dl = dim_filter.dim_name.lower()
-                        if cl == dl or cl.replace("__estandar", "") == dl.replace("__estandar", ""):
+                        if _match_dim_column(col, dim_filter.dim_name):
                             breakdown_cols.append(col)
                             break
                         if dim_filter.dim_id is not None and col == f"dim_{dim_filter.dim_id}":
