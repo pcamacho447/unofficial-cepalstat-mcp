@@ -4,6 +4,10 @@ import re
 import unicodedata
 from pydantic import BaseModel, Field
 
+from statscepal.semantic.facet_ontology import (
+    DEFAULT_FACET_ONTOLOGY,
+    FacetOntology,
+)
 from statscepal.semantic.thesaurus import (
     PolarityResolution,
     PolarityType,
@@ -102,9 +106,11 @@ class QueryParser:
         self,
         catalog_profile: str = "official_25",
         thesaurus: Thesaurus | None = None,
+        ontology: FacetOntology | None = None,
     ):
         self.catalog_profile = catalog_profile
         self.thesaurus = thesaurus or get_default_thesaurus()
+        self.ontology = ontology or DEFAULT_FACET_ONTOLOGY
 
     def parse(self, query: str) -> ParsedIntent:
         clean = strip_accents(query)
@@ -332,16 +338,14 @@ class QueryParser:
         if "salud" in clean:
             facets["rubro"] = "SALUD"
 
-        # Etnia / Autoidentificación Étnico-Racial
-        etnia_match = self.thesaurus.match_synset("facet_etnia", clean)
-        if etnia_match:
-            facets["etnia"] = etnia_match.canonical_id
-        elif any(re.search(r"\b" + re.escape(term) + r"\b", clean) for term in ["indigena", "indigenas", "originarios", "pueblos originarios", "pueblos indigenas"]):
-            facets["etnia"] = "INDIGENA"
-        elif any(re.search(r"\b" + re.escape(term) + r"\b", clean) for term in ["afrodescendiente", "afrodescendientes", "afro", "afrolatino", "afrolatina"]):
-            facets["etnia"] = "AFRODESCENDIENTE"
-        elif any(re.search(r"\b" + re.escape(term) + r"\b", clean) for term in ["etnica", "etnico", "etnicas", "etnicos", "etnia"]):
-            facets["etnia"] = "ETNICO_TOTAL"
+        # Generic ontology-driven facet extraction
+        ontology_facets = self.ontology.extract_facets_from_query(clean, self.thesaurus)
+        for k, v in ontology_facets.items():
+            if k not in facets:
+                # Contextual guardrail: do not set 'educacion' facet if query is about public spending on education
+                if k == "educacion" and ("gasto" in clean or "presupuesto" in clean):
+                    continue
+                facets[k] = v
 
         # ----------------------------------------------------
         # 5. Extract Root Concept & Controlled Ambiguities

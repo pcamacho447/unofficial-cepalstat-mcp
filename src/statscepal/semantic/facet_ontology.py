@@ -217,6 +217,57 @@ class FacetOntology:
             coverage_ratio=coverage,
         )
 
+    def extract_facets_from_query(
+        self,
+        clean_query: str,
+        thesaurus: Any = None,
+    ) -> dict[str, str]:
+        """Extract canonical facets from a normalized query string using triggers and synsets."""
+        clean = strip_accents(clean_query)
+        facets: dict[str, str] = {}
+
+        for fdef in self._facets.values():
+            # 1. Thesaurus synset match if domain is defined
+            if thesaurus is not None and fdef.synset_domain:
+                if fdef.synset_domain == "facet_edad" and hasattr(thesaurus, "match_all_synsets"):
+                    edad_matches = thesaurus.match_all_synsets("facet_edad", clean)
+                    if any(m.canonical_id == "INFANCIA" for m in edad_matches):
+                        facets[fdef.facet_key] = "INFANCIA"
+                    elif edad_matches:
+                        facets[fdef.facet_key] = edad_matches[0].canonical_id
+                else:
+                    match = thesaurus.match_synset(fdef.synset_domain, clean)
+                    if match:
+                        cid = match.canonical_id
+                        if fdef.facet_key == "canasta":
+                            if cid == "CANASTA_ALIMENTOS":
+                                facets[fdef.facet_key] = "ALIMENTOS"
+                        else:
+                            facets[fdef.facet_key] = cid
+
+            # 2. QueryTriggerRules if not yet matched
+            if fdef.facet_key not in facets and fdef.query_triggers:
+                for rule in fdef.query_triggers:
+                    rule_matched = False
+                    for phrase in rule.phrases:
+                        phrase_norm = strip_accents(phrase)
+                        if not phrase_norm:
+                            continue
+                        if rule.require_word_boundary:
+                            pattern = r"\b" + re.escape(phrase_norm) + r"\b"
+                            if re.search(pattern, clean):
+                                rule_matched = True
+                                break
+                        else:
+                            if phrase_norm in clean:
+                                rule_matched = True
+                                break
+                    if rule_matched:
+                        facets[fdef.facet_key] = rule.canonical_value
+                        break
+
+        return facets
+
 
 DEFAULT_FACETS: list[FacetDefinition] = [
     FacetDefinition(
@@ -239,15 +290,15 @@ DEFAULT_FACETS: list[FacetDefinition] = [
         query_triggers=(
             QueryTriggerRule(
                 canonical_value="FEMENINO",
-                phrases=("mujeres", "mujer", "femenino", "femenina", "pibas", "chavas", "chicas"),
+                phrases=("mujeres", "mujer", "femenino", "femenina", "pibas", "chicas"),
             ),
             QueryTriggerRule(
                 canonical_value="MASCULINO",
-                phrases=("hombres", "hombre", "masculino", "varones", "pibes", "chavos"),
+                phrases=("hombres", "hombre", "masculino", "varones", "pibes"),
             ),
             QueryTriggerRule(
                 canonical_value="AMBOS_SEXOS",
-                phrases=("ambos sexos", "ambos"),
+                phrases=("ambos sexos", "hombres y mujeres"),
             ),
         ),
     ),
@@ -333,11 +384,19 @@ DEFAULT_FACETS: list[FacetDefinition] = [
         query_triggers=(
             QueryTriggerRule(
                 canonical_value="INDIGENA",
-                phrases=("indigena", "indigenas", "pueblos indigenas", "originarios"),
+                phrases=("indigena", "indigenas", "pueblos indigenas", "originarios", "pueblos originarios"),
             ),
             QueryTriggerRule(
                 canonical_value="AFRODESCENDIENTE",
-                phrases=("afrodescendiente", "afrodescendientes", "afro"),
+                phrases=("afrodescendiente", "afrodescendientes", "afro", "afrolatino", "afrolatina"),
+            ),
+            QueryTriggerRule(
+                canonical_value="NO_INDIGENA",
+                phrases=("no indigena", "no indigena ni afrodescendiente"),
+            ),
+            QueryTriggerRule(
+                canonical_value="ETNICO_TOTAL",
+                phrases=("etnica", "etnico", "etnicas", "etnicos", "etnia"),
             ),
         ),
     ),
@@ -412,12 +471,7 @@ DEFAULT_FACETS: list[FacetDefinition] = [
         },
         implicit_aggregate_values=frozenset(),
         total_member_patterns=("total", "nacional"),
-        query_triggers=(
-            QueryTriggerRule(
-                canonical_value="QUINTIL",
-                phrases=("quintil", "decil", "distribucion del ingreso"),
-            ),
-        ),
+        query_triggers=(),
     ),
     FacetDefinition(
         facet_key="estrato",
@@ -426,7 +480,16 @@ DEFAULT_FACETS: list[FacetDefinition] = [
         known_dimension_ids=frozenset(),
         dimension_name_patterns=("estrato", "estratificacion", "nivel socioeconomico"),
         member_value_patterns={
-            "QUINTIL": ("quintil", "decil", "estrato"),
+            "QUINTIL_1": ("quintil 1", "i quintil", "primer quintil", "q1", "1 quintil"),
+            "QUINTIL_2": ("quintil 2", "ii quintil", "segundo quintil", "q2", "2 quintil"),
+            "QUINTIL_3": ("quintil 3", "iii quintil", "tercer quintil", "q3", "3 quintil"),
+            "QUINTIL_4": ("quintil 4", "iv quintil", "cuarto quintil", "q4", "4 quintil"),
+            "QUINTIL_5": ("quintil 5", "v quintil", "quinto quintil", "q5", "5 quintil"),
+            "DECIL_1": ("decil 1", "i decil", "primer decil", "d1"),
+            "DECIL_10": ("decil 10", "x decil", "decimo decil", "d10"),
+            "DECIL": ("decil", "deciles"),
+            "QUINTIL": ("quintil", "quintiles", "estrato", "estratos"),
+            "RELACION_Q5_Q1": ("relacion quintil 5 / quintil 1", "q5/q1", "q5 versus q1", "quintil 5 vs quintil 1", "quintil 5 versus quintil 1"),
         },
         implicit_aggregate_values=frozenset(),
         total_member_patterns=("total", "nacional"),
@@ -462,7 +525,19 @@ DEFAULT_FACETS: list[FacetDefinition] = [
         query_triggers=(
             QueryTriggerRule(
                 canonical_value="UNIVERSITARIA",
-                phrases=("universitaria", "universidad", "educacion superior"),
+                phrases=("educacion universitaria", "universitaria", "universidad", "educacion superior", "terciaria"),
+            ),
+            QueryTriggerRule(
+                canonical_value="SECUNDARIA",
+                phrases=("educacion secundaria", "secundaria completa", "secundaria", "educacion media"),
+            ),
+            QueryTriggerRule(
+                canonical_value="PRIMARIA",
+                phrases=("educacion primaria", "primaria completa", "primaria", "educacion basica"),
+            ),
+            QueryTriggerRule(
+                canonical_value="SIN_INSTRUCCION",
+                phrases=("sin instruccion", "ninguna instruccion", "analfabetos", "analfabeto"),
             ),
         ),
     ),
@@ -555,12 +630,7 @@ DEFAULT_FACETS: list[FacetDefinition] = [
         },
         implicit_aggregate_values=frozenset(),
         total_member_patterns=("moneda nacional", "total"),
-        query_triggers=(
-            QueryTriggerRule(
-                canonical_value="DOLARES_CONSTANTES",
-                phrases=("dolares", "dolares constantes", "precios constantes"),
-            ),
-        ),
+        query_triggers=(),
     ),
     FacetDefinition(
         facet_key="actividad",
@@ -579,12 +649,16 @@ DEFAULT_FACETS: list[FacetDefinition] = [
         total_member_patterns=("total", "todas las actividades"),
         query_triggers=(
             QueryTriggerRule(
-                canonical_value="PUBLICO",
-                phrases=("sector publico", "publico", "gobierno"),
+                canonical_value="AGRICULTURA",
+                phrases=("sector agropecuario", "sector agricola", "rama agropecuaria", "rama agricola"),
             ),
             QueryTriggerRule(
-                canonical_value="PRIVADO",
-                phrases=("sector privado", "privado"),
+                canonical_value="INDUSTRIA",
+                phrases=("sector manufacturero", "sector industrial", "rama manufacturera", "rama industrial"),
+            ),
+            QueryTriggerRule(
+                canonical_value="SERVICIOS",
+                phrases=("sector servicios", "rama servicios"),
             ),
         ),
     ),
