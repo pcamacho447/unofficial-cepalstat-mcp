@@ -232,3 +232,49 @@ def test_fetcher_accent_resilient_dimension_filtering():
     assert data["observation_exists"] is True
     assert data["value"] == 41.5
 
+
+def test_generic_breakdowns_for_sexo_area_edad_and_deciles():
+    """Verify generic breakdown queries ('por sexo', 'por area', 'por edad', 'por deciles') resolve with is_breakdown=True."""
+    engine = SemanticResolutionEngine()
+
+    # 1. 'pobreza por sexo' -> swaps 3328 -> 3341 (or 3342) and binds Sexo__ESTANDAR with is_breakdown=True
+    r_sexo = engine.resolve("pobreza por sexo en peru 2022")
+    assert r_sexo.status == ResolutionStatus.RESOLVED
+    assert r_sexo.selected_candidate is not None
+    assert r_sexo.selected_candidate.indicator_id in (3341, 3342)
+    sexo_dim = next((f for f in r_sexo.applied_filters.dimensions if f.dim_id == 144), None)
+    assert sexo_dim is not None
+    assert sexo_dim.is_breakdown is True
+    assert {"Hombres", "Mujeres"}.issubset(set(sexo_dim.member_names))
+
+    # 2. 'pobreza por area' -> stays on 3328 and binds Área geográfica with is_breakdown=True (not collapsed to Nacional)
+    r_area = engine.resolve("pobreza por area en peru 2022")
+    assert r_area.status == ResolutionStatus.RESOLVED
+    assert r_area.selected_candidate is not None
+    assert r_area.selected_candidate.indicator_id == 3328
+    area_dim = next((f for f in r_area.applied_filters.dimensions if f.dim_id == 326), None)
+    assert area_dim is not None
+    assert area_dim.is_breakdown is True
+    assert {"Urbano", "Rural"}.issubset(set(area_dim.member_names))
+
+    # 3. 'pobreza por edad' -> swaps 3328 -> 3341 and binds Grupo de edad with is_breakdown=True
+    r_edad = engine.resolve("pobreza por edad en peru 2022")
+    assert r_edad.status == ResolutionStatus.RESOLVED
+    assert r_edad.selected_candidate is not None
+    assert r_edad.selected_candidate.indicator_id == 3341
+    edad_dim = next((f for f in r_edad.applied_filters.dimensions if f.dim_id == 43054), None)
+    assert edad_dim is not None
+    assert edad_dim.is_breakdown is True
+    assert len(edad_dim.member_names) >= 3
+
+    # 4. 'distribucion del ingreso por deciles' -> binds Estrato de ingreso with is_breakdown=True
+    r_decil = engine.resolve("distribucion del ingreso por deciles en peru 2022")
+    assert r_decil.status == ResolutionStatus.RESOLVED
+    assert r_decil.selected_candidate is not None
+    assert r_decil.selected_candidate.indicator_id == 3340
+    decil_dim = next((f for f in r_decil.applied_filters.dimensions if f.dim_id == 600), None)
+    assert decil_dim is not None
+    assert decil_dim.is_breakdown is True
+    assert {"Primer decil", "Décimo decil", "Deciles"}.issubset(set(decil_dim.member_names))
+
+

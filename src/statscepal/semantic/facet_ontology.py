@@ -273,7 +273,23 @@ class FacetOntology:
         facets: dict[str, str] = {}
 
         for fdef in self._facets.values():
-            # 1. Thesaurus synset match if domain is defined
+            # 1. Check QueryTriggerRules for breakdown values first (e.g., 'urbano y rural', 'por sexo')
+            compiled_rules = self._compiled_triggers.get(fdef.facet_key)
+            if compiled_rules:
+                for canonical_val, pat, norm_phrases in compiled_rules:
+                    if canonical_val in fdef.breakdown_values:
+                        if pat is not None:
+                            if pat.search(clean):
+                                facets[fdef.facet_key] = canonical_val
+                                break
+                        else:
+                            if any(p in clean for p in norm_phrases):
+                                facets[fdef.facet_key] = canonical_val
+                                break
+            if fdef.facet_key in facets:
+                continue
+
+            # 2. Thesaurus synset match if domain is defined
             if thesaurus is not None and fdef.synset_domain:
                 if fdef.synset_domain == "facet_edad" and hasattr(thesaurus, "match_all_synsets"):
                     edad_matches = thesaurus.match_all_synsets("facet_edad", clean)
@@ -291,7 +307,7 @@ class FacetOntology:
                         else:
                             facets[fdef.facet_key] = cid
 
-            # 2. QueryTriggerRules if not yet matched
+            # 3. QueryTriggerRules if not yet matched
             if fdef.facet_key not in facets:
                 compiled_rules = self._compiled_triggers.get(fdef.facet_key)
                 if compiled_rules:
@@ -323,10 +339,16 @@ DEFAULT_FACETS: list[FacetDefinition] = [
             "AMBOS_SEXOS": ("ambos sexos", "ambos", "total"),
             "AMBOS": ("ambos sexos", "ambos", "total"),
             "TOTAL": ("total", "ambos sexos", "ambos", "nacional", "pais"),
+            "SEXO_DESGLOSE": ("hombres", "mujeres"),
         },
         implicit_aggregate_values=frozenset({"TOTAL", "AMBOS_SEXOS", "AMBOS"}),
+        breakdown_values=frozenset({"SEXO_DESGLOSE"}),
         total_member_patterns=("total", "ambos sexos", "ambos"),
         query_triggers=(
+            QueryTriggerRule(
+                canonical_value="SEXO_DESGLOSE",
+                phrases=("por sexo", "segun sexo", "por genero", "segun genero"),
+            ),
             QueryTriggerRule(
                 canonical_value="FEMENINO",
                 phrases=("mujeres", "mujer", "femenino", "femenina", "pibas", "chicas"),
@@ -351,10 +373,23 @@ DEFAULT_FACETS: list[FacetDefinition] = [
             "RURAL": ("rural", "area rural", "sector rural", "campo", "el campo", "zona rural"),
             "URBANO": ("urbano", "area urbana", "sector urbano", "ciudad", "ciudades", "zona urbana"),
             "NACIONAL": ("nacional", "total", "pais", "todo el pais"),
+            "AREA_DESGLOSE": ("urbano", "rural"),
         },
         implicit_aggregate_values=frozenset({"NACIONAL"}),
+        breakdown_values=frozenset({"AREA_DESGLOSE"}),
         total_member_patterns=("nacional", "total", "pais", "todo el pais"),
         query_triggers=(
+            QueryTriggerRule(
+                canonical_value="AREA_DESGLOSE",
+                phrases=(
+                    "por area",
+                    "segun area",
+                    "por area geografica",
+                    "segun area geografica",
+                    "urbano y rural",
+                    "urbana y rural",
+                ),
+            ),
             QueryTriggerRule(
                 canonical_value="RURAL",
                 phrases=("rural", "campo", "el campo", "sector rural", "zona rural"),
@@ -478,10 +513,23 @@ DEFAULT_FACETS: list[FacetDefinition] = [
                 "tercera edad",
             ),
             "INFANCIA": ("0 a 14 anos", "0-14", "ninos", "ninas", "infancia", "0 a 14"),
+            "EDAD_DESGLOSE": ("0 a 14", "15 a 24", "65"),
         },
         implicit_aggregate_values=frozenset(),
+        breakdown_values=frozenset({"EDAD_DESGLOSE"}),
         total_member_patterns=("total", "todas las edades"),
         query_triggers=(
+            QueryTriggerRule(
+                canonical_value="EDAD_DESGLOSE",
+                phrases=(
+                    "por edad",
+                    "segun edad",
+                    "por grupo de edad",
+                    "por grupos de edad",
+                    "segun grupo de edad",
+                    "segun grupos de edad",
+                ),
+            ),
             QueryTriggerRule(
                 canonical_value="JUVENTUD",
                 phrases=("jovenes", "juventud", "juvenil", "15 a 24 anos"),
@@ -534,7 +582,7 @@ DEFAULT_FACETS: list[FacetDefinition] = [
             "RELACION_Q5_Q1": ("relacion quintil 5 / quintil 1", "q5/q1", "q5 versus q1", "quintil 5 vs quintil 1", "quintil 5 versus quintil 1"),
         },
         implicit_aggregate_values=frozenset(),
-        breakdown_values=frozenset({"QUINTIL"}),
+        breakdown_values=frozenset({"QUINTIL", "DECIL"}),
         total_member_patterns=("total", "nacional"),
         query_triggers=(
             QueryTriggerRule(

@@ -300,15 +300,18 @@ class QueryParser:
         # 4. Extract Facets (with Regionalisms)
         # ----------------------------------------------------
         # Area
-        area_match = self.thesaurus.match_synset("facet_area", clean)
-        if area_match:
-            facets["area"] = area_match.canonical_id
-        elif any(term in clean for term in ["el campo", "rural", "campo", "zona rural", "area rural"]):
-            facets["area"] = "RURAL"
-        elif any(term in clean for term in ["ciudades", "urbano", "ciudad", "urbana", "zona urbana", "area urbana", "villas"]):
-            facets["area"] = "URBANO"
-        elif any(term in clean for term in ["area nacional", "total nacional", "todo el pais", "nivel nacional"]):
-            facets["area"] = "NACIONAL"
+        if any(term in clean for term in ["urbano y rural", "urbana y rural"]):
+            facets["area"] = "AREA_DESGLOSE"
+        else:
+            area_match = self.thesaurus.match_synset("facet_area", clean)
+            if area_match:
+                facets["area"] = area_match.canonical_id
+            elif any(term in clean for term in ["el campo", "rural", "campo", "zona rural", "area rural"]):
+                facets["area"] = "RURAL"
+            elif any(term in clean for term in ["ciudades", "urbano", "ciudad", "urbana", "zona urbana", "area urbana", "villas"]):
+                facets["area"] = "URBANO"
+            elif any(term in clean for term in ["area nacional", "total nacional", "todo el pais", "nivel nacional"]):
+                facets["area"] = "NACIONAL"
         if "pobreza total" in clean and "area" not in facets:
             facets["area"] = "NACIONAL"
 
@@ -386,9 +389,13 @@ class QueryParser:
         # Generic ontology-driven facet extraction
         ontology_facets = self.ontology.extract_facets_from_query(clean, self.thesaurus)
         for k, v in ontology_facets.items():
-            if k not in facets:
-                # Contextual guardrail: do not set 'educacion' facet if query is about public spending on education
+            if k not in facets or self.ontology.is_breakdown_value(k, v):
                 if k == "educacion" and ("gasto" in clean or "presupuesto" in clean):
+                    continue
+                # Only override with breakdown value if a specific non-aggregate value wasn't explicitly set
+                if k in facets and not self.ontology.is_breakdown_value(k, v):
+                    continue
+                if k in facets and self.ontology.is_critical_unhandled_facet(k, facets[k]):
                     continue
                 facets[k] = v
 
