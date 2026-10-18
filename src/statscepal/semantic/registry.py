@@ -366,6 +366,7 @@ DEFAULT_OFFICIAL_DIMENSIONS: dict[int, list[Dimension]] = {
         ),
     ],
     4145: [],
+    845: [],
 }
 
 
@@ -387,6 +388,7 @@ EMPIRICAL_INDICATOR_ID_MAP: dict[int, int] = {
     2928: 2484,  # Tasa de crecimiento anual del índice de precios al consumidor: diciembre a diciembre
     2930: 4145,  # Tasa de crecimiento anual del índice de precios al consumidor subyacente: diciembre a diciembre
     4145: 4145,  # Tasa de crecimiento anual del índice de precios al consumidor subyacente: diciembre a diciembre
+    845: 845,    # Ingresos tributarios en moneda nacional a precios corrientes
     729: 2204,   # Producto interno bruto (PIB) total anual a precios constantes en dólares
     730: 2206,   # Producto interno bruto (PIB) total anual por habitante a precios constantes en dólares
     731: 286,    # Producto interno bruto trimestral por tipo del gasto a precios constantes
@@ -693,6 +695,19 @@ VERTICAL_SLICE_INDICATORS: dict[int, IndicatorMetadata] = {
         supported_facets=set(),
         relationships={
             1240: RelationshipType.ALTERNATIVE_MEASURE,
+            845: RelationshipType.ALTERNATIVE_MEASURE,
+        },
+    ),
+    # 20b. Ingresos tributarios en moneda nacional
+    845: IndicatorMetadata(
+        indicator_id=845,
+        name="Ingresos tributarios por tipo de impuestos, en moneda nacional a precios corrientes (América Latina y el Caribe)",
+        concept="INGRESOS_TRIBUTARIOS_CORRIENTES",
+        measure_type=MeasureType.VALOR_CORRIENTE,
+        unit="moneda nacional",
+        supported_facets=set(),
+        relationships={
+            1242: RelationshipType.ALTERNATIVE_MEASURE,
         },
     ),
     # 21. Cuenta corriente % PIB
@@ -1034,6 +1049,7 @@ OFFICIAL_25_CANONICAL_DEFAULTS: dict[str, int] = {
     "DEUDA_PUBLICA": 1240,
     "BALANCE_PRIMARIO": 1241,
     "INGRESOS_TRIBUTARIOS": 1242,
+    "INGRESOS_TRIBUTARIOS_CORRIENTES": 845,
     "GASTO_SOCIAL": 4405,
     "GASTO_EDUCACION": 4406,
     "EMISIONES_GEI_LULUCF": 5681,
@@ -1077,6 +1093,7 @@ LEGACY_50_CANONICAL_DEFAULTS: dict[str, int] = {
     "DEUDA_PUBLICA": 1240,
     "BALANCE_PRIMARIO": 1241,
     "INGRESOS_TRIBUTARIOS": 1242,
+    "INGRESOS_TRIBUTARIOS_CORRIENTES": 845,
     "GASTO_SOCIAL": 4405,
     "GASTO_EDUCACION": 4406,
     "EMISIONES_GEI_LULUCF": 5681,

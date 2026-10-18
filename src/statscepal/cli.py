@@ -909,11 +909,27 @@ def main(args: Sequence[str] | None = None) -> int:
 
             if parsed.command == "info":
                 extractor = DataExtractor(client)
-                meta = extractor.get_metadata(parsed.indicator_id)
+                target_id = parsed.indicator_id
+                mapped_from = None
+                from statscepal.semantic.registry import EMPIRICAL_INDICATOR_ID_MAP
+
+                if (
+                    target_id in EMPIRICAL_INDICATOR_ID_MAP
+                    and EMPIRICAL_INDICATOR_ID_MAP[target_id] != target_id
+                ):
+                    mapped_from = target_id
+                    target_id = EMPIRICAL_INDICATOR_ID_MAP[target_id]
+
+                meta = extractor.get_metadata(target_id)
                 if not meta:
                     print(f"Indicator {parsed.indicator_id} not found.")
                     return 1
-                print(f"=== Indicator {parsed.indicator_id} ===")
+                if mapped_from:
+                    print(
+                        f"=== Indicator {target_id} (CEPALSTAT API Table, mapped from canonical ID {mapped_from}) ==="
+                    )
+                else:
+                    print(f"=== Indicator {target_id} ===")
                 print(f"Name: {meta.get('indicator_name')}")
                 print(f"Area: {meta.get('area')}")
                 print(f"Unit: {meta.get('unit')}")

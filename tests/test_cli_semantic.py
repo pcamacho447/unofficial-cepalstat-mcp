@@ -201,3 +201,28 @@ def test_cli_semantic_resolve_displays_conversational_hint_on_alternative_propos
     assert "ALTERNATIVE_PROPOSED" in captured
     assert "Hint:" in captured
     assert "1240" in captured
+
+
+def test_cli_info_canonical_alias_mapping_to_empirical_table(capsys, monkeypatch):
+    """Test CLI info 1242 automatically maps to empirical table 821 with header note."""
+    from statscepal.extractor import DataExtractor
+
+    mock_meta = {
+        "indicator_name": "Ingresos tributarios por tipo de impuestos en porcentajes del PIB",
+        "area": "Finanzas Públicas",
+        "unit": "En porcentajes del producto interno bruto",
+        "definition": "Los ingresos tributarios son pagos obligatorios...",
+    }
+    monkeypatch.setattr(
+        DataExtractor,
+        "get_metadata",
+        lambda self, ind_id: mock_meta if ind_id == 821 else None,
+    )
+
+    ret = main(["info", "1242"])
+    assert ret == 0
+    captured = capsys.readouterr().out
+    assert "Indicator 821" in captured
+    assert "mapped from canonical ID 1242" in captured
+    assert "Ingresos tributarios" in captured
+

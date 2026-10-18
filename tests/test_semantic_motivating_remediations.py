@@ -72,3 +72,27 @@ def test_ingreso_laboral_solo_mujeres_still_routes_to_3339_with_mujeres_facet(en
     assert res.selected_candidate.indicator_id == 3339
     assert res.applied_filters.facets.get("sexo") in ("FEMENINO", "MUJERES")
 
+
+def test_ingresos_tributarios_underspecified_generates_conversational_hint_and_alternative(engine):
+    res = engine.resolve("quiero que me des los ingresos tributarios del peru en 2022")
+    assert res.status == ResolutionStatus.RESOLVED
+    assert res.selected_candidate.indicator_id == 1242
+    # Conversational hint must not be None and must mention alternative 845
+    assert res.conversational_hint is not None
+    assert "845" in res.conversational_hint
+    # Trace must log the decision audit
+    assert any("845" in log for log in res.execution_trace)
+
+
+def test_ingresos_tributarios_moneda_nacional_routes_to_845(engine):
+    res = engine.resolve("ingresos tributarios en moneda nacional en peru 2022")
+    assert res.status == ResolutionStatus.RESOLVED
+    assert res.selected_candidate.indicator_id == 845
+
+
+def test_ingresos_tributarios_porcentaje_pib_routes_to_1242(engine):
+    res = engine.resolve("ingresos tributarios en porcentaje del pib en peru 2022")
+    assert res.status == ResolutionStatus.RESOLVED
+    assert res.selected_candidate.indicator_id == 1242
+
+

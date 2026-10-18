@@ -576,7 +576,10 @@ class QueryParser:
         ):
             intent.root_concept = "BALANCE_PRIMARIO"
         elif any(term in clean for term in ["ingresos tributarios", "recaudacion tributaria", "recaudacion", "tributar", "carga tributaria", "presion fiscal", "dian", "cuantos impuestos", "impuestos", "el fisco"]):
-            intent.root_concept = "INGRESOS_TRIBUTARIOS"
+            if any(term in clean for term in ["moneda nacional", "precios corrientes", "moneda local", "en pesos", "en soles", "en reales", "nominales", "nominal"]):
+                intent.root_concept = "INGRESOS_TRIBUTARIOS_CORRIENTES"
+            else:
+                intent.root_concept = "INGRESOS_TRIBUTARIOS"
         elif "gasto social" in clean:
             intent.root_concept = "GASTO_SOCIAL"
         elif "gasto publico en educacion" in clean or ("gasto" in clean and "educacion" in clean):

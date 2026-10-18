@@ -701,6 +701,12 @@ class SemanticResolutionEngine:
                     forbid_interpolation=True,
                 )
 
+        # Conversational hints for default assumptions & alternatives
+        conversational_hint = None
+        if target_indicator_id == 1242 and not any(t in intent.clean_query for t in ["%", "pib", "porcentaje", "porciento"]):
+            trace.append("  [Decision Audit] Unidad no especificada para ingresos tributarios. Se asume estándar macroeconómico CEPAL: '% del PIB' (ID 1242 / API 821). Medida alternativa disponible: 'Moneda nacional a precios corrientes' (ID 845).")
+            conversational_hint = "Nota: Se resolvió por defecto a Ingresos tributarios en porcentaje del PIB (indicador 1242 / API 821). Si requiere la serie en moneda nacional a precios corrientes, consulte el indicador 845."
+
         trace.append(f"[Resolution Result] SUCCESS: Selected ID {target_indicator_id} ('{selected.name}') with score {selected.relevance_score}. Status={status.value}")
         latency = (time.perf_counter() - t0) * 1000.0
         return SemanticResolutionResponse(
@@ -710,6 +716,7 @@ class SemanticResolutionEngine:
             applied_filters=applied_filters,
             temporal_info=temporal_info,
             polarity_info=intent.polarity_info,
+            conversational_hint=conversational_hint,
             execution_trace=trace,
             latency_ms=latency,
         )
