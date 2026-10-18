@@ -43,6 +43,16 @@ Este directorio centraliza todos los informes de avance, reportes de pruebas, be
 
 Cada carpeta contiene los briefs de especificación y los reportes de implementación TDD generados por los agentes de desarrollo:
 
+### A0. Retrospective Remediation & Code Hardening (2026-10-17)
+Ruta: [`docs/reports/tasks/2026-10-17-retrospective-remediation-and-hardening/`](file:///C:/papx/statscepal/docs/reports/tasks/2026-10-17-retrospective-remediation-and-hardening)
+- [**`progress.md`**](file:///C:/papx/statscepal/docs/reports/tasks/2026-10-17-retrospective-remediation-and-hardening/progress.md): Ledger de estado general (6/6 tareas completadas y aprobadas por Winston).
+- [**`task-1-report.md`**](file:///C:/papx/statscepal/docs/reports/tasks/2026-10-17-retrospective-remediation-and-hardening/task-1-report.md): Aislamiento de colisión de member IDs en `3342` y unificación de `_match_dim_column` insensible a acentos en `fetcher.py`.
+- [**`task-2-report.md`**](file:///C:/papx/statscepal/docs/reports/tasks/2026-10-17-retrospective-remediation-and-hardening/task-2-report.md): Corrección de precedencia de `POBLACION` frente a `DISTRIBUCION_INGRESO`, enrutamiento jerárquico hacia `4639` y `4992`, y prioridad de grupos étnicos específicos.
+- [**`task-3-report.md`**](file:///C:/papx/statscepal/docs/reports/tasks/2026-10-17-retrospective-remediation-and-hardening/task-3-report.md): Siembra de `DEFAULT_OFFICIAL_DIMENSIONS` para los 10 indicadores de `VERTICAL_SLICE_INDICATORS`, protección de desgloses explícitos contra colapso y adición de `_has_dimension_for_facet`.
+- [**`task-4-report.md`**](file:///C:/papx/statscepal/docs/reports/tasks/2026-10-17-retrospective-remediation-and-hardening/task-4-report.md): Resolución de alias de dimensiones y miembros en remapeo empírico `3340 -> 3295 / 3324 / 3390`.
+- [**`task-5-report.md`**](file:///C:/papx/statscepal/docs/reports/tasks/2026-10-17-retrospective-remediation-and-hardening/task-5-report.md): Desacoplamiento de `conversational_hint` en CLI, rescate de anclas dinámicas en brechas parciales multianuales y corrección de país en el payload multipaís.
+- [**`task-6-report.md`**](file:///C:/papx/statscepal/docs/reports/tasks/2026-10-17-retrospective-remediation-and-hardening/task-6-report.md): Descomposición modular de `SemanticDataFetcher.fetch_resolved_data` en 5 métodos de etapa y limpieza de 14 claves muertas en `COUNTRY_LEXICON`.
+
 ### A. Catalog Alignment & Empirical Fetch Hardening (2026-10-17)
 Ruta: [`docs/reports/tasks/2026-10-17-catalog-alignment-and-empirical-fetch/`](file:///C:/papx/statscepal/docs/reports/tasks/2026-10-17-catalog-alignment-and-empirical-fetch)
 - [**`progress.md`**](file:///C:/papx/statscepal/docs/reports/tasks/2026-10-17-catalog-alignment-and-empirical-fetch/progress.md): Ledger de estado general (4/4 tareas completadas).

@@ -1,0 +1,153 @@
+diff --git a/src/statscepal/cli.py b/src/statscepal/cli.py
+index e204c87..3c30ead 100644
+--- a/src/statscepal/cli.py
++++ b/src/statscepal/cli.py
+@@ -645,8 +645,9 @@ def main(args: Sequence[str] | None = None) -> int:
+                 else:
+                     if res.abstention_reason:
+                         print(f"Reason:    {res.abstention_reason}")
+-                    if res.conversational_hint:
+-                        print(f"Hint:      {res.conversational_hint}")
++
++                if res.conversational_hint:
++                    print(f"Hint:      {res.conversational_hint}")
+ 
+                 if res.polarity_info:
+                     print(
+diff --git a/src/statscepal/semantic/fetcher.py b/src/statscepal/semantic/fetcher.py
+index c09bdfd..acfbe2d 100644
+--- a/src/statscepal/semantic/fetcher.py
++++ b/src/statscepal/semantic/fetcher.py
+@@ -684,10 +684,10 @@ class SemanticDataFetcher:
+                     .astype(int)
+                 )
+                 avail_years = set(num_years.unique())
+-                observed_requested = avail_years.intersection(requested_year_set)
++                missing_requested = requested_year_set - avail_years
+ 
+-                if not observed_requested and avail_years:
+-                    for req_y in sorted(requested_year_set):
++                if missing_requested and avail_years:
++                    for req_y in sorted(missing_requested):
+                         prev_anchor = max((y for y in avail_years if y < req_y), default=None)
+                         next_anchor = min((y for y in avail_years if y > req_y), default=None)
+                         if prev_anchor is not None or next_anchor is not None:
+@@ -707,6 +707,7 @@ class SemanticDataFetcher:
+                                     c_str = str(c_val).strip()
+                                     code_by_name[_strip_accents(c_str).lower()] = c_code
+                                     code_by_name[c_str.lower()] = c_code
++                            has_rescued_anchors = True
+ 
+         # 4. Filter by temporal constraints
+         if not filtered_df.empty and year_col is not None:
+@@ -792,6 +793,9 @@ class SemanticDataFetcher:
+                             all_years = _extract_numeric_years(filtered_df[year_col])
+                             filtered_df = filtered_df[all_years == max_y]
+ 
++        if has_rescued_anchors and response.status == ResolutionStatus.RESOLVED:
++            response.status = ResolutionStatus.RESOLVED_WITH_ANCHORS
++
+         # 5. Format observation result
+         if not filtered_df.empty:
+             if is_multi_year or has_breakdown or is_multi_country or has_rescued_anchors:
+@@ -918,8 +922,11 @@ class SemanticDataFetcher:
+                         "indicator_name": response.selected_candidate.name,
+                         "value": latest_item["value"],
+                         "unit": response.selected_candidate.unit,
+-                        "country": response.applied_filters.country_name
+-                        or response.applied_filters.country_code,
++                        "country": latest_item.get(
++                            "country",
++                            response.applied_filters.country_name
++                            or response.applied_filters.country_code,
++                        ),
+                         "year": latest_item["year"],
+                         "dimensions_applied": [
+                             f.model_dump() for f in response.applied_filters.dimensions
+diff --git a/tests/test_cli_semantic.py b/tests/test_cli_semantic.py
+index f98e2d2..e73c4d0 100644
+--- a/tests/test_cli_semantic.py
++++ b/tests/test_cli_semantic.py
+@@ -193,4 +193,11 @@ def test_cli_semantic_resolve_ethnic_poverty(capsys=None):
+     assert "Tipo de etnia" in output or "etnia" in output.lower()
+ 
+ 
+-
++def test_cli_semantic_resolve_displays_conversational_hint_on_alternative_proposed(capsys):
++    """Test CLI displays Hint with alternative indicator IDs when ALTERNATIVE_PROPOSED."""
++    ret = main(["semantic", "resolve", "cuentas fiscales de chile 2022"])
++    assert ret == 0
++    captured = capsys.readouterr().out
++    assert "ALTERNATIVE_PROPOSED" in captured
++    assert "Hint:" in captured
++    assert "1240" in captured
+diff --git a/tests/test_semantic_fetcher.py b/tests/test_semantic_fetcher.py
+index 0b6c1fb..9d27bc2 100644
+--- a/tests/test_semantic_fetcher.py
++++ b/tests/test_semantic_fetcher.py
+@@ -696,3 +696,65 @@ def test_fetcher_empirical_mapping_3340_to_3295_relacion_q5_q1(mock_client):
+     assert payload["value"] == 12.4
+     assert len(payload["series"]) == 1
+     assert payload["series"][0]["value"] == 12.4
++
++
++def test_fetcher_multi_year_rescues_anchors_for_missing_year_in_range(mock_client):
++    """Assert dynamic anchor rescue runs for unobserved years in a multi-year query."""
++    fetcher = SemanticDataFetcher(client=mock_client)
++    res = SemanticResolutionResponse(
++        query="gini en chile del 2020 al 2022",
++        status=ResolutionStatus.RESOLVED,
++        selected_candidate=SelectedCandidate(
++            indicator_id=3289,
++            name="Índice de Gini",
++            measure_type="COEFICIENTE_CONCENTRACION",
++            unit="coeficiente",
++        ),
++        applied_filters=AppliedFilters(
++            country_code="CHL",
++            country_name="Chile",
++            years=[2020, 2021, 2022],
++            time_mode="RANGE",
++        ),
++    )
++    # Chile has survey in 2020 and 2022, but not 2021
++    df = pd.DataFrame([
++        {"País__ESTANDAR": "Chile", "Años_disponibles": "2020", "valor": 0.45},
++        {"País__ESTANDAR": "Chile", "Años_disponibles": "2022", "valor": 0.43},
++    ])
++    mock_client.get_dataframe.return_value = df
++    payload = fetcher.fetch_resolved_data(res)
++    assert any(item.get("is_anchor") for item in payload["series"]) or res.status == ResolutionStatus.RESOLVED_WITH_ANCHORS
++    assert res.status == ResolutionStatus.RESOLVED_WITH_ANCHORS
++
++
++def test_fetcher_multi_country_payload_country_attribution(mock_client):
++    """Assert payload['country'] matches the country of latest_item, not always the first country."""
++    fetcher = SemanticDataFetcher(client=mock_client)
++    res = SemanticResolutionResponse(
++        query="pib per capita en peru y colombia 2022",
++        status=ResolutionStatus.RESOLVED,
++        selected_candidate=SelectedCandidate(
++            indicator_id=730,
++            name="PIB per cápita",
++            measure_type="USD_PER_CAPITA",
++            unit="USD",
++        ),
++        applied_filters=AppliedFilters(
++            country_code="PER",
++            country_name="Perú",
++            country_codes=["PER", "COL"],
++            country_names=["Perú", "Colombia"],
++            years=[2022],
++            time_mode="SINGLE",
++        ),
++    )
++    df = pd.DataFrame([
++        {"País__ESTANDAR": "Perú", "Años_disponibles": "2022", "valor": 6800.0},
++        {"País__ESTANDAR": "Colombia", "Años_disponibles": "2022", "valor": 6500.0},
++    ])
++    mock_client.get_dataframe.return_value = df
++    payload = fetcher.fetch_resolved_data(res)
++    latest_item = payload["series"][-1]
++    assert payload["country"] == latest_item.get("country")
++    assert payload["country"] == "Colombia"

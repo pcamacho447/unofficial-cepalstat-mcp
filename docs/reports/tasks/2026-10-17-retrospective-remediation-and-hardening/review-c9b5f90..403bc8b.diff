@@ -1,0 +1,364 @@
+diff --git a/src/statscepal/semantic/engine.py b/src/statscepal/semantic/engine.py
+index 87c6990..8e76d31 100644
+--- a/src/statscepal/semantic/engine.py
++++ b/src/statscepal/semantic/engine.py
+@@ -13,9 +13,11 @@ from statscepal.semantic.models import (
+     TemporalAnchorInfo,
+     TemporalAvailabilityStatus,
+ )
++from statscepal.dimensions import Dimension
+ from statscepal.semantic.facet_ontology import (
+     DEFAULT_FACET_ONTOLOGY,
+     FacetOntology,
++    strip_accents,
+ )
+ from statscepal.semantic.matcher import DynamicMemberMatcher
+ from statscepal.semantic.parser import QueryParser
+@@ -61,6 +63,26 @@ class SemanticResolutionEngine:
+         # 4. Canonical total population -> 4788
+         return 4788
+ 
++    def _has_dimension_for_facet(self, dims: list[Dimension], facet_key: str) -> bool:
++        """Check whether any of the indicator's dimensions physically corresponds to facet_key."""
++        facet_def = self.ontology.get_facet(facet_key)
++        key_norm = strip_accents(facet_key)
++        if facet_def and facet_def.dimension_name_patterns:
++            key_patterns = list(facet_def.dimension_name_patterns)
++        else:
++            key_patterns = [key_norm]
++
++        for d in dims:
++            if self.ontology.classify_dimension(d.id, d.name) == facet_key:
++                return True
++            d_name_norm = strip_accents(d.name)
++            if facet_def is not None:
++                if d.id in facet_def.known_dimension_ids or any(kp in d_name_norm for kp in key_patterns):
++                    return True
++            else:
++                if any(kp in d_name_norm for kp in key_patterns):
++                    return True
++        return False
+ 
+     def resolve_query(self, query: str) -> SemanticResolutionResponse:
+         """Resolve a natural language query string."""
+@@ -325,6 +347,8 @@ class SemanticResolutionEngine:
+                 canonical_id, default_dims, intent.facets
+             )
+             for fk in def_unhandled:
++                if fk in default_supported and not self._has_dimension_for_facet(default_dims, fk):
++                    continue
+                 if self.ontology.is_critical_unhandled_facet(fk, intent.facets.get(fk, "")):
+                     unhandled_facets.add(fk)
+ 
+@@ -352,7 +376,8 @@ class SemanticResolutionEngine:
+                         )
+                         crit_cand_unhandled = [
+                             f for f in cand_unhandled
+-                            if self.ontology.is_critical_unhandled_facet(f, intent.facets.get(f, ""))
++                            if not (f in cand_supported and not self._has_dimension_for_facet(cand_dims, f))
++                            and self.ontology.is_critical_unhandled_facet(f, intent.facets.get(f, ""))
+                         ]
+                         if not crit_cand_unhandled:
+                             target_indicator_id = cand_id
+@@ -415,7 +440,8 @@ class SemanticResolutionEngine:
+                         unhandled.append(f_facet)
+             critical_unhandled = [
+                 f for f in unhandled
+-                if self.ontology.is_critical_unhandled_facet(f, intent.facets.get(f, ""))
++                if not (f in selected_meta.supported_facets and not self._has_dimension_for_facet(target_dims, f))
++                and self.ontology.is_critical_unhandled_facet(f, intent.facets.get(f, ""))
+             ]
+             if critical_unhandled:
+                 latency = (time.perf_counter() - t0) * 1000.0
+diff --git a/src/statscepal/semantic/fetcher.py b/src/statscepal/semantic/fetcher.py
+index ffdf9ac..cde3da8 100644
+--- a/src/statscepal/semantic/fetcher.py
++++ b/src/statscepal/semantic/fetcher.py
+@@ -148,6 +148,8 @@ class SemanticDataFetcher:
+         filtered_dim_cols: set[str],
+         country_col: str | None,
+         year_col: str | None,
++        response: SemanticResolutionResponse | None = None,
++        breakdown_facets: set[str] | None = None,
+     ) -> pd.DataFrame:
+         """Collapse any non-structural DataFrame dimension column not in filtered_dim_cols to its aggregate member."""
+         if df.empty:
+@@ -157,6 +159,16 @@ class SemanticDataFetcher:
+         norm_country_col = _strip_accents(country_col).lower() if country_col else None
+         norm_year_col = _strip_accents(year_col).lower() if year_col else None
+ 
++        facet_keys_in_breakdown: set[str] = set()
++        if response is not None and getattr(response, "applied_filters", None):
++            facet_keys_in_breakdown = {
++                f_k.lower()
++                for f_k, f_v in getattr(response.applied_filters, "facets", {}).items()
++                if "_DESGLOSE" in str(f_v) or str(f_v) in ("ETNICO_TOTAL", "ETNICO")
++            }
++        if breakdown_facets is not None:
++            facet_keys_in_breakdown |= {bk.lower() for bk in breakdown_facets}
++
+         for col in list(result.columns):
+             if (
+                 col in filtered_dim_cols
+@@ -172,6 +184,9 @@ class SemanticDataFetcher:
+                 or cl in self._STRUCTURAL_AND_META_COLS
+             ):
+                 continue
++            if any(bk in cl for bk in facet_keys_in_breakdown):
++                # User explicitly requested breakdown for this dimension -> DO NOT collapse to aggregate!
++                continue
+             unique_vals = result[col].dropna().astype(str).str.strip().unique()
+             if len(unique_vals) <= 1:
+                 continue
+@@ -255,10 +270,15 @@ class SemanticDataFetcher:
+             time_mode in ("LIST", "RANGE", "RELATIVE_WINDOW")
+             or len(target_years) > 1
+         )
++        facet_keys_in_breakdown = {
++            f_k.lower()
++            for f_k, f_v in getattr(response.applied_filters, "facets", {}).items()
++            if "_DESGLOSE" in str(f_v) or str(f_v) in ("ETNICO_TOTAL", "ETNICO")
++        }
+         has_breakdown = any(
+             getattr(d, "is_breakdown", False)
+             for d in response.applied_filters.dimensions
+-        )
++        ) or bool(facet_keys_in_breakdown)
+ 
+         if df is None or df.empty:
+             payload = {
+@@ -278,6 +298,14 @@ class SemanticDataFetcher:
+             return payload
+ 
+         filtered_df = df.copy()
++        if "value" not in filtered_df.columns:
++            for val_cand in ("valor", "val", "monto", "dato"):
++                for c in filtered_df.columns:
++                    if _strip_accents(c).lower() == val_cand:
++                        filtered_df["value"] = filtered_df[c]
++                        break
++                if "value" in filtered_df.columns:
++                    break
+ 
+         # 1. Filter by country if specified
+         target_country_names = list(
+@@ -512,7 +540,12 @@ class SemanticDataFetcher:
+                     break
+ 
+         filtered_df = self._filter_unconstrained_dimensions(
+-            filtered_df, filtered_dim_cols, country_col, year_col
++            filtered_df,
++            filtered_dim_cols,
++            country_col,
++            year_col,
++            response=response,
++            breakdown_facets=facet_keys_in_breakdown,
+         )
+ 
+         has_rescued_anchors = False
+@@ -699,6 +732,15 @@ class SemanticDataFetcher:
+                             breakdown_cols.append(col)
+                             break
+ 
++                for col in sorted_df.columns:
++                    if col in breakdown_cols or col == country_col or col == year_col:
++                        continue
++                    cl = _strip_accents(col).lower()
++                    if cl in self._STRUCTURAL_AND_META_COLS:
++                        continue
++                    if any(bk in cl for bk in facet_keys_in_breakdown):
++                        breakdown_cols.append(col)
++
+                 series: list[dict[str, Any]] = []
+                 for _, row in sorted_df.iterrows():
+                     val_raw = row.get("value")
+diff --git a/src/statscepal/semantic/registry.py b/src/statscepal/semantic/registry.py
+index 15da773..d226653 100644
+--- a/src/statscepal/semantic/registry.py
++++ b/src/statscepal/semantic/registry.py
+@@ -265,6 +265,106 @@ DEFAULT_OFFICIAL_DIMENSIONS: dict[int, list[Dimension]] = {
+             ],
+         ),
+     ],
++    127: [
++        Dimension(
++            id=144,
++            name="Sexo__ESTANDAR",
++            members=[Member(id=146, name="Ambos sexos"), Member(id=265, name="Hombres"), Member(id=266, name="Mujeres")],
++        ),
++    ],
++    3331: [
++        Dimension(
++            id=144,
++            name="Sexo__ESTANDAR",
++            members=[Member(id=146, name="Ambos sexos"), Member(id=265, name="Hombres"), Member(id=266, name="Mujeres")],
++        ),
++        Dimension(
++            id=43054,
++            name="Grupo de edad",
++            members=[
++                Member(id=43058, name="15 a 24 años"),
++            ],
++        ),
++    ],
++    3337: [
++        Dimension(
++            id=326,
++            name="Área geográfica",
++            members=[Member(id=327, name="Nacional"), Member(id=330, name="Urbano"), Member(id=331, name="Rural")],
++        ),
++    ],
++    5097: [
++        Dimension(
++            id=144,
++            name="Sexo__ESTANDAR",
++            members=[Member(id=146, name="Ambos sexos"), Member(id=265, name="Hombres"), Member(id=266, name="Mujeres")],
++        ),
++        Dimension(
++            id=43054,
++            name="Grupo de edad",
++            members=[
++                Member(id=43059, name="0 a 14 años"),
++                Member(id=43058, name="15 a 24 años"),
++                Member(id=43060, name="65 años y más"),
++            ],
++        ),
++    ],
++    119: [
++        Dimension(
++            id=144,
++            name="Sexo__ESTANDAR",
++            members=[Member(id=146, name="Ambos sexos"), Member(id=265, name="Hombres"), Member(id=266, name="Mujeres")],
++        ),
++        Dimension(
++            id=326,
++            name="Área geográfica",
++            members=[Member(id=327, name="Nacional"), Member(id=330, name="Urbano"), Member(id=331, name="Rural")],
++        ),
++    ],
++    340: [
++        Dimension(
++            id=326,
++            name="Área geográfica",
++            members=[Member(id=327, name="Nacional"), Member(id=330, name="Urbano"), Member(id=331, name="Rural")],
++        ),
++    ],
++    365: [
++        Dimension(
++            id=29281,
++            name="Rubro",
++            members=[Member(id=29282, name="General"), Member(id=29283, name="Salud")],
++        ),
++    ],
++    1684: [
++        Dimension(
++            id=79565,
++            name="Canasta de bienes",
++            members=[Member(id=79578, name="Alimentos y bebidas no alcohólicas")],
++        ),
++    ],
++    3344: [
++        Dimension(
++            id=144,
++            name="Sexo__ESTANDAR",
++            members=[Member(id=146, name="Ambos sexos"), Member(id=265, name="Hombres"), Member(id=266, name="Mujeres")],
++        ),
++        Dimension(
++            id=43054,
++            name="Grupo de edad",
++            members=[
++                Member(id=43059, name="0 a 14 años"),
++                Member(id=43058, name="15 a 24 años"),
++                Member(id=43060, name="65 años y más"),
++            ],
++        ),
++    ],
++    3333: [
++        Dimension(
++            id=144,
++            name="Sexo__ESTANDAR",
++            members=[Member(id=146, name="Ambos sexos"), Member(id=265, name="Hombres"), Member(id=266, name="Mujeres")],
++        ),
++    ],
+ }
+ 
+ 
+@@ -277,6 +377,7 @@ SYNTHETIC_DIMENSION_MEMBER_IDS: frozenset[int] = frozenset({
+     501, 502,
+     601, 602, 603, 604, 605, 610, 611, 612, 613,
+     701,
++    29282, 29283,
+     79578, 79580,
+ })
+ 
+diff --git a/tests/test_semantic_fetcher.py b/tests/test_semantic_fetcher.py
+index da61632..e21d447 100644
+--- a/tests/test_semantic_fetcher.py
++++ b/tests/test_semantic_fetcher.py
+@@ -528,6 +528,44 @@ def test_fetcher_step5_breakdown_cols_matches_accented_dataframe_columns():
+     assert all("member" in item for item in payload["series"]), "Step 5 failed to assign member labels due to accent mismatch"
+ 
+ 
++def test_fetcher_does_not_collapse_dimension_when_requested_as_breakdown():
++    """Assert _filter_unconstrained_dimensions never collapses a dimension to aggregate if requested as breakdown."""
++    mock_extractor = MagicMock(spec=DataExtractor)
++    fetcher = SemanticDataFetcher(extractor=mock_extractor)
++    res = SemanticResolutionResponse(
++        query="tasa de desocupacion por sexo en chile 2022",
++        status=ResolutionStatus.RESOLVED,
++        selected_candidate=SelectedCandidate(
++            indicator_id=127,
++            name="Tasa de desocupación",
++            measure_type="TASA_DESOCUPACION",
++            unit="%",
++        ),
++        applied_filters=AppliedFilters(
++            country_code="CHL",
++            country_name="Chile",
++            years=[2022],
++            year=2022,
++            time_mode="SINGLE",
++            facets={"sexo": "SEXO_DESGLOSE"},
++            dimensions=[],  # Empty dimensions list because indicator lacked DEFAULT_OFFICIAL_DIMENSIONS
++        ),
++    )
++    df = pd.DataFrame([
++        {"País__ESTANDAR": "Chile", "Años_disponibles": "2022", "Sexo__ESTANDAR": "Hombres", "valor": 7.5},
++        {"País__ESTANDAR": "Chile", "Años_disponibles": "2022", "Sexo__ESTANDAR": "Mujeres", "valor": 9.1},
++        {"País__ESTANDAR": "Chile", "Años_disponibles": "2022", "Sexo__ESTANDAR": "Total", "valor": 8.2},
++    ])
++    mock_extractor.get_dataframe.return_value = df
++    payload = fetcher.fetch_resolved_data(res)
++    # The breakdown rows ('Hombres', 'Mujeres') must NOT have been filtered out to 'Total'
++    assert "series" in payload, f"Expected 'series' in payload, got {payload}"
++    series_members = [item.get("member") for item in payload["series"]]
++    assert len(payload["series"]) >= 2
++    assert "Hombres" in series_members or any(item.get("value") == 7.5 for item in payload["series"])
++
++
++
+ 
+ 
+ 
+diff --git a/tests/test_semantic_registry_200.py b/tests/test_semantic_registry_200.py
+index c3726f8..9ebfb8c 100644
+--- a/tests/test_semantic_registry_200.py
++++ b/tests/test_semantic_registry_200.py
+@@ -288,3 +288,17 @@ def test_default_official_dimensions_shared_dim_id_consistency():
+                 dim_registry.setdefault(dim_id, {})[m_id] = m_val
+ 
+ 
++def test_vertical_slice_indicators_with_supported_facets_have_default_official_dimensions():
++    """Assert all indicators in VERTICAL_SLICE_INDICATORS declaring supported_facets have dimension entries."""
++    from statscepal.semantic.registry import DEFAULT_OFFICIAL_DIMENSIONS, VERTICAL_SLICE_INDICATORS
++
++    missing = []
++    for ind_id, info in VERTICAL_SLICE_INDICATORS.items():
++        facets = getattr(info, "supported_facets", None) or (info.get("supported_facets") if isinstance(info, dict) else None)
++        if facets:
++            if ind_id not in DEFAULT_OFFICIAL_DIMENSIONS:
++                missing.append(ind_id)
++    assert not missing, f"Indicators declare supported_facets but lack DEFAULT_OFFICIAL_DIMENSIONS: {missing}"
++
++
++

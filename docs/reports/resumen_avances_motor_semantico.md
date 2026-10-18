@@ -2,8 +2,8 @@
 
 **Fecha:** 2026-10-17  
 **Repositorio:** `statscepal` ([`C:\papx\statscepal`](file:///C:/papx/statscepal))  
-**Rama:** `master` (Head: [`77df089`](file:///C:/papx/statscepal))  
-**Certificación:** 303 pruebas unitarias pasando (`303 passed, 0 failed, 3 deselected`), Benchmark 200 preguntas (`100.0% Top-1 Accuracy`, `0.00% False Substitution Rate`), Benchmark de 70 casos multidimensionales (`100.0% Top-1 Accuracy`, `0.00% FSR`), latencia en memoria $p50 < 0.3\text{ ms}$.
+**Rama:** `master` (Head: [`beaaea5`](file:///C:/papx/statscepal))  
+**Certificación:** 317 pruebas unitarias pasando (`317 passed, 0 failed, 3 deselected`), Benchmark 200 preguntas (`100.0% Top-1 Accuracy`, `0.00% False Substitution Rate`), Benchmark de 70 casos multidimensionales (`100.0% Top-1 Accuracy`, `0.00% FSR`), latencia en memoria $p50 < 0.3\text{ ms}$.
 
 ---
 
@@ -44,6 +44,19 @@ flowchart TD
 ---
 
 ## 2. Detalle de los Grandes Hitos y Épicas Completadas
+
+### A0. Épica de Remediación Post-Retrospectiva y Hardening Arquitectónico (2026-10-17)
+
+Resuelve integralmente los 8 ítems de acción (`AI-1` a `AI-8`) identificados en la retrospectiva formal mediante arnés TDD (commits `cebde1c..beaaea5`):
+
+1. **Aislamiento de Colisión de Member IDs (`AI-1`)**: Corrección de `DEFAULT_OFFICIAL_DIMENSIONS[3342]` en `dim_id=43039` para alinearlo con los IDs reales de CEPALSTAT (`43040: Total`, `43044: Afrodescendiente`, `77477: Indígena`, `43043: No indígena`), agregando test invariante de consistencia semántica en `test_semantic_registry_200.py`.
+2. **Unificación de Comparación de Columnas (`AI-2`)**: Creación de `_match_dim_column` insensible a acentos, mayúsculas, espacios y sufijos `__estandar`, unificando la búsqueda en Step 2 y Step 5 de `fetcher.py`.
+3. **Precedencia de `POBLACION` y Grupos Étnicos (`AI-3`)**: Priorización de `POBLACION` sobre `DISTRIBUCION_INGRESO` cuando coexisten términos demográficos o étnicos con quintiles, prioridad de grupos específicos sobre `ETNICO_TOTAL` en `facet_ontology.py` y enrutamiento jerárquico en `engine.py` (`estrato + etnia -> 4639`, área no-default -> `4992`).
+4. **Siembra de Dimensiones del Corte Vertical y Protección de Desgloses (`AI-4`)**: Registro de dimensiones oficiales para los 10 indicadores de `VERTICAL_SLICE_INDICATORS` con facetas (`127, 3331, 3337, 5097, 119, 340, 365, 1684, 3344, 3333`), blindaje en `_filter_unconstrained_dimensions` para no colapsar dimensiones explícitamente pedidas como desglose, y adición de `_has_dimension_for_facet` en `engine.py`.
+5. **Resolución de Alias de Dimensiones y Miembros en Remapeo Empírico (`AI-5`)**: Integración de `DIM_NAME_ALIASES` y `MEMBER_VALUE_ALIASES` con expansión canónica bi-direccional en `fetcher.py` para remapeo dinámico `3340 -> 3295 / 3324 / 3390`.
+6. **Pistas Conversacionales en CLI, Rescate de Anclas Multianuales y Atribución Multipaís (`AI-6`)**: Desacoplamiento del renderizado de `conversational_hint` en la CLI (visible ahora en `ALTERNATIVE_PROPOSED`), rescate dinámico de anclas adyacentes para cualquier año faltante en rangos multianuales (`RESOLVED_WITH_ANCHORS`) y corrección de país en el payload raíz multipaís.
+7. **Descomposición Modular de `SemanticDataFetcher` (`AI-7`)**: Reducción del método monolítico `fetch_resolved_data` de 765 líneas a un pipeline orquestador limpio de ~60 líneas con 5 métodos de etapa desacoplados (`_prepare_empirical_fetch`, `_resolve_geography`, `_apply_dimension_filters`, `_apply_temporal_and_anchors`, `_format_payload`).
+8. **Higiene del Léxico y Diferenciación de Fixtures (`AI-8`)**: Eliminación de 14 claves muertas con `"ñ"` en `COUNTRY_LEXICON` y diferenciación de años máximos por país (`Perú=2021`, `Chile=2022`) en los arneses de prueba.
 
 ### A. Épica de Alineación de Catálogo y Hardening de Extracción Empírica (2026-10-17)
 

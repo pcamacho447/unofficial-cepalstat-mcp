@@ -1,0 +1,155 @@
+diff --git a/src/statscepal/semantic/fetcher.py b/src/statscepal/semantic/fetcher.py
+index 42cbbb5..ffdf9ac 100644
+--- a/src/statscepal/semantic/fetcher.py
++++ b/src/statscepal/semantic/fetcher.py
+@@ -20,6 +20,14 @@ def _strip_accents(text: str) -> str:
+     return "".join(c for c in normalized if unicodedata.category(c) != "Mn")
+ 
+ 
++def _match_dim_column(col_name: str, target_name: str) -> bool:
++    """Check if a DataFrame column name matches a target dimension name, ignoring case, accents, and __estandar."""
++    cl = _strip_accents(col_name).lower().strip().replace("__estandar", "")
++    dl = _strip_accents(target_name).lower().strip().replace("__estandar", "")
++    return cl == dl or cl.replace(" ", "") == dl.replace(" ", "")
++
++
++
+ def _extract_numeric_years(series: pd.Series) -> pd.Series:
+     """Convert a year or decade Series (e.g., 2020 or 'Década 2010') into numeric years."""
+     num = pd.to_numeric(series, errors="coerce")
+@@ -433,14 +441,7 @@ class SemanticDataFetcher:
+             for dim_filter in response.applied_filters.dimensions:
+                 dim_col = None
+                 for col in filtered_df.columns:
+-                    cl = col.lower()
+-                    dl = dim_filter.dim_name.lower()
+-                    if (
+-                        cl == dl
+-                        or cl.replace("__estandar", "") == dl.replace("__estandar", "")
+-                        or _strip_accents(cl).replace("__estandar", "")
+-                        == _strip_accents(dl).replace("__estandar", "")
+-                    ):
++                    if _match_dim_column(col, dim_filter.dim_name):
+                         dim_col = col
+                         break
+                 if dim_col is None and dim_filter.dim_id is not None:
+@@ -691,9 +692,7 @@ class SemanticDataFetcher:
+                     if not getattr(dim_filter, "is_breakdown", False):
+                         continue
+                     for col in sorted_df.columns:
+-                        cl = col.lower()
+-                        dl = dim_filter.dim_name.lower()
+-                        if cl == dl or cl.replace("__estandar", "") == dl.replace("__estandar", ""):
++                        if _match_dim_column(col, dim_filter.dim_name):
+                             breakdown_cols.append(col)
+                             break
+                         if dim_filter.dim_id is not None and col == f"dim_{dim_filter.dim_id}":
+diff --git a/src/statscepal/semantic/registry.py b/src/statscepal/semantic/registry.py
+index 625e23e..15da773 100644
+--- a/src/statscepal/semantic/registry.py
++++ b/src/statscepal/semantic/registry.py
+@@ -63,10 +63,10 @@ DEFAULT_OFFICIAL_DIMENSIONS: dict[int, list[Dimension]] = {
+             id=43039,
+             name="Tipo de etnia",
+             members=[
+-                Member(id=43040, name="Afrodescendiente"),
+-                Member(id=43041, name="Indígena"),
+-                Member(id=43042, name="No indígena ni afrodescendiente"),
+-                Member(id=43043, name="Total"),
++                Member(id=43040, name="Total"),
++                Member(id=43044, name="Afrodescendiente"),
++                Member(id=77477, name="Indígena"),
++                Member(id=43043, name="No indígena ni afrodescendiente"),
+             ],
+         ),
+     ],
+diff --git a/tests/test_semantic_fetcher.py b/tests/test_semantic_fetcher.py
+index 9c045d6..da61632 100644
+--- a/tests/test_semantic_fetcher.py
++++ b/tests/test_semantic_fetcher.py
+@@ -486,6 +486,49 @@ def test_cli_displays_empirical_indicator_id_when_mapped(capsys, monkeypatch):
+     assert "CEPALSTAT API Table ID: 2484" in captured.out
+ 
+ 
++def test_fetcher_step5_breakdown_cols_matches_accented_dataframe_columns():
++    """Assert that Step 5 matches breakdown column with diacritics ('Área geográfica' vs 'Area Geografica')."""
++    mock_extractor = MagicMock(spec=DataExtractor)
++    fetcher = SemanticDataFetcher(extractor=mock_extractor)
++    res = SemanticResolutionResponse(
++        query="poblacion indigena por area en peru 2020",
++        status=ResolutionStatus.RESOLVED,
++        selected_candidate=SelectedCandidate(
++            indicator_id=4968,
++            name="Población indígena según área geográfica",
++            measure_type="INCIDENCIA",
++            unit="%",
++        ),
++        applied_filters=AppliedFilters(
++            country_code="PER",
++            country_name="Perú",
++            years=[2020],
++            year=2020,
++            time_mode="SINGLE",
++            facets={"etnia": "INDIGENA", "area": "AREA_DESGLOSE"},
++            dimensions=[
++                AppliedDimensionFilter(
++                    dim_id=78153,
++                    dim_name="Area Geografica",
++                    member_id=None,
++                    member_name="",
++                    is_breakdown=True,
++                    member_names=["Urbana", "Rural"],
++                )
++            ],
++        ),
++    )
++    df = pd.DataFrame([
++        {"País__ESTANDAR": "Perú", "Años_disponibles": "2020", "Área geográfica": "Urbana", "value": 500000.0},
++        {"País__ESTANDAR": "Perú", "Años_disponibles": "2020", "Área geográfica": "Rural", "value": 1200000.0},
++    ])
++    mock_extractor.get_dataframe.return_value = df
++    payload = fetcher.fetch_resolved_data(res)
++    assert len(payload["series"]) == 2
++    assert all("member" in item for item in payload["series"]), "Step 5 failed to assign member labels due to accent mismatch"
++
++
++
+ 
+ 
+ 
+diff --git a/tests/test_semantic_registry_200.py b/tests/test_semantic_registry_200.py
+index f7961da..c3726f8 100644
+--- a/tests/test_semantic_registry_200.py
++++ b/tests/test_semantic_registry_200.py
+@@ -260,3 +260,31 @@ def test_registry_contains_ethnic_poverty_indicator_3342():
+     dim_names = [d.name for d in dims]
+     assert any("etnia" in d.lower() for d in dim_names)
+ 
++
++def test_default_official_dimensions_shared_dim_id_consistency():
++    """Assert that whenever a dim_id is shared across indicators, its member IDs do not conflict."""
++    from statscepal.semantic.registry import DEFAULT_OFFICIAL_DIMENSIONS
++
++    dim_registry: dict[int, dict[int, str]] = {}
++    for ind_id, dims in DEFAULT_OFFICIAL_DIMENSIONS.items():
++        for d in dims:
++            dim_id = d.id if hasattr(d, "id") else d["dim_id"]
++            if hasattr(d, "members"):
++                members_dict = {m.id: m.name for m in d.members}
++            elif "members_by_value" in d:
++                members_dict = {m_id: m_val for m_val, m_id in d["members_by_value"].items()}
++            elif "members" in d:
++                members_dict = d["members"]
++            else:
++                members_dict = {}
++
++            for m_id, m_val in members_dict.items():
++                if dim_id in dim_registry and m_id in dim_registry[dim_id]:
++                    existing_val = dim_registry[dim_id][m_id]
++                    assert existing_val == m_val, (
++                        f"Conflict in dim_id={dim_id}: member_id={m_id} mapped to '{existing_val}' "
++                        f"in previous indicator, but '{m_val}' in indicator {ind_id}."
++                    )
++                dim_registry.setdefault(dim_id, {})[m_id] = m_val
++
++
