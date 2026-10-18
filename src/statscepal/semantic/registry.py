@@ -365,6 +365,7 @@ DEFAULT_OFFICIAL_DIMENSIONS: dict[int, list[Dimension]] = {
             members=[Member(id=146, name="Ambos sexos"), Member(id=265, name="Hombres"), Member(id=266, name="Mujeres")],
         ),
     ],
+    4145: [],
 }
 
 
@@ -385,6 +386,7 @@ SYNTHETIC_DIMENSION_MEMBER_IDS: frozenset[int] = frozenset({
 EMPIRICAL_INDICATOR_ID_MAP: dict[int, int] = {
     2928: 2484,  # Tasa de crecimiento anual del índice de precios al consumidor: diciembre a diciembre
     2930: 4145,  # Tasa de crecimiento anual del índice de precios al consumidor subyacente: diciembre a diciembre
+    4145: 4145,  # Tasa de crecimiento anual del índice de precios al consumidor subyacente: diciembre a diciembre
     729: 2204,   # Producto interno bruto (PIB) total anual a precios constantes en dólares
     730: 2206,   # Producto interno bruto (PIB) total anual por habitante a precios constantes en dólares
     731: 286,    # Producto interno bruto trimestral por tipo del gasto a precios constantes
@@ -641,6 +643,19 @@ VERTICAL_SLICE_INDICATORS: dict[int, IndicatorMetadata] = {
         supported_facets=set(),
         relationships={
             2928: RelationshipType.BREAKDOWN_OF,
+        },
+    ),
+    # 17b. IPC subyacente
+    4145: IndicatorMetadata(
+        indicator_id=4145,
+        name="Tasa de crecimiento anual del índice de precios al consumidor subyacente: diciembre a diciembre",
+        concept="IPC_SUBYACENTE",
+        measure_type=MeasureType.TASA_VARIACION_INTERANUAL,
+        unit="%",
+        supported_facets=set(),
+        relationships={
+            2928: RelationshipType.ALTERNATIVE_MEASURE,
+            2484: RelationshipType.ALTERNATIVE_MEASURE,
         },
     ),
     # 18. Deuda pública % PIB
@@ -1007,6 +1022,7 @@ OFFICIAL_25_CANONICAL_DEFAULTS: dict[str, int] = {
     "PIB_TRIMESTRAL": 731,
     "GINI": 3289,
     "IPC_GENERAL": 2928,
+    "IPC_SUBYACENTE": 4145,
     "IPC_ALIMENTOS": 2929,
     "INFLACION_ALIMENTOS": 2929,
     "IPC_TRANSPORTE_ENERGIA": 2930,
@@ -1049,6 +1065,7 @@ LEGACY_50_CANONICAL_DEFAULTS: dict[str, int] = {
     "PIB_TRIMESTRAL": 2447,
     "GINI": 3289,
     "IPC_GENERAL": 365,
+    "IPC_SUBYACENTE": 4145,
     "IPC_ALIMENTOS": 1684,
     "INFLACION_ALIMENTOS": 2929,
     "IPC_TRANSPORTE_ENERGIA": 2930,

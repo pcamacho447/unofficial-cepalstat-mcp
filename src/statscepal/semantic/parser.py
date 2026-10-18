@@ -691,6 +691,20 @@ class QueryParser:
         elif any(
             term in clean
             for term in [
+                "subyacente",
+                "inflacion subyacente",
+                "ipc subyacente",
+                "inflacion basica",
+                "inflacion core",
+                "core anual",
+                "core inflation",
+                "precios subyacentes",
+            ]
+        ):
+            intent.root_concept = "IPC_SUBYACENTE"
+        elif any(
+            term in clean
+            for term in [
                 "ipc",
                 "precios al consumidor",
                 "costo de la vida",
