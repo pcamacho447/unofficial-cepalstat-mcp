@@ -370,7 +370,18 @@ DEFAULT_FACETS: list[FacetDefinition] = [
         query_triggers=(
             QueryTriggerRule(
                 canonical_value="SEXO_DESGLOSE",
-                phrases=("por sexo", "segun sexo", "por genero", "segun genero"),
+                phrases=(
+                    "por sexo",
+                    "segun sexo",
+                    "por genero",
+                    "segun genero",
+                    "hombres y mujeres",
+                    "mujeres y hombres",
+                    "entre mujeres y hombres",
+                    "entre hombres y mujeres",
+                    "hombres vs mujeres",
+                    "mujeres vs hombres",
+                ),
             ),
             QueryTriggerRule(
                 canonical_value="FEMENINO",

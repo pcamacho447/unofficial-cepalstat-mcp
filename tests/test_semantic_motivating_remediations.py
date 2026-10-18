@@ -40,3 +40,35 @@ def test_inflacion_general_still_routes_to_2928(engine):
     res = engine.resolve("inflacion anual en chile")
     assert res.status == ResolutionStatus.RESOLVED
     assert res.selected_candidate.indicator_id == 2928
+
+
+def test_brecha_ingresos_laborales_mujeres_y_hombres_routes_to_3333_without_unilateral_filter(engine, parser):
+    res = engine.resolve("brecha de ingresos laborales entre mujeres y hombres en argentina")
+    assert res.status == ResolutionStatus.RESOLVED
+    assert res.selected_candidate is not None
+    assert res.selected_candidate.indicator_id == 3333
+    # Crucial: Must NOT unilaterally filter to just Mujeres or just Hombres
+    assert res.applied_filters.facets.get("sexo") is None or res.applied_filters.facets.get("sexo") in ("AMBOS", "RELACION", "BRECHA")
+    # Facets from parser must not contain single-sex filter
+    intent = parser.parse("brecha de ingresos laborales entre mujeres y hombres en argentina")
+    assert intent.facets.get("sexo") is None or intent.facets.get("sexo") not in ("MUJERES", "HOMBRES")
+
+
+def test_relacion_ingreso_medio_mujeres_y_hombres_routes_to_3333(engine):
+    res = engine.resolve("relacion de ingreso medio entre mujeres y hombres en chile")
+    assert res.status == ResolutionStatus.RESOLVED
+    assert res.selected_candidate.indicator_id == 3333
+
+
+def test_brecha_salarial_de_genero_routes_to_3333(engine):
+    res = engine.resolve("brecha salarial de genero en uruguay")
+    assert res.status == ResolutionStatus.RESOLVED
+    assert res.selected_candidate.indicator_id == 3333
+
+
+def test_ingreso_laboral_solo_mujeres_still_routes_to_3339_with_mujeres_facet(engine):
+    res = engine.resolve("ingreso laboral de las mujeres en argentina")
+    assert res.status == ResolutionStatus.RESOLVED
+    assert res.selected_candidate.indicator_id == 3339
+    assert res.applied_filters.facets.get("sexo") in ("FEMENINO", "MUJERES")
+

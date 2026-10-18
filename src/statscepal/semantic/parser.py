@@ -757,7 +757,24 @@ class QueryParser:
 
 
         # Mercado Laboral & Pobreza & Brecha Salarial
-        elif "brecha salarial" in clean:
+        elif any(
+            term in clean
+            for term in [
+                "brecha salarial",
+                "brecha de ingresos",
+                "brecha de ingreso",
+                "brecha de genero",
+                "relacion de ingreso",
+                "relacion de ingresos",
+                "relacion del ingreso",
+                "diferencia de ingresos entre",
+                "diferencia salarial entre",
+                "diferencia de salario entre",
+            ]
+        ) and (
+            any(term in clean for term in ["genero", "mujeres", "hombres", "sexo", "laboral", "laborales", "salarial", "salariales", "trabajadores"])
+            or "brecha salarial" in clean
+        ):
             intent.root_concept = "BRECHA_SALARIAL"
         elif any(term in clean for term in ["cabros", "desocupacion de los pibes", "chavos sin chamba"]) and any(term in clean for term in ["sin pega", "desempleo", "desocupacion", "paro", "sin chamba"]):
             intent.root_concept = "DESEMPLEO_JUVENIL_15_24"
@@ -812,6 +829,15 @@ class QueryParser:
             intent.root_concept = "GINI"
         elif any(term in clean for term in ["poblacion", "habitantes", "demografia", "demografico", "demograficos"]):
             intent.root_concept = "POBLACION"
+
+        # Ensure gender ratio / comparison concepts don't unilaterally filter to a single sex
+        if intent.root_concept == "BRECHA_SALARIAL":
+            facets.pop("sexo", None)
+        elif (
+            any(t in clean for t in ["mujeres", "mujer", "femenin"])
+            and any(t in clean for t in ["hombres", "hombre", "masculin"])
+        ):
+            facets["sexo"] = "SEXO_DESGLOSE"
 
         intent.facets = facets
         return intent
