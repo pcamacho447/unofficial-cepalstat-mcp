@@ -1,0 +1,352 @@
+[
+  {
+    "id": "ADV_A01",
+    "cluster": "FAMILIA_A_SECTORIAL_MICRO",
+    "query": "valor agregado manufacturero por habitante en mexico",
+    "expected_status": "ABSTAINED",
+    "expected_indicator_id": null,
+    "forbidden_indicator_id": 730,
+    "expected_reason": "UNRESOLVED_SPECIFICITY",
+    "rationale": "La manufactura es solo una rama del PIB (~18% en MEX). Confundir VAM per cápita con PIB per cápita (ID 730) es una sustitución falsa inaceptable."
+  },
+  {
+    "id": "ADV_A02",
+    "cluster": "FAMILIA_A_SECTORIAL_MICRO",
+    "query": "salario minimo agricola en guatemala",
+    "expected_status": "ALTERNATIVE_PROPOSED",
+    "expected_indicator_id": 3337,
+    "max_score": 0.65,
+    "rationale": "El salario mínimo agrícola está diferenciado por comisiones paritarias; se ofrece el salario mínimo real general como alternativa degradada."
+  },
+  {
+    "id": "ADV_A03",
+    "cluster": "FAMILIA_A_SECTORIAL_MICRO",
+    "query": "inversion extranjera directa en el sector telecomunicaciones en colombia",
+    "expected_status": "ALTERNATIVE_PROPOSED",
+    "expected_indicator_id": 4231,
+    "max_score": 0.65,
+    "rationale": "CEPAL publica IED total pero no desglosada para telecomunicaciones; proponer IED total con score degradado 0.65."
+  },
+  {
+    "id": "ADV_A04",
+    "cluster": "FAMILIA_A_SECTORIAL_MICRO",
+    "query": "precio de exportacion del litio en chile",
+    "expected_status": "ABSTAINED",
+    "expected_indicator_id": null,
+    "forbidden_indicator_id": 4452,
+    "rationale": "El litio no forma parte de la canasta clásica de precios de productos básicos de CEPAL. Abstención requerida."
+  },
+  {
+    "id": "ADV_A05",
+    "cluster": "FAMILIA_A_SECTORIAL_MICRO",
+    "query": "precio spot de exportacion del cobre en peru",
+    "expected_status": "ABSTAINED",
+    "expected_indicator_id": null,
+    "rationale": "El índice trimestral 4452 no cubre cotización spot diaria/mensual de exportación de cobre. Debe abstenerse si no está desagregado."
+  },
+  {
+    "id": "ADV_A06",
+    "cluster": "FAMILIA_A_SECTORIAL_MICRO",
+    "query": "exportaciones del sector automotriz en mexico",
+    "expected_status": "ABSTAINED",
+    "expected_indicator_id": null,
+    "forbidden_indicator_id": 1819,
+    "rationale": "No existe serie exclusiva de exportaciones del sector automotriz en el slice; sustituir por exportaciones totales sería falso."
+  },
+  {
+    "id": "ADV_A07",
+    "cluster": "FAMILIA_A_SECTORIAL_MICRO",
+    "query": "salario medio en la mineria en chile",
+    "expected_status": "ABSTAINED",
+    "expected_indicator_id": null,
+    "forbidden_indicator_id": 128,
+    "expected_reason": "UNRESOLVED_SPECIFICITY",
+    "rationale": "La minería tiene primas salariales de más de 100% sobre el salario medio general. Asignar el salario medio general ID 128 a ciegas es engañoso."
+  },
+  {
+    "id": "ADV_A08",
+    "cluster": "FAMILIA_A_SECTORIAL_MICRO",
+    "query": "importaciones de fertilizantes en brasil",
+    "expected_status": "ABSTAINED",
+    "expected_indicator_id": null,
+    "rationale": "CEPAL mide uso ambiental de fertilizantes, no la balanza comercial desagregada por insumos agroquímicos."
+  },
+  {
+    "id": "ADV_A09",
+    "cluster": "FAMILIA_A_SECTORIAL_MICRO",
+    "query": "gasto publico en medicamentos y salud en argentina",
+    "expected_status": "ABSTAINED",
+    "expected_indicator_id": null,
+    "rationale": "No existe serie desagregada de medicamentos ni salud aislada en el slice activo. Abstención rigurosa."
+  },
+  {
+    "id": "ADV_A10",
+    "cluster": "FAMILIA_A_SECTORIAL_MICRO",
+    "query": "gasto militar y de defensa como porcentaje del pib en colombia",
+    "expected_status": "ABSTAINED",
+    "expected_indicator_id": null,
+    "expected_reason": "UNRESOLVED_SPECIFICITY",
+    "rationale": "Estadísticas militares y de defensa están totalmente excluidas del mandato institucional de CEPAL."
+  },
+  {
+    "id": "ADV_B01",
+    "cluster": "FAMILIA_B_ALCANCE_INSTITUCIONAL",
+    "query": "deuda del gobierno general en porcentaje del pib en brasil",
+    "expected_status": "ALTERNATIVE_PROPOSED",
+    "expected_indicator_id": 1240,
+    "max_score": 0.65,
+    "rationale": "El indicador 1240 es Deuda del Gobierno Central; proponerlo como alternativa advirtiendo que no cubre el Gobierno General."
+  },
+  {
+    "id": "ADV_B02",
+    "cluster": "FAMILIA_B_ALCANCE_INSTITUCIONAL",
+    "query": "deficit fiscal global en porcentaje del pib en uruguay",
+    "expected_status": "ALTERNATIVE_PROPOSED",
+    "expected_indicator_id": 1241,
+    "max_score": 0.65,
+    "rationale": "El indicador 1241 es Balance Primario (excluye intereses); proponerlo como alternativa aclarando que no es el déficit global/financiero."
+  },
+  {
+    "id": "ADV_B03",
+    "cluster": "FAMILIA_B_ALCANCE_INSTITUCIONAL",
+    "query": "salario minimo nominal en colombia",
+    "expected_status": "ALTERNATIVE_PROPOSED",
+    "expected_indicator_id": 3337,
+    "max_score": 0.65,
+    "rationale": "CEPALSTAT publica salario mínimo real; ofrecer el índice real advirtiendo que no es en moneda corriente nominal."
+  },
+  {
+    "id": "ADV_B04",
+    "cluster": "FAMILIA_B_ALCANCE_INSTITUCIONAL",
+    "query": "tasa de interes de politica monetaria en chile",
+    "expected_status": "ABSTAINED",
+    "expected_indicator_id": null,
+    "rationale": "Tasas de política monetaria son competencia exclusiva del Banco Central, fuera del catálogo activo del motor."
+  },
+  {
+    "id": "ADV_B05",
+    "cluster": "FAMILIA_B_ALCANCE_INSTITUCIONAL",
+    "query": "tipo de cambio del dolar blue informal en argentina",
+    "expected_status": "ABSTAINED",
+    "expected_indicator_id": null,
+    "forbidden_indicator_id": 2179,
+    "rationale": "CEPAL no publica tipos de cambio informales/paralelos. Abstención estricta para evitar confusión cambiaria."
+  },
+  {
+    "id": "ADV_B06",
+    "cluster": "FAMILIA_B_ALCANCE_INSTITUCIONAL",
+    "query": "recaudacion del iva como porcentaje del pib en peru",
+    "expected_status": "ALTERNATIVE_PROPOSED",
+    "expected_indicator_id": 1242,
+    "max_score": 0.65,
+    "rationale": "El indicador 1242 es recaudación tributaria total; proponerlo como alternativa indicando que no desagrega el IVA."
+  },
+  {
+    "id": "ADV_B07",
+    "cluster": "FAMILIA_B_ALCANCE_INSTITUCIONAL",
+    "query": "coeficiente de gini laboral antes de transferencias en chile",
+    "expected_status": "ALTERNATIVE_PROPOSED",
+    "expected_indicator_id": 3289,
+    "max_score": 0.65,
+    "rationale": "El Gini oficial 3289 mide ingreso disponible de los hogares; ofrecerlo advirtiendo que no es el Gini laboral de mercado."
+  },
+  {
+    "id": "ADV_B08",
+    "cluster": "FAMILIA_B_ALCANCE_INSTITUCIONAL",
+    "query": "tasa de ahorro de los hogares en mexico",
+    "expected_status": "ABSTAINED",
+    "expected_indicator_id": null,
+    "rationale": "El marco de CEPALSTAT publica ahorro nacional consolidado, no ahorro institucional de los hogares."
+  },
+  {
+    "id": "ADV_B09",
+    "cluster": "FAMILIA_B_ALCANCE_INSTITUCIONAL",
+    "query": "gasto en consumo final del gobierno en bolivia",
+    "expected_status": "ABSTAINED",
+    "expected_indicator_id": null,
+    "forbidden_indicator_id": 729,
+    "expected_reason": "UNRESOLVED_SPECIFICITY",
+    "rationale": "El consumo de gobierno es solo un componente del PIB. No sustituir por PIB agregado."
+  },
+  {
+    "id": "ADV_B10",
+    "cluster": "FAMILIA_B_ALCANCE_INSTITUCIONAL",
+    "query": "inversion fija privada vs publica en ecuador",
+    "expected_status": "ABSTAINED",
+    "expected_indicator_id": null,
+    "rationale": "No existe desglose público/privado de la formación bruta de capital en el slice activo."
+  },
+  {
+    "id": "ADV_C01",
+    "cluster": "FAMILIA_C_FRONTERAS_SOCIALES_ODS",
+    "query": "pobreza multidimensional en colombia",
+    "expected_status": "ABSTAINED",
+    "expected_indicator_id": null,
+    "forbidden_indicator_id": 3334,
+    "expected_reason": "UNRESOLVED_SPECIFICITY",
+    "rationale": "La pobreza multidimensional no puede sustituirse por pobreza monetaria por ingresos (ID 3334)."
+  },
+  {
+    "id": "ADV_C02",
+    "cluster": "FAMILIA_C_FRONTERAS_SOCIALES_ODS",
+    "query": "esperanza de vida al nacer de los hombres en paraguay",
+    "expected_status": "ABSTAINED",
+    "expected_indicator_id": null,
+    "rationale": "Esperanza de vida al nacer no está presente en el corte activo de 50 indicadores; abstenerse sin alucinar."
+  },
+  {
+    "id": "ADV_C03",
+    "cluster": "FAMILIA_C_FRONTERAS_SOCIALES_ODS",
+    "query": "tasa de ocupacion carcelaria y hacinamiento en el salvador",
+    "expected_status": "ABSTAINED",
+    "expected_indicator_id": null,
+    "rationale": "Indicador ODS 16 fuera del corte macro actual. Abstención rigurosa."
+  },
+  {
+    "id": "ADV_C04",
+    "cluster": "FAMILIA_C_FRONTERAS_SOCIALES_ODS",
+    "query": "poblacion que ha pensado en emigrar en honduras",
+    "expected_status": "ABSTAINED",
+    "expected_indicator_id": null,
+    "expected_reason": "UNRESOLVED_SPECIFICITY",
+    "rationale": "Percepción subjetiva de migración no soportada en el corte vertical activo."
+  },
+  {
+    "id": "ADV_C05",
+    "cluster": "FAMILIA_C_FRONTERAS_SOCIALES_ODS",
+    "query": "remesas de trabajadores como porcentaje del pib en guatemala",
+    "expected_status": "ABSTAINED",
+    "expected_indicator_id": null,
+    "forbidden_indicator_id": 729,
+    "rationale": "Las remesas son flujos externos clave (~19% PIB en GTM); prohibido sustituir por PIB agregado total (ID 729)."
+  },
+  {
+    "id": "ADV_C06",
+    "cluster": "FAMILIA_C_FRONTERAS_SOCIALES_ODS",
+    "query": "empleo informal en el sector manufacturero en mexico",
+    "expected_status": "ABSTAINED",
+    "expected_indicator_id": null,
+    "rationale": "No existe empleo informal sectorial por rama manufacturera en el slice actual."
+  },
+  {
+    "id": "ADV_C07",
+    "cluster": "FAMILIA_C_FRONTERAS_SOCIALES_ODS",
+    "query": "tasa de graduacion o finalizacion de la educacion secundaria en uruguay",
+    "expected_status": "ABSTAINED",
+    "expected_indicator_id": null,
+    "rationale": "Finalización educativa secundaria (ODS 4) no está en el corte macroeconómico activo."
+  },
+  {
+    "id": "ADV_C08",
+    "cluster": "FAMILIA_C_FRONTERAS_SOCIALES_ODS",
+    "query": "superficie de agricultura organica certificada en argentina",
+    "expected_status": "ABSTAINED",
+    "expected_indicator_id": null,
+    "rationale": "Indicador ambiental especializado fuera del corte activo."
+  },
+  {
+    "id": "ADV_C09",
+    "cluster": "FAMILIA_C_FRONTERAS_SOCIALES_ODS",
+    "query": "indice de percepcion de corrupcion en venezuela",
+    "expected_status": "ABSTAINED",
+    "expected_indicator_id": null,
+    "rationale": "Percepciones de corrupción Latinobarómetro/ODS fuera del corte macro actual."
+  },
+  {
+    "id": "ADV_C10",
+    "cluster": "FAMILIA_C_FRONTERAS_SOCIALES_ODS",
+    "query": "concentracion de la riqueza del 1 por ciento mas rico forbes en chile",
+    "expected_status": "ABSTAINED",
+    "expected_indicator_id": null,
+    "forbidden_indicator_id": 3289,
+    "rationale": "Riqueza patrimonial extrema está fuera de las encuestas de hogares de CEPAL. No sustituir por Gini."
+  },
+  {
+    "id": "ADV_D01",
+    "cluster": "FAMILIA_D_DINAMICA_TEMPORAL_FILTROS",
+    "query": "pib trimestral por componente del gasto en brasil",
+    "expected_status": "ABSTAINED",
+    "expected_indicator_id": null,
+    "forbidden_indicator_id": 731,
+    "expected_reason": "UNRESOLVED_SPECIFICITY",
+    "rationale": "El desglose trimestral por tipo de gasto está en la tabla 286, ausente en el slice 50. Prohibido sustituir por PIB trimestral total 731."
+  },
+  {
+    "id": "ADV_D02",
+    "cluster": "FAMILIA_D_DINAMICA_TEMPORAL_FILTROS",
+    "query": "pib trimestral desestacionalizado en mexico",
+    "expected_status": "ALTERNATIVE_PROPOSED",
+    "expected_indicator_id": 731,
+    "max_score": 0.65,
+    "rationale": "CEPAL publica series trimestrales originales interanuales; proponer como alternativa advirtiendo la falta de ajuste estacional."
+  },
+  {
+    "id": "ADV_D03",
+    "cluster": "FAMILIA_D_DINAMICA_TEMPORAL_FILTROS",
+    "query": "pib potencial y brecha del producto en chile",
+    "expected_status": "ABSTAINED",
+    "expected_indicator_id": null,
+    "forbidden_indicator_id": 729,
+    "rationale": "El PIB potencial y brecha del producto son variables latentes inobservables de modelado, no series estadísticas publicadas."
+  },
+  {
+    "id": "ADV_D04",
+    "cluster": "FAMILIA_D_DINAMICA_TEMPORAL_FILTROS",
+    "query": "precio del petroleo brent spot mensual en ecuador",
+    "expected_status": "ABSTAINED",
+    "expected_indicator_id": null,
+    "rationale": "Precios spot mensuales de marcadores individuales no están en el slice de CEPAL."
+  },
+  {
+    "id": "ADV_D05",
+    "cluster": "FAMILIA_D_DINAMICA_TEMPORAL_FILTROS",
+    "query": "volumen de exportaciones fisicas de petroleo en venezuela",
+    "expected_status": "ABSTAINED",
+    "expected_indicator_id": null,
+    "rationale": "No existe serie de barriles exportados netos en el slice actual."
+  },
+  {
+    "id": "ADV_D06",
+    "cluster": "FAMILIA_D_DINAMICA_TEMPORAL_FILTROS",
+    "query": "variacion trimestral del salario real en uruguay",
+    "expected_status": "ALTERNATIVE_PROPOSED",
+    "expected_indicator_id": 128,
+    "max_score": 0.65,
+    "rationale": "El salario real oficial en CEPALSTAT es anual; proponer el índice anual aclarando la falta de frecuencia trimestral."
+  },
+  {
+    "id": "ADV_D07",
+    "cluster": "FAMILIA_D_DINAMICA_TEMPORAL_FILTROS",
+    "query": "desempleo abierto trimestral en argentina",
+    "expected_status": "ALTERNATIVE_PROPOSED",
+    "expected_indicator_id": 127,
+    "max_score": 0.65,
+    "rationale": "La tasa de desempleo en el slice 50 es anual; ofrecer la serie anual como alternativa degradada."
+  },
+  {
+    "id": "ADV_D08",
+    "cluster": "FAMILIA_D_DINAMICA_TEMPORAL_FILTROS",
+    "query": "inflacion subyacente sin alimentos y energia en brasil",
+    "expected_status": "ABSTAINED",
+    "expected_indicator_id": null,
+    "forbidden_indicator_id": 2439,
+    "rationale": "Inflación subyacente excluye componentes volátiles; prohibido sustituir por inflación general IPC (ID 2439)."
+  },
+  {
+    "id": "ADV_D09",
+    "cluster": "FAMILIA_D_DINAMICA_TEMPORAL_FILTROS",
+    "query": "terminos de intercambio mensuales en peru",
+    "expected_status": "ALTERNATIVE_PROPOSED",
+    "expected_indicator_id": 1244,
+    "max_score": 0.65,
+    "rationale": "Los términos de intercambio son de periodicidad anual; sugerir el índice anual con score 0.65."
+  },
+  {
+    "id": "ADV_D10",
+    "cluster": "FAMILIA_D_DINAMICA_TEMPORAL_FILTROS",
+    "query": "indice de tipo de cambio real bilateral con estados unidos en colombia",
+    "expected_status": "ABSTAINED",
+    "expected_indicator_id": null,
+    "rationale": "El TCRE publicado por CEPAL es multilateral regional; abstenerse o no confundir con paridad bilateral con EE.UU."
+  }
+]

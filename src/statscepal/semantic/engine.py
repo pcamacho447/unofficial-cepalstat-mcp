@@ -32,18 +32,40 @@ CRITICAL_SPECIFICITY_TOKENS: frozenset[str] = frozenset({
     "cobre", "petroleo", "soja", "trigo", "cafe", "carne",
     "multidimensional", "organica", "boscosa", "cientificas",
     "corrupcion", "emigrar", "captura",
+    "telecomunicaciones", "general", "generales", "global", "financiero",
+    "nominal", "nominales", "iva", "laboral", "laborales",
+    "remesas", "remesa", "desestacionalizado", "desestacionalizada", "estacional",
+    "potencial", "brecha",
 })
 
 GENERAL_AGGREGATE_FALLBACKS: dict[int, set[str]] = {
     3337: {
         "agricola", "agricolas", "agropecuario", "agropecuaria",
         "industrial", "industria", "manufacturero", "manufactura",
-        "minero", "minera",
+        "minero", "minera", "nominal", "nominales",
     },
     128: {
         "agricola", "agricolas", "agropecuario", "agropecuaria",
         "industrial", "industria", "manufacturero", "manufactura",
-        "minero", "minera",
+        "minero", "minera", "nominal", "nominales",
+    },
+    4231: {
+        "telecomunicaciones", "sector", "sectores", "financiero", "minero",
+    },
+    1240: {
+        "general", "generales",
+    },
+    1241: {
+        "global", "financiero",
+    },
+    1242: {
+        "iva", "renta", "aranceles",
+    },
+    3289: {
+        "laboral", "laborales",
+    },
+    731: {
+        "desestacionalizado", "desestacionalizada", "estacional",
     },
 }
 
@@ -590,6 +612,25 @@ class SemanticResolutionEngine:
                         execution_trace=trace,
                         latency_ms=latency,
                     )
+
+        # Frequency specificity check (Quarterly/Monthly vs Annual series)
+        if intent.frequency in ("TRIMESTRAL", "MENSUAL"):
+            is_supported_freq = (intent.frequency == "TRIMESTRAL" and target_indicator_id in (731, 2447))
+            if not is_supported_freq:
+                is_alternative_fallback = True
+                selected.relevance_score = 0.65
+                freq_str = intent.frequency.lower()
+                selected.selection_reason = (
+                    f"El indicador {selected.indicator_id} ('{selected.name}') se publica con frecuencia anual; "
+                    f"CEPALSTAT no dispone de frecuencia {freq_str} para esta serie en este corte."
+                )
+                conversational_hint = (
+                    f"Nota: Se propone como alternativa el indicador anual {selected.indicator_id} ('{selected.name}'), "
+                    f"pero la consulta solicitaba periodicidad {freq_str}. CEPALSTAT publica la serie con frecuencia anual."
+                )
+                trace.append(
+                    f"[Stage 3: Frequency Audit] DOWNGRADED to ALTERNATIVE_PROPOSED (Score: 0.65): Requested frequency '{intent.frequency}' not available, proposing annual series."
+                )
 
         # ----------------------------------------------------
         # Stage 5: Temporal Audit & Anchor Points

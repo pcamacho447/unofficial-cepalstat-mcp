@@ -255,7 +255,7 @@ SPANISH_STOPWORDS: frozenset[str] = frozenset({
     "porcentaje", "porcentajes", "%",
     "oficial", "oficiales",
     "total", "totales",
-    "general", "generales",
+    "sector", "sectores",
     "agregado", "agregada", "agregados", "agregadas",
     "incidencia", "participacion", "proporcion", "evolucion", "desempeno",
     "variacion", "variaciones", "situacion", "medicion", "medida", "medidas",
@@ -277,8 +277,6 @@ CURRENCY_AND_UNIT_PHRASES: tuple[str, ...] = (
     "pesos",
     "soles",
     "reales",
-    "nominal",
-    "nominales",
     "real",
     "fob/cif",
     "fob cif",
@@ -853,7 +851,7 @@ class QueryParser:
                     consumed_phrases.append(t)
         elif "inversion extranjera" in clean or re.search(r"\bied\b", clean):
             intent.root_concept = "INVERSION_EXTRANJERA_DIRECTA"
-            for t in ["inversion extranjera", "ied"]:
+            for t in ["inversion extranjera directa", "inversion extranjera", "ied"]:
                 if t in clean:
                     consumed_phrases.append(t)
         elif any(term in clean for term in [
@@ -1198,9 +1196,9 @@ class QueryParser:
                 consumed_phrases.append("laboral")
             elif facets.get("edad") == "JUVENTUD":
                 intent.root_concept = "SALARIO"
-            elif any(term in clean for term in ["laburantes", "trabajadores", "trabajadores rasos", "asalariados", "medio", "remuneraciones", "promedio"]):
+            elif any(term in clean for term in ["salario real", "sueldo real", "salarios reales", "real", "reales", "laburantes", "trabajadores", "trabajadores rasos", "asalariados", "medio", "remuneraciones", "promedio"]):
                 intent.root_concept = "SALARIO_REAL"
-                for t in ["laburantes", "trabajadores", "trabajadores rasos", "asalariados", "medio", "remuneraciones", "promedio"]:
+                for t in ["salario real", "sueldo real", "salarios reales", "real", "reales", "laburantes", "trabajadores", "trabajadores rasos", "asalariados", "medio", "remuneraciones", "promedio"]:
                     if t in clean:
                         consumed_phrases.append(t)
             else:
