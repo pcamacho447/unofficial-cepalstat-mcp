@@ -27,11 +27,20 @@ CLUSTERS = [
 ]
 
 
+def _load_adversarial_cases() -> list[dict]:
+    if BENCHMARK_40_PATH.exists():
+        with open(BENCHMARK_40_PATH, "r", encoding="utf-8") as f:
+            return json.load(f)
+    return []
+
+
+ADVERSARIAL_CASES = _load_adversarial_cases()
+
+
 @pytest.fixture(scope="module")
 def adversarial_cases() -> list[dict]:
     assert BENCHMARK_40_PATH.exists(), f"Adversarial benchmark dataset not found at {BENCHMARK_40_PATH}"
-    with open(BENCHMARK_40_PATH, "r", encoding="utf-8") as f:
-        cases = json.load(f)
+    cases = ADVERSARIAL_CASES
     assert len(cases) == 40, f"Expected 40 adversarial cases, found {len(cases)}"
     return cases
 
@@ -76,10 +85,7 @@ def evaluate_single_adversarial_case(item: dict, engine: SemanticResolutionEngin
     reason_match = True
     if item["expected_status"] == "ABSTAINED" and item.get("expected_reason"):
         act_reason = str(resp.abstention_reason or "")
-        reason_match = (
-            item["expected_reason"] in act_reason
-            or act_reason in {"LOW_CONCEPTUAL_RELEVANCE", "UNRESOLVED_SPECIFICITY", "UNSUPPORTED_FACET"}
-        )
+        reason_match = item["expected_reason"] in act_reason
 
     passed = (
         status_match
@@ -163,10 +169,9 @@ def test_adversarial_suite_summary(adversarial_cases: list[dict], engine: Semant
     assert p50_latency < 1.0, f"Adversarial latency p50 must be < 1.0ms, got {p50_latency:.3f}ms"
 
 
-@pytest.mark.parametrize("case_index", range(40))
-def test_individual_adversarial_case(case_index: int, adversarial_cases: list[dict], engine: SemanticResolutionEngine) -> None:
+@pytest.mark.parametrize("case", ADVERSARIAL_CASES, ids=[c["id"] for c in ADVERSARIAL_CASES])
+def test_individual_adversarial_case(case: dict, engine: SemanticResolutionEngine) -> None:
     """Verifies each adversarial query independently for clear granular pytest reporting."""
-    case = adversarial_cases[case_index]
     result = evaluate_single_adversarial_case(case, engine)
     assert result["passed"], (
         f"Case {case['id']} FAILED: Query='{case['query']}'. "

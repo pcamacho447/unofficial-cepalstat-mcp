@@ -124,3 +124,63 @@ def test_guard_preserves_canonical_queries():
     assert resp2.selected_candidate.indicator_id == 3328
     assert resp2.selected_candidate.relevance_score == 1.0
 
+
+def test_token_coverage_does_not_falsely_match_substrings():
+    """Verify that short tokens like 'iva' do not match inside words like 'privada'."""
+    from statscepal.semantic.engine import _is_token_covered_by_indicator
+    from statscepal.semantic.registry import IndicatorMetadata
+
+    mock_meta = IndicatorMetadata(
+        indicator_id=9999,
+        name="Inversion privada y actividad productiva",
+        concept="INVERSION",
+        measure_type="PORCENTAJE",
+        unit="%",
+        supported_facets=set(),
+    )
+    # 'iva' is a substring of privada and productiva, but as a word it is NOT covered
+    assert not _is_token_covered_by_indicator("iva", mock_meta, None)
+
+
+def test_token_coverage_matches_spanish_gender_inflections():
+    """Verify that Spanish gender inflections (agropecuario/agropecuaria) match properly."""
+    from statscepal.semantic.engine import _is_token_covered_by_indicator
+    from statscepal.semantic.registry import IndicatorMetadata
+
+    mock_meta = IndicatorMetadata(
+        indicator_id=9999,
+        name="Produccion del sector agropecuario",
+        concept="PRODUCCION",
+        measure_type="INDICE",
+        unit="indice",
+        supported_facets=set(),
+    )
+    assert _is_token_covered_by_indicator("agropecuaria", mock_meta, None)
+    assert _is_token_covered_by_indicator("agropecuarios", mock_meta, None)
+    assert _is_token_covered_by_indicator("agropecuarias", mock_meta, None)
+
+
+def test_government_consumption_triggers_unresolved_specificity():
+    """Verify that ADV_B09 (consumo final del gobierno) resolves to UNRESOLVED_SPECIFICITY and forbids 729."""
+    from statscepal.semantic import ResolutionStatus, SemanticResolutionEngine
+
+    engine = SemanticResolutionEngine()
+    resp = engine.resolve("gasto en consumo final del gobierno en bolivia")
+    assert resp.status == ResolutionStatus.ABSTAINED
+    assert resp.selected_candidate is None
+    assert "UNRESOLVED_SPECIFICITY" in str(resp.abstention_reason)
+
+
+def test_medication_and_health_expenditure_proposes_alternative_4405():
+    """Verify that ADV_A09 proposes aggregate social expenditure 4405 with score 0.65."""
+    from statscepal.semantic import ResolutionStatus, SemanticResolutionEngine
+
+    engine = SemanticResolutionEngine()
+    resp = engine.resolve("gasto publico en medicamentos y salud en argentina")
+    assert resp.status == ResolutionStatus.ALTERNATIVE_PROPOSED
+    assert resp.selected_candidate is not None
+    assert resp.selected_candidate.indicator_id == 4405
+    assert resp.selected_candidate.relevance_score == 0.65
+    assert "medicamentos" in str(resp.conversational_hint)
+
+

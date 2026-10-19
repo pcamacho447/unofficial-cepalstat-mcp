@@ -253,3 +253,33 @@ Verify:
 git add docs/superpowers/plans/2026-10-18-unconsumed-semantic-tokens-guard-plan.md
 git commit -m "docs: add implementation plan for unconsumed semantic tokens guard"
 ```
+
+---
+
+### Review Findings
+
+#### Decision Needed (Resolved)
+- [x] [Review][Decision] Spec vs JSON Dataset Expectation Alignment on Alternative vs Abstain — User selected Option 2: propose aggregate fallback indicators with `ALTERNATIVE_PROPOSED` (score 0.65) and conversational hint explaining the coverage limitation for cases A5, A9, C6, D5, D10.
+
+#### Patches
+- [x] [Review][Patch] Unanchored Substring Matching & Plural/Gender Stemming in Specificity Guard [src/statscepal/semantic/engine.py:97-107]
+- [x] [Review][Patch] Token Discrepancies and Omissions in Specificity Sets (`CRITICAL_SPECIFICITY_TOKENS` and `GENERAL_AGGREGATE_FALLBACKS`) [src/statscepal/semantic/engine.py:27-70, src/statscepal/semantic/parser.py:265]
+- [x] [Review][Patch] Vacuous Abstention Reason Matching in Test Runner and Unrecognized Root Concept in ADV_B09 [tests/test_adversarial_benchmark_40.py:79-82, src/statscepal/semantic/parser.py]
+- [x] [Review][Patch] Dynamic Parametrization in Adversarial Test Suite [tests/test_adversarial_benchmark_40.py:166]
+- [x] [Review][Patch] Frequency Audit Overwrites Specificity Warning Hint and Selection Reason [src/statscepal/semantic/engine.py:617-633]
+- [x] [Review][Patch] Missing `UNRESOLVED_SPECIFICITY` in BenchmarkEvaluator valid_reasons [src/statscepal/semantic/evaluator.py:134-142]
+- [x] [Review][Patch] Verbatim Duplicated Cleanup Block for `moneda nacional` in `QueryParser.parse()` [src/statscepal/semantic/parser.py:532, 1230]
+- [x] [Review][Patch] Implement `ALTERNATIVE_PROPOSED` fallback (score 0.65) and conversational hints for benchmark cases A5, A9, C6, D5, D10 [tests/benchmark/adversarial_benchmark_cases_40.json, src/statscepal/semantic/engine.py]
+
+#### Deferred
+- [x] [Review][Defer] Documented CLI `mcp` Subcommand & Tool Name Alignment in README [README.md:451-463] — deferred: pre-existing / upcoming MCP server implementation feature.
+- [x] [Review][Defer] Missing Test Coverage for `legacy_50` Profile in Adversarial Benchmark [tests/test_adversarial_benchmark_40.py:16] — deferred: test enhancement for secondary profile.
+- [x] [Review][Defer] Latency Threshold Relaxation (< 1.0 ms vs < 0.5 ms) [tests/test_adversarial_benchmark_40.py:163] — deferred: empirical benchmark measurement threshold adjustment.
+
+#### Rejected
+- [x] [Review][Rejected] Broken Documentation Link in Header Badges [README.md:17] — rejected: file `docs/reports/benchmark_200_preguntas.md` exists and is tracked in git.
+- [x] [Review][Rejected] Altering Canonical Synset Term Breaks Standalone "nacional" Queries [src/statscepal/semantic/thesaurus.py:245] — rejected: verified empirically that `pobreza nacional en chile` resolves correctly to 3328 with area=NACIONAL.
+- [x] [Review][Rejected] Loss of Temporal Anchor Status on Alternative Fallback [src/statscepal/semantic/engine.py:824] — rejected: `temporal_info` is attached to response; status ALTERNATIVE_PROPOSED is structurally correct.
+- [x] [Review][Rejected] Polysemic Economic Term "real" Stripped Before Concept Resolution [src/statscepal/semantic/parser.py:280] — rejected: `clean` query is never mutated by `consumed_phrases`.
+- [x] [Review][Rejected] Spec Checklist and Links Discrepancies [docs/reports/2026-10-18-adversarial-benchmark-specification.md] — rejected: spec-editing findings are rejected per triage rules.
+- [x] [Review][Rejected] Rigid Set Containment in GENERAL_AGGREGATE_FALLBACKS [src/statscepal/semantic/engine.py:574-577] — rejected: strict subset containment is intentional by design to prevent false substitutions.

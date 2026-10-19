@@ -1,5 +1,6 @@
 """The 5-stage Semantic Resolution Engine orchestrator."""
 
+import re
 import time
 from typing import Any
 from statscepal.semantic.models import (
@@ -28,12 +29,13 @@ CRITICAL_SPECIFICITY_TOKENS: frozenset[str] = frozenset({
     "manufacturero", "manufactura", "industrial", "industria",
     "agricola", "agricolas", "agropecuario", "agropecuaria",
     "minero", "minera", "mineria", "turismo", "comercial",
-    "componente", "componentes", "gasto", "gastos",
+    "componente", "componentes", "gasto", "gastos", "consumo",
     "cobre", "petroleo", "soja", "trigo", "cafe", "carne",
     "multidimensional", "organica", "boscosa", "cientificas",
     "corrupcion", "emigrar", "captura",
     "telecomunicaciones", "general", "generales", "global", "financiero",
     "nominal", "nominales", "iva", "laboral", "laborales",
+    "renta", "aranceles", "arancel", "subyacente", "medicamentos",
     "remesas", "remesa", "desestacionalizado", "desestacionalizada", "estacional",
     "potencial", "brecha",
 })
@@ -47,7 +49,7 @@ GENERAL_AGGREGATE_FALLBACKS: dict[int, set[str]] = {
     128: {
         "agricola", "agricolas", "agropecuario", "agropecuaria",
         "industrial", "industria", "manufacturero", "manufactura",
-        "minero", "minera", "nominal", "nominales",
+        "nominal", "nominales",
     },
     4231: {
         "telecomunicaciones", "sector", "sectores", "financiero", "minero",
@@ -59,7 +61,10 @@ GENERAL_AGGREGATE_FALLBACKS: dict[int, set[str]] = {
         "global", "financiero",
     },
     1242: {
-        "iva", "renta", "aranceles",
+        "iva", "renta", "aranceles", "arancel",
+    },
+    4405: {
+        "medicamentos", "salud", "farmaceutico", "farmaceutica",
     },
     3289: {
         "laboral", "laborales",
@@ -93,18 +98,27 @@ def _is_token_covered_by_indicator(
                     texts.append(str(m.name))
 
     combined = strip_accents(" ".join(texts)).lower()
+    words = set(re.findall(r"\b[a-z0-9_]+\b", combined))
 
-    if token_norm in combined:
+    if token_norm in words:
         return True
 
-    # Stem check for Spanish plurals / gender
-    stem = token_norm
-    if stem.endswith("es"):
-        stem = stem[:-2]
-    elif stem.endswith("s"):
-        stem = stem[:-1]
-    if len(stem) >= 4 and stem in combined:
-        return True
+    # Stem check for Spanish plurals and gender inflections (-es, -s, -a, -o)
+    def _spanish_stem(w: str) -> str:
+        s = w
+        if s.endswith("es"):
+            s = s[:-2]
+        elif s.endswith("s"):
+            s = s[:-1]
+        if s.endswith("a") or s.endswith("o"):
+            s = s[:-1]
+        return s
+
+    token_stem = _spanish_stem(token_norm)
+    if len(token_stem) >= 3:
+        for w in words:
+            if _spanish_stem(w) == token_stem:
+                return True
 
     return False
 
@@ -620,14 +634,23 @@ class SemanticResolutionEngine:
                 is_alternative_fallback = True
                 selected.relevance_score = 0.65
                 freq_str = intent.frequency.lower()
-                selected.selection_reason = (
+                freq_reason = (
                     f"El indicador {selected.indicator_id} ('{selected.name}') se publica con frecuencia anual; "
                     f"CEPALSTAT no dispone de frecuencia {freq_str} para esta serie en este corte."
                 )
-                conversational_hint = (
+                freq_hint = (
                     f"Nota: Se propone como alternativa el indicador anual {selected.indicator_id} ('{selected.name}'), "
                     f"pero la consulta solicitaba periodicidad {freq_str}. CEPALSTAT publica la serie con frecuencia anual."
                 )
+                if selected.selection_reason:
+                    selected.selection_reason = f"{selected.selection_reason} | {freq_reason}"
+                else:
+                    selected.selection_reason = freq_reason
+
+                if conversational_hint:
+                    conversational_hint = f"{conversational_hint} {freq_hint}"
+                else:
+                    conversational_hint = freq_hint
                 trace.append(
                     f"[Stage 3: Frequency Audit] DOWNGRADED to ALTERNATIVE_PROPOSED (Score: 0.65): Requested frequency '{intent.frequency}' not available, proposing annual series."
                 )

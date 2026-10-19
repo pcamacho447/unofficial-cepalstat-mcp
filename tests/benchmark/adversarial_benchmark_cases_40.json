@@ -75,9 +75,10 @@
     "id": "ADV_A09",
     "cluster": "FAMILIA_A_SECTORIAL_MICRO",
     "query": "gasto publico en medicamentos y salud en argentina",
-    "expected_status": "ABSTAINED",
-    "expected_indicator_id": null,
-    "rationale": "No existe serie desagregada de medicamentos ni salud aislada en el slice activo. Abstención rigurosa."
+    "expected_status": "ALTERNATIVE_PROPOSED",
+    "expected_indicator_id": 4405,
+    "max_score": 0.65,
+    "rationale": "Gasto social en salud/medicamentos no desagregado farmacéuticamente; propone agregado general de gasto social ID 4405."
   },
   {
     "id": "ADV_A10",

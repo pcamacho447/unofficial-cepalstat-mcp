@@ -255,14 +255,13 @@ SPANISH_STOPWORDS: frozenset[str] = frozenset({
     "porcentaje", "porcentajes", "%",
     "oficial", "oficiales",
     "total", "totales",
-    "sector", "sectores",
     "agregado", "agregada", "agregados", "agregadas",
     "incidencia", "participacion", "proporcion", "evolucion", "desempeno",
     "variacion", "variaciones", "situacion", "medicion", "medida", "medidas",
     "registro", "registros", "historico", "historica", "historicos", "historicas",
     "reciente", "recientes", "actual", "actuales", "ultimo", "ultima", "ultimos", "ultimas",
     "nacional", "nacionales", "pais", "todo", "toda", "todos", "todas",
-    "medido", "medida", "medidos", "medidas", "calculado", "calculada",
+    "medido", "medidos", "calculado", "calculada",
     "relacion", "diferencia",
 })
 
@@ -528,10 +527,6 @@ class QueryParser:
         if "pobreza total" in clean and "area" not in facets:
             facets["area"] = "NACIONAL"
             consumed_phrases.append("pobreza total")
-
-        if "moneda nacional" in clean and facets.get("area") == "NACIONAL":
-            if not any(term in clean for term in ["area nacional", "nivel nacional", "total nacional", "todo el pais"]):
-                facets.pop("area", None)
 
         # Sexo
         sexo_match = self.thesaurus.match_synset("facet_sexo", clean)
@@ -828,9 +823,11 @@ class QueryParser:
             for t in ["ingresos tributarios", "recaudacion tributaria", "recaudacion", "tributar", "carga tributaria", "presion fiscal", "presion fiscal tributaria", "dian", "cuantos impuestos", "impuestos", "el fisco", "gobierno central", "gobierno"]:
                 if t in clean:
                     consumed_phrases.append(t)
-        elif "gasto social" in clean:
+        elif any(term in clean for term in ["gasto social", "gasto publico social", "gasto en salud", "gasto publico en salud", "gasto en medicamentos", "gasto publico en medicamentos", "medicamentos y salud"]):
             intent.root_concept = "GASTO_SOCIAL"
-            consumed_phrases.append("gasto social")
+            for t in ["gasto social", "gasto publico social", "gasto publico", "gasto en salud", "gasto en medicamentos", "salud"]:
+                if t in clean:
+                    consumed_phrases.append(t)
         elif "gasto publico en educacion" in clean or ("gasto" in clean and "educacion" in clean):
             intent.root_concept = "GASTO_EDUCACION"
             for t in ["gasto publico en educacion", "gasto", "educacion", "presupuesto"]:
@@ -1056,9 +1053,9 @@ class QueryParser:
             for t in ["corrientes", "moneda nacional"]:
                 if t in clean:
                     consumed_phrases.append(t)
-        elif has_pib or any(term in clean for term in ["crecio la economia", "crecimiento del pib", "crecimiento de la economia", "aparato productivo"]):
+        elif has_pib or any(term in clean for term in ["crecio la economia", "crecimiento del pib", "crecimiento de la economia", "aparato productivo", "consumo final del gobierno", "consumo de gobierno", "consumo del gobierno"]):
             intent.root_concept = "PIB"
-            for t in ["crecio la economia", "crecimiento del pib", "crecimiento de la economia", "aparato productivo"]:
+            for t in ["crecio la economia", "crecimiento del pib", "crecimiento de la economia", "aparato productivo", "final del gobierno", "de gobierno", "del gobierno"]:
                 if t in clean:
                     consumed_phrases.append(t)
 
@@ -1226,6 +1223,9 @@ class QueryParser:
             and any(t in clean for t in ["hombres", "hombre", "masculin"])
         ):
             facets["sexo"] = "SEXO_DESGLOSE"
+
+        if intent.root_concept == "GASTO_SOCIAL":
+            facets.pop("rubro", None)
 
         if "moneda nacional" in clean and facets.get("area") == "NACIONAL":
             if not any(term in clean for term in ["area nacional", "nivel nacional", "total nacional", "todo el pais"]):

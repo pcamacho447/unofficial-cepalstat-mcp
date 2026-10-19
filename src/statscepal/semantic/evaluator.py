@@ -139,6 +139,7 @@ class BenchmarkEvaluator:
                         "LOW_CONCEPTUAL_RELEVANCE",
                         "PERIOD_OUT_OF_RANGE",
                         "UNSUPPORTED_FREQUENCY",
+                        "UNRESOLVED_SPECIFICITY",
                     } - {None}
                     if case.abstention_reason and response.abstention_reason not in valid_reasons:
                         abstention_match = False
