@@ -1,322 +1,243 @@
-# statscepal: Cliente Python, Bitácoras Anti-Sesgo y Agentes para UN CEPALSTAT
+# unofficial-cepalstat-mcp (statscepal)
+
+**Motor de Resolución Semántica, Servidor MCP y Cliente Econométrico Anti-Sesgo para UN CEPALSTAT**
 
 [![Python Version](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/)
-[![Status](https://img.shields.io/badge/tests-203%20passed-brightgreen.svg)]()
-[![Semantic Benchmark](https://img.shields.io/badge/benchmark%20200-100%25%20Top--1-success.svg)](docs/BENCHMARK_200_PREGUNTAS_REPORTE.md)
-[![False Substitution Rate](https://img.shields.io/badge/FSR-0.00%25-brightgreen.svg)](docs/BENCHMARK_200_PREGUNTAS_REPORTE.md)
-[![API Source](https://img.shields.io/badge/CEPALSTAT-Open%20Data-orange.svg)](https://statistics.cepal.org/portal/cepalstat/open-data.html?lang=es)
-
-`statscepal` es un ecosistema completo en Python y un conjunto de herramientas para agentes de Inteligencia Artificial diseñado para interactuar con la **API de Datos Abiertos de la Comisión Económica para América Latina y el Caribe (UN CEPAL / ECLAC)**.
-
-El proyecto incorpora un **sistema de bitácoras certificadas** y un **validador automático anti-sesgo**, permitiendo a analistas humanos y a agentes autónomos realizar investigaciones estadísticas y econométricas **reduciendo el consumo de tokens en un 85% y eliminando alucinaciones de escala y metodología**.
+[![Test Suite](https://img.shields.io/badge/tests-377%20passed-brightgreen.svg)]()
+[![Canonical Benchmark](https://img.shields.io/badge/benchmark%20200-100%25%20Top--1-success.svg)](docs/reports/benchmark_200_preguntas.md)
+[![Adversarial Benchmark](https://img.shields.io/badge/adversarial%2040-100%25%20Top--1-success.svg)](docs/reports/2026-10-18-adversarial-benchmark-specification.md)
+[![False Substitution Rate](https://img.shields.io/badge/FSR-0.00%25-brightgreen.svg)](docs/reports/2026-10-18-adversarial-benchmark-specification.md)
+[![Latency p50](https://img.shields.io/badge/latency%20p50-0.74%20ms-informational.svg)]()
+[![Protocol](https://img.shields.io/badge/protocol-Model%20Context%20Protocol%20(MCP)-blueviolet.svg)](https://modelcontextprotocol.io/)
+[![Source](https://img.shields.io/badge/source-CEPALSTAT%20Open%20Data-orange.svg)](https://statistics.cepal.org/portal/cepalstat/open-data.html?lang=es)
 
 ---
 
-## 🚀 Características Principales
+> [!IMPORTANT]
+> **Aviso de Responsabilidad y No Oficialidad (Disclaimer):**  
+> Este proyecto es un desarrollo independiente de código abierto impulsado por la comunidad y **no constituye una publicación oficial de la Secretaría de las Naciones Unidas ni de la Comisión Económica para América Latina y el Caribe (UN CEPAL / ECLAC)**.  
+> Los datos estadísticos son obtenidos a través de la API pública de datos abiertos de CEPALSTAT bajo sus términos y condiciones de uso de datos libres.
 
-1. **Cliente HTTP Robusto (`CepalStatClient`)**:
-   - Conexión tipada con `https://api-cepalstat.cepal.org`.
-   - Manejo de excepciones de red y API (`CepalStatNetworkError`, `CepalStatAPIError`).
-   - Negociación de formatos (`json`, `csv`, `excel`).
-   - Soporte para context manager (`with CepalStatClient() as client:`).
+---
 
-2. **Navegación del Árbol Temático (`ThematicTree`)**:
-   - Descarga y almacenamiento en caché de la jerarquía completa de temas, áreas y subáreas.
-   - Búsqueda recursiva por palabras clave con preservación de rutas de migajas de pan (*breadcrumbs*).
+## 📌 ¿Por qué existe este proyecto?
 
-3. **Resolución Inteligente de Dimensiones (`DimensionManager`)**:
-   - Inspección de dimensiones (`País`, `Años`, `Sexo`, `Desgloses`).
-   - Búsqueda aproximada y exacta de IDs de miembros (ej. `Chile` $\to$ `224`, `2020` $\to$ `29190`).
+Las APIs estadísticas de organismos multilaterales (como CEPALSTAT, Banco Mundial o FMI) almacenan miles de indicadores con modelos multidimensionales de alta complejidad. En CEPALSTAT coexisten **más de 1,739 indicadores**, millones de observaciones y decenas de dimensiones crudas (`dim_208=224`, `dim_48525=48528`, `dim_1361=501`).
 
-4. **Extracción y Decodificación Tabular (`DataExtractor`)**:
-   - Descarga de registros y conversión automática a **DataFrames de Pandas**.
-   - Decodificación automática de IDs crudos (`dim_208`) a nombres legibles (`País__ESTANDAR = "Chile"`).
-   - Conversión de valores numéricos a tipos flotantes nativos.
+Cuando los Modelos de Lenguaje (LLMs) o analistas intentan consultar estas APIs directamente, surgen fallas metodológicas críticas:
+1. **Falsas Sustituciones Catastróficas (False Substitutions):** Un agente solicita *"valor agregado manufacturero per cápita"* y la API devuelve *"PIB total per cápita"* con score 1.0; o pide *"salario mínimo nominal"* y recibe el índice deflactado en términos reales sin advertencia.
+2. **Desconexión Dimensional:** Errores al decodificar miembros de desagregación (ej. confundir *"área nacional"* con la expresión monetaria *"moneda nacional"*, o asignar códigos de género a variables agregadas).
+3. **Vacíos y Discontinuidades en Encuestas de Hogares:** En América Latina, las encuestas de hogares sufren lagunas interanuales (años no observados). Consultar un año faltante conduce a alucinaciones o interpolaciones artificiales espurias.
 
-5. **Motor de Bitácoras Híbrido (`BitacoraStore`)**:
-   - Fichas en Markdown con YAML frontmatter en el repositorio Git (`bitacoras/paises/`, `bitacoras/temas/`).
-   - Índice SQLite local ultra-rápido (`.statscepal_cache.db`) para búsquedas en < 10 ms con **0 llamadas de red**.
-   - Comando de sincronización (`sync`) para reconstruir el índice automáticamente.
+`unofficial-cepalstat-mcp` (paquete Python `statscepal`) resuelve este problema mediante un **Motor de Resolución Semántica de 6 etapas**, respaldado por ontologías dimensionales, detección de polaridad económica, guardianes de especificidad no absorbida, y compatibilidad nativa con el **Model Context Protocol (MCP)** para LLMs (Claude, Cursor, Antigravity, OpenWebUI).
 
-6. **Validador Estadístico Anti-Sesgo (`AntiBiasValidator`)**:
-   - Verificación de unidad oficial y factor de escala (*miles de personas*, *millones de USD*).
-   - Detección de quiebre temporal y segregación entre datos observados vs. proyecciones (ej. corte base CELADE 2021).
-   - Detección de saltos temporales (*gaps*) y cálculo de porcentaje de valores nulos.
+---
 
-7. **Interfaz de Línea de Comandos (CLI)**:
-   - Comandos sencillos: `search`, `info`, `fetch`, `bitacora lookup`, `bitacora add`, `bitacora list`, `bitacora sync`.
+## 🏗️ Arquitectura del Sistema
 
-8. **Suite de Skills Cuantitativos y de Auditoría para Agentes (Antigravity)**:
-   - [`cepalstat-api`](.agents/skills/cepalstat-api/SKILL.md): Protocolo "Bitácora Primero", catálogo offline y descarga de datos de CEPALSTAT.
-   - [`applied-econometrics`](.agents/skills/applied-econometrics/SKILL.md): Verificación de raíces unitarias (ADF/KPSS), cointegración vs. primeras diferencias, errores estándar robustos HC3/HAC Newey-West, modelos de panel con efectos fijos y variables instrumentales (2SLS).
-   - [`applied-statistics`](.agents/skills/applied-statistics/SKILL.md): Momentos empíricos, pruebas de normalidad, matriz paramétrica vs. no paramétrica, coeficiente de Gini $O(n \log n)$, ratio de Palma, índice HHI e intervalos bootstrap BCa.
-   - [`applied-mathematics`](.agents/skills/applied-mathematics/SKILL.md): Cálculo de tasas de crecimiento continuas ($\Delta \ln X$) y discretas, elasticidades punto y arco, número de condición matricial $\kappa(X)$, optimización con restricciones (KKT/SLSQP) y filtro de Hodrick-Prescott.
-   - [`macroeconomic-analysis`](.agents/skills/macroeconomic-analysis/SKILL.md): Consistencia de Cuentas Nacionales ($C + I + G + X - M$), términos de intercambio, ley de restricción externa de Thirlwall, pass-through de tipo de cambio a inflación (ERPT) y dinámica de sostenibilidad de deuda pública.
-   - [`github-repo-search`](.agents/skills/github-repo-search/SKILL.md): Descubrimiento y evaluación automatizada de repositorios en GitHub mediante el GitHub CLI (`gh`), con rúbrica de salud objetiva (0–100 pts) y auditoría de licencias/vitalidad.
-   - Subagentes especializados registrados: `cepalstat_analyst`, `cepalstat_expert` y `github_scout`.
-   - 📊 **[Informe y Benchmark del Ecosistema de GitHub](docs/ECOSISTEMA_GITHUB_Y_BENCHMARK.md)**: Análisis comparativo exhaustivo frente a librerías existentes (`CepalStatR`, `EcuDataMCP`, etc.).
+### 1. Flujo End-to-End
+
+```mermaid
+flowchart TD
+    UserQuery["Consulta en Lenguaje Natural<br>('desempleo juvenil urbano en argentina')"] --> Parser["1. QueryParser<br>(Entidades, Geografía, Frecuencia, Concepto)"]
+    Parser --> Thesaurus["2. Thesaurus & Polarity<br>(Sinónimos LAC, Lemas, Polaridad)"]
+    Thesaurus --> Gate["3. Hard Abstention Gate<br>(Detección de variables fuera de mandato)"]
+    Gate --> Selection["4. Candidate Selection & Graph<br>(Travesía de relaciones ontológicas)"]
+    Selection --> Specificity["5. Specificity & Frequency Guard<br>(Auditoría de tokens no absorbidos)"]
+    Specificity --> Gating["6. Dimensional Gate & Member Matcher<br>(Filtro de Facetas & Vinculación de IDs)"]
+    Gating --> Temporal["7. Temporal Audit & Anchor Points<br>(Detección de saltos en encuestas)"]
+    Temporal --> Response["SemanticResolutionResponse<br>(RESOLVED / ALTERNATIVE_PROPOSED / ABSTAINED)"]
+    Response --> Fetcher["8. SemanticDataFetcher<br>(Descarga decodificada & Mapeo empírico)"]
+    Fetcher --> Data["DataFrame / Payload Limpio<br>(Valores float, Metadatos oficiales)"]
+```
+
+---
+
+### 2. Ciclo de Vida del Servidor MCP
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Client as Cliente MCP (Claude / Cursor / Agente AI)
+    participant MCP as Servidor MCP (unofficial-cepalstat-mcp)
+    participant Engine as SemanticResolutionEngine
+    participant Fetcher as SemanticDataFetcher
+    participant API as API Abierta CEPALSTAT
+
+    Client->>MCP: Herramienta: resolve_indicator(query="salario minimo agricola en guatemala")
+    MCP->>Engine: resolve("salario minimo agricola en guatemala")
+    Engine-->>MCP: ALTERNATIVE_PROPOSED (ID 3337, Score: 0.65, Hint: "Salario mínimo real general")
+    MCP-->>Client: Metadatos, advertencia de granularidad y score de confianza
+
+    Client->>MCP: Herramienta: fetch_indicator_data(resolution_payload)
+    MCP->>Fetcher: fetch_resolved_data(response)
+    Fetcher->>API: GET /api/v1/indicator/3337/data (Parámetros oficiales decodificados)
+    API-->>Fetcher: Registros tabulares crudos
+    Fetcher-->>MCP: DataFrame procesado ("Guatemala", 2021, 104.2 índice)
+    MCP-->>Client: JSON / Markdown estructurado anti-alucinaciones
+```
+
+---
+
+## ⚡ Características Principales
+
+### 1. Motor de Resolución Semántica (`SemanticResolutionEngine`)
+- **Parsing de Intención Multidimensional:** Extrae automáticamente países (ISO3), períodos temporales (`SINGLE`, `RANGE`, `LIST`), periodicidad (`ANUAL`, `TRIMESTRAL`, `MENSUAL`) y facetas (`area`, `sexo`, `edad`, `quintil`, `etnia`).
+- **Thesaurus Socioeconómico Latinoamericano:** Normalización de jergas y expresiones regionales (ej. *"chamba"*, *"pega"*, *"laburo"*, *"guaguas"*).
+- **Detección de Polaridad y Conmutación de Facetas:** Clasifica inversiones de estado (*desempleo* vs *empleo*), complementos de facetas (*rural* vs *urbano*) y relaciones escalares.
+- **Stage 3.5 Specificity Guard:** Protege contra falsas sustituciones. Si el usuario solicita un sector o especificidad ausente (*"telecomunicaciones"*, *"manufactura"*, *"gobierno general"*, *"déficit global"*, *"salario nominal"*, *"iva"*), el motor **nunca sustituye con score 1.0**:
+  - Emite **`ALTERNATIVE_PROPOSED`** con score degradado ($0.65$) y advertencia conversacional si existe un indicador agregado relevante.
+  - Se abstiene con **`ABSTAINED`** (`UNRESOLVED_SPECIFICITY`) si existe discrepancia categorial severa o el concepto está fuera de mandato (ej. tipos de cambio informales/blue, tasas de política monetaria o riqueza multimillonaria de Forbes).
+
+### 2. Extractor y Fetcher Empírico (`SemanticDataFetcher`)
+- **Mapeo Empírico de Producción:** Mapea automáticamente IDs de referencia al catálogo real de CEPALSTAT (ej. ID `3337` $\to$ tabla real `340`, o distribución del ingreso `3340` $\to$ `3324` por quintiles / `3390` por deciles).
+- **Rescate de Puntos de Anclaje Temporal (Temporal Anchors):** Si se solicita un año intermedio ausente en encuestas de hogares, rescata los años oficiales observados inmediatamente adyacentes (*previous/next anchor*), marcando `forbid_interpolation: true` para impedir imputaciones numéricas falsas.
+- **Normalización Invariante a Acentos y Mayúsculas:** Emparejamiento robusto de nombres de columnas y miembros dimensionales en Windows/Linux.
+
+### 3. Validador Estadístico y Bitácoras Locales
+- **Índice SQLite Local Ultra-Rápido (`.statscepal_cache.db`):** Búsqueda de fichas temáticas y catálogos en $< 1\text{ ms}$ con **cero llamadas a la red**, ahorrando más del 85% de tokens en contextos de LLM.
+- **Control de Escala y Unidades:** Detección automática de factores de escala (*miles de personas*, *porcentaje del PIB*, *índice 2018=100*).
+
+---
+
+## 📊 Banco de Pruebas y Validación Empírica
+
+El sistema cuenta con una batería de pruebas de regresión continua ejecutada sobre `pytest`:
+
+| Suite de Evaluación | Cantidad de Casos | Precisión Top-1 | Tasa de Sustitución Falsa (FSR) | Latencia Mediana ($p50$) |
+|---|---|---|---|---|
+| **Benchmark Canónico** | 200 consultas | **100.0%** (200/200) | **0.00%** | $< 0.50\text{ ms}$ |
+| **Benchmark Adversario** | 40 trampas de choque | **100.0%** (40/40) | **0.00%** | **$0.74\text{ ms}$** |
+| **Suite Completa de Regresión** | 377 pruebas | **100.0%** (377/377) | **0.00%** | Hermético Offline |
+
+> [!TIP]
+> Puedes auditar la especificación metodológica de los casos adversarios en [`docs/reports/2026-10-18-adversarial-benchmark-specification.md`](docs/reports/2026-10-18-adversarial-benchmark-specification.md).
 
 ---
 
 ## 📦 Instalación
 
-El proyecto utiliza [`uv`](https://docs.astral.sh/uv/) como gestor de entornos y paquetes de alta velocidad.
+El proyecto utiliza [`uv`](https://docs.astral.sh/uv/) como administrador de dependencias y entornos de alta velocidad en Python 3.10+.
 
 ```bash
-# Clonar o ubicarse en el directorio del proyecto
-cd C:\papx\statscepal
+# 1. Clonar el repositorio
+git clone https://github.com/pcamacho447/unofficial-cepalstat-mcp.git
+cd unofficial-cepalstat-mcp
 
-# Sincronizar dependencias y entorno virtual
+# 2. Instalar dependencias con entorno virtual sincronizado
 uv sync --extra dev
 ```
 
 ---
 
-## 🛠️ Guía de Uso del CLI
+## 💻 Guía Rápida de Uso (CLI)
 
-### 1. Búsqueda y Extracción Básica
+### 1. Resolución Semántica Explicada
+
+Resuelve una consulta en lenguaje natural identificando el indicador oficial, facetas dimensionales y trazabilidad paso a paso:
 
 ```bash
-# Búsqueda instantánea offline en el Catálogo Maestro (0 tokens de red, < 2ms)
+uv run statscepal semantic resolve "desempleo juvenil urbano en argentina" --explain
+```
+
+Salida esperada:
+```text
+======================================================================
+CEPALSTAT Semantic Resolution Engine
+======================================================================
+Query:     desempleo juvenil urbano en argentina
+Status:    ABSTAINED
+Reason:    UNSUPPORTED_FACET
+Polarity:  STATE_INVERSION (Detected: 'desempleo', Expected Sign: UNSPECIFIED)
+...
+[Stage 4: Dimensional Gate] Canonical ID 3331 lacks facets: ['area'].
+======================================================================
+```
+
+### 2. Propuesta de Alternativas con Degradación de Confianza
+
+Cuando se solicita una especificidad que requiere advertencia (ej. salario agrícola):
+
+```bash
+uv run statscepal semantic resolve "salario minimo agricola en guatemala" --explain
+```
+
+Salida esperada:
+```text
+Status:    ALTERNATIVE_PROPOSED
+Indicator: 3337 - Salario mínimo real (Measure: INDICE_REAL, Score: 0.65)
+Hint:      Nota: Se propone como alternativa el indicador general 3337 ('Salario mínimo real'), pero la consulta solicitaba la especificidad: 'agricola'. Para el indicador sectorial consulte el catálogo de CEPALSTAT.
+```
+
+### 3. Descarga Empírica Decodificada
+
+Descarga las observaciones desde CEPALSTAT con parámetros dimensionales resueltos:
+
+```bash
+uv run statscepal semantic fetch "pobreza extrema en chile en 2020"
+```
+
+### 4. Búsqueda Instantánea en el Catálogo Maestro
+
+```bash
+# Búsqueda instantánea en SQLite local (< 2 ms)
 uv run statscepal search "pobreza" --limit 5
 
-# Ver metadatos y definición oficial del indicador 4788
+# Ver detalles oficiales del indicador 4788
 uv run statscepal info 4788
-
-# Extraer datos decodificados en terminal (Chile=224, 2020=29190)
-uv run statscepal fetch 4788 --members 224,29190
-
-# Exportar datos a un archivo CSV
-uv run statscepal fetch 4788 --members 224,29190 --csv salida_chile.csv
-```
-
-### 2. Catálogo Maestro de Indicadores (2,070 Indicadores)
-
-```bash
-# Descargar e indexar los 2,070 indicadores en SQLite local
-uv run statscepal catalog build
-
-# Ver estadísticas por temas y áreas (Demografía, Economía, ODS, etc.)
-uv run statscepal catalog stats
-
-# Búsqueda filtrada por tema específico
-uv run statscepal catalog search "PIB" --theme "Económicos" --limit 10
-
-# Exportar el catálogo completo a JSON o CSV
-uv run statscepal catalog export --output catalogo_cepal.csv --format csv
-```
-
-### 3. Gestión de Bitácoras ("Bitácora Primero")
-
-```bash
-# Listar todas las recetas certificadas
-uv run statscepal bitacora list
-
-# Buscar una receta localmente (Ahorro del 85% de tokens, cero llamadas externas)
-uv run statscepal bitacora lookup poblacion --country Chile
-
-# Certificar y agregar una nueva receta auditada
-uv run statscepal bitacora add 4788 --country Chile --members 224,29190,88623 --tags chile,demografia,poblacion
-
-# Sincronizar / reindexar las fichas Markdown en la base SQLite local
-uv run statscepal bitacora sync
-```
-
-### 4. Motor Semántico de Desambiguación de Intenciones (200 Preguntas Certificadas)
-
-El motor semántico (`statscepal semantic resolve`) resuelve lenguaje natural, regionalismos (*"guita"*, *"plata"*, *"chamba"*, *"pega"*, *"laburantes"*) y desgloses multidimensionales con **100% Top-1 Accuracy** y **0.00% False Substitution Rate** (ver [Informe del Benchmark](docs/BENCHMARK_200_PREGUNTAS_REPORTE.md)):
-
-```bash
-# Resolución semántica directa con desconstructor de contexto de ingresos (Salario mínimo real 3337)
-uv run statscepal semantic resolve "Cuál fue la guita mínima por ley en Chile en 2022"
-
-# Jerga sin modificador (propone serie base + alternativas explícitas sin adivinar)
-uv run statscepal semantic resolve "Cómo estuvo la guita en Chile en 2021"
-
-# Resolución con extracción de datos empíricos en vivo
-uv run statscepal semantic resolve "Pobreza en Colombia en 2020" --fetch
-
-# Salida estructurada en JSON para agentes y clientes MCP
-uv run statscepal semantic resolve "Desempleo juvenil en México en 2021" --json
 ```
 
 ---
 
-## 🐍 Guía del SDK en Python
+## 🤖 Integración como Servidor MCP (Roadmap & Configuración)
 
-### Ejemplo 1: Consulta con el Protocolo "Bitácora Primero"
+El servidor MCP expone herramientas de inspección, resolución y descarga estadística para asistentes basados en LLMs:
 
-```python
-from statscepal import CepalStatClient, DataExtractor
-from statscepal.bitacora import BitacoraStore
+### Herramientas MCP Planificadas:
+- `cepalstat_semantic_resolve`: Resuelve consultas en lenguaje natural a indicadores de CEPALSTAT con trazabilidad y detección de alternativas.
+- `cepalstat_fetch_data`: Extrae DataFrames decodificados con rescate de anclas temporales.
+- `cepalstat_catalog_search`: Búsqueda instantánea en el catálogo temático de más de 1,739 indicadores.
+- `cepalstat_indicator_methodology`: Consulta notas técnicas, unidades de medida y fuentes primarias de cada serie.
 
-# 1. Consultar la bitácora local (sin red, sin gasto de tokens)
-store = BitacoraStore()
-recetas = store.lookup("poblacion", country="Chile")
+### Ejemplo de Configuración en Claude Desktop / Cursor:
 
-if recetas:
-    receta = recetas[0]
-    print(f"Receta encontrada: {receta.indicator_name}")
-    print(f"Alerta Anti-Sesgo: {receta.antibias.scale_factor_note}")
-    print(f"¿Es proyección?: {receta.antibias.is_projection}")
-
-    # 2. Extraer directamente usando los member_ids certificados
-    with CepalStatClient() as client:
-        extractor = DataExtractor(client)
-        df = extractor.get_dataframe(receta.indicator_id, members=receta.member_ids)
-        print(df.head())
-```
-
-### Ejemplo 2: Auditoría Anti-Sesgo y Certificación de Recetas
-
-```python
-from statscepal import CepalStatClient, DataExtractor, DimensionManager
-from statscepal.bitacora import AntiBiasValidator, BitacoraRecipe, BitacoraStore
-
-with CepalStatClient() as client:
-    dm = DimensionManager(client)
-    extractor = DataExtractor(client, dm)
-
-    indicator_id = 415  # PIB Anual
-    meta = extractor.get_metadata(indicator_id)
-    df = extractor.get_dataframe(indicator_id, members=[224])  # Chile
-
-    # Auditar datos contra sesgos estadísticos
-    quality, antibias = AntiBiasValidator.audit(df, metadata=meta)
-    print("Reporte de Calidad:", quality)
-    print("Checklist Anti-Sesgo:", antibias)
-
-    # Guardar en la bitácora
-    store = BitacoraStore()
-    receta = BitacoraRecipe(
-        id="recipe-chl-415-pib",
-        indicator_id=indicator_id,
-        indicator_name=meta.get("indicator_name", "PIB anual"),
-        country="Chile",
-        country_iso3="CHL",
-        country_member_id=224,
-        theme="Económicos > PIB",
-        unit=meta.get("unit", ""),
-        member_ids=[224],
-        python_code="extractor.get_dataframe(415, members=[224])",
-        status="certified",
-        date_certified="2026-10-14",
-        tags=["chile", "pib", "macroeconomia"],
-        quality_report=quality,
-        antibias=antibias,
-    )
-    store.save_recipe(receta)
+```json
+{
+  "mcpServers": {
+    "cepalstat": {
+      "command": "uv",
+      "args": [
+        "--directory",
+        "/ruta/a/unofficial-cepalstat-mcp",
+        "run",
+        "statscepal",
+        "mcp"
+      ]
+    }
+  }
+}
 ```
 
 ---
 
-## 📂 Estructura del Proyecto
+## 🧪 Ejecución de Pruebas
 
-```
-C:\papx\statscepal\
-├── .agents/                        # Integración con Antigravity / AI Agents
-│   ├── skills/
-│   │   ├── cepalstat-api/          # Skill oficial CEPALSTAT ("Bitácora Primero")
-│   │   ├── applied-econometrics/   # Modelos de regresión, panel, raíces unitarias, HAC
-│   │   ├── applied-statistics/     # Momentos, normalidad, Gini/Palma/HHI, bootstrap
-│   │   ├── applied-mathematics/    # Elasticidades, matrices, optimización KKT, HP filter
-│   │   ├── macroeconomic-analysis/ # Cuentas Nacionales, Thirlwall, pass-through, deuda
-│   │   └── github-repo-search/     # Auditoría de repositorios, salud 0-100 y búsqueda gh
-│   └── subagents/
-│       ├── cepalstat-analyst.md    # Especificación del subagente analista de datos
-│       └── github-scout.md         # Especificación del subagente scout de GitHub
-│
-├── bitacoras/                      # Catálogo versionable de recetas en Git
-│   └── paises/
-│       └── chile/
-│           ├── 4788_recipe_chl_poblacion_total.md  # Ficha de población total (CELADE)
-│           └── 415_recipe_chl_pib_anual.md         # Ficha de PIB anual a precios constantes
-│
-├── docs/                           # Documentación de diseño y auditorías
-│   ├── BENCHMARK_200_PREGUNTAS_REPORTE.md # Informe empírico oficial del benchmark (200 preguntas)
-│   ├── MANUAL_DE_OPERACION.md      # Manual de operación y metodología
-│   ├── ECOSISTEMA_GITHUB_Y_BENCHMARK.md # Auditoría comparativa de repositorios CEPAL en GitHub
-│   └── specs/                      # Especificaciones técnicas formales y arquitectura v2
-│
-├── src/
-│   └── statscepal/                 # Paquete principal en Python
-│       ├── __init__.py
-│       ├── client.py               # Cliente HTTP contra api-cepalstat.cepal.org
-│       ├── exceptions.py           # Jerarquía de excepciones
-│       ├── thematic_tree.py        # Árbol temático y búsqueda recursiva
-│       ├── dimensions.py           # Gestor de dimensiones y miembros
-│       ├── extractor.py            # Extractor tabular y decodificador a DataFrames
-│       ├── cli.py                  # Interfaz de línea de comandos (con 'semantic resolve')
-│       ├── catalog/                # Catálogo maestro de 2,070 indicadores en SQLite
-│       ├── bitacora/               # Motor de bitácoras y calidad
-│       ├── analysis/               # Servicios de análisis econométrico y estadístico
-│       └── semantic/               # Motor semántico determinista de desambiguación (5 etapas)
-│           ├── engine.py           # Orquestador del pipeline semántico
-│           ├── parser.py           # Parser léxico con desconstructor de ingresos y límites \b
-│           ├── matcher.py          # DynamicMemberMatcher para resolución de facetas
-│           ├── registry.py         # Registro con catálogo dual (official_25 / legacy_50)
-│           ├── models.py           # Modelos Pydantic y enums estadísticos
-│           └── fetcher.py          # Extracción empírica con validación de observaciones
-│
-├── tests/                          # Suite de pruebas automatizadas (203 tests)
-│   ├── benchmark/                  # Datasets de benchmarking empírico
-│   │   ├── semantic_benchmark_cases_200.json # 200 casos (matriz 8-4-4-2-2)
-│   │   └── semantic_benchmark_cases.json     # 50 casos legacy v1
-│   ├── test_semantic_benchmark_200.py # Runner automatizado del benchmark de 200 casos
-│   ├── test_benchmark_dataset_integrity.py # Validación de integridad y esquema del dataset
-│   ├── test_parser_income_modifiers.py # Pruebas de desambiguación de ingresos y límites \b
-│   ├── test_semantic_registry_200.py # Validación de 25 indicadores oficiales y grafo tipado
-│   ├── test_semantic_matcher.py
-│   ├── test_semantic_fetcher.py
-│   ├── test_semantic_store_relational.py
-│   ├── test_semantic_benchmark.py
-│   ├── test_client.py
-│   ├── test_dimensions.py
-│   ├── test_extractor.py
-│   ├── test_thematic_tree.py
-│   ├── test_cli.py
-│   ├── test_cli_semantic.py
-│   ├── test_catalog_cli.py
-│   ├── test_catalog_store.py
-│   ├── test_bitacora_models.py
-│   ├── test_bitacora_store.py
-│   ├── test_bitacora_cli.py
-│   ├── test_quantitative_skills.py
-│   ├── test_github_skills.py
-│   ├── test_seed_recipes.py
-│   ├── test_validator.py
-│   ├── test_skill_structure.py
-│   └── test_live_smoke.py
-│
-├── pyproject.toml                  # Configuración del paquete y dependencias
-└── uv.lock                         # Lockfile reproducible de dependencias
-```
-
----
-
-## 🧪 Pruebas Automatizadas
-
-El proyecto cuenta con una cobertura integral de **203 pruebas automatizadas**:
+Para reproducir las métricas de rendimiento y verificación:
 
 ```bash
-# Ejecutar toda la suite de pruebas (203 tests)
-uv run pytest
-
-# Ejecutar el benchmark de 200 casos en lenguaje natural
-uv run pytest tests/test_semantic_benchmark_200.py -v
-
-# Ejecutar pruebas excluyendo la red
+# Ejecutar la suite completa no integrada (377 tests herméticos offline)
 uv run pytest -m "not integration"
 
-# Ejecutar únicamente las pruebas de los skills cuantitativos
-uv run pytest tests/test_quantitative_skills.py
+# Ejecutar el benchmark canónico de 200 casos
+uv run pytest tests/test_semantic_benchmark_200.py -v
+
+# Ejecutar el benchmark adversarial de 40 casos
+uv run pytest tests/test_adversarial_benchmark_40.py -v -s
 ```
 
 ---
 
-## 🤖 Protocolo para Agentes de IA
+## 📄 Licencia
 
-Cuando un agente interactúa con este repositorio:
-1. **Paso 0 (Obligatorio)**: Ejecutar `statscepal bitacora lookup "<tema>" --country "<país>"` antes de cualquier consulta externa.
-2. **Si existe la receta**: Utiliza los `member_ids` certificados y cita textualmente las notas de escala y proyecciones.
-3. **Si no existe**: Usa el cliente `statscepal`, resuelve dimensiones, extrae datos y añade la nueva receta certificada con `statscepal bitacora add`.
+Este proyecto se distribuye bajo la licencia **MIT**. Consulte el archivo [LICENSE](LICENSE) para más detalles.  
+Las series y datos de CEPALSTAT están sujetos a las políticas de datos abiertos de la [Comisión Económica para América Latina y el Caribe (CEPAL)](https://statistics.cepal.org/portal/cepalstat/open-data.html?lang=es).
