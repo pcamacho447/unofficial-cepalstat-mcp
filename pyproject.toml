@@ -4,6 +4,32 @@ version = "0.1.0"
 description = "Unofficial Python client, semantic resolution engine, and MCP server for UN CEPALSTAT Open Data API"
 readme = "README.md"
 requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [
+    { name = "Patricio Camacho" }
+]
+keywords = [
+    "cepal",
+    "cepalstat",
+    "eclac",
+    "mcp",
+    "model-context-protocol",
+    "latin-america",
+    "economics",
+    "statistics",
+    "semantic-search",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Information Analysis",
+]
 dependencies = [
     "httpx>=0.27.0",
     "pydantic>=2.7.0",
@@ -14,6 +40,11 @@ dependencies = [
     "plotly>=5.20.0",
     "platformdirs>=4.2.0",
 ]
+
+[project.urls]
+Homepage = "https://github.com/pcamacho447/unofficial-cepalstat-mcp"
+Repository = "https://github.com/pcamacho447/unofficial-cepalstat-mcp"
+Issues = "https://github.com/pcamacho447/unofficial-cepalstat-mcp/issues"
 
 [project.optional-dependencies]
 dev = [

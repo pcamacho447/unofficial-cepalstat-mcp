@@ -63,11 +63,23 @@ def _handle_catalog_build_graph(args: argparse.Namespace) -> int:
     return 0
 
 
-def main(args: Sequence[str] | None = None) -> int:
+def _resolve_prog(prog: str | None = None) -> str:
+    """Determine the CLI program name dynamically based on invoked binary or explicit argument."""
+    if prog:
+        return prog
+    if sys.argv and sys.argv[0]:
+        stem = Path(sys.argv[0]).stem
+        if stem in ("unofficial-cepalstat-mcp", "cepalstat-mcp", "statscepal"):
+            return stem
+    return "unofficial-cepalstat-mcp"
+
+
+def main(args: Sequence[str] | None = None, prog: str | None = None) -> int:
     """Run the CEPALSTAT CLI command.
 
     Args:
         args: Optional list of command-line arguments. If None, sys.argv[1:] is used.
+        prog: Optional program name override for help and usage output.
 
     Returns:
         Exit code: 0 for success, non-zero for errors.
@@ -78,8 +90,9 @@ def main(args: Sequence[str] | None = None) -> int:
         except Exception:
             pass
 
+    resolved_prog = _resolve_prog(prog)
     parser = argparse.ArgumentParser(
-        prog="statscepal",
+        prog=resolved_prog,
         description="CEPALSTAT Open Data CLI tool for Latin America and Caribbean statistics.",
     )
     subparsers = parser.add_subparsers(dest="command", help="Subcommand to execute")
