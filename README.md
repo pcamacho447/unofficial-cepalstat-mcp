@@ -1,9 +1,9 @@
-# unofficial-cepalstat-mcp (statscepal)
+# unofficial-cepalstat-mcp
 
 **Motor de Resolución Semántica, Servidor MCP y Cliente Econométrico Anti-Sesgo para UN CEPALSTAT**
 
 [![Python Version](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/)
-[![Test Suite](https://img.shields.io/badge/tests-377%20passed-brightgreen.svg)]()
+[![Test Suite](https://img.shields.io/badge/tests-391%20passed-brightgreen.svg)]()
 [![Canonical Benchmark](https://img.shields.io/badge/benchmark%20200-100%25%20Top--1-success.svg)](docs/reports/benchmark_200_preguntas.md)
 [![Adversarial Benchmark](https://img.shields.io/badge/adversarial%2040-100%25%20Top--1-success.svg)](docs/reports/2026-10-18-adversarial-benchmark-specification.md)
 [![False Substitution Rate](https://img.shields.io/badge/FSR-0.00%25-brightgreen.svg)](docs/reports/2026-10-18-adversarial-benchmark-specification.md)
@@ -14,9 +14,9 @@
 ---
 
 > [!IMPORTANT]
-> **Aviso de Responsabilidad y No Oficialidad (Disclaimer):**  
-> Este proyecto es un desarrollo independiente de código abierto impulsado por la comunidad y **no constituye una publicación oficial de la Secretaría de las Naciones Unidas ni de la Comisión Económica para América Latina y el Caribe (UN CEPAL / ECLAC)**.  
-> Los datos estadísticos son obtenidos a través de la API pública de datos abiertos de CEPALSTAT bajo sus términos y condiciones de uso de datos libres.
+> **Aviso de Responsabilidad y No Oficialidad / Legal Disclaimer:**  
+> **DISCLAIMER**: This project is an independent open-source tool and is **NOT an official product of, sponsored by, or affiliated with the United Nations Economic Commission for Latin America and the Caribbean (UN ECLAC / CEPAL)**. All statistical data provided through this tool is sourced from the public UN CEPALSTAT Open Data API.  
+> *(Este proyecto es un desarrollo independiente de código abierto impulsado por la comunidad y no constituye una publicación oficial de la Secretaría de las Naciones Unidas ni de la Comisión Económica para América Latina y el Caribe).*
 
 ---
 
@@ -29,7 +29,7 @@ Cuando los Modelos de Lenguaje (LLMs) o analistas intentan consultar estas APIs 
 2. **Desconexión Dimensional:** Errores al decodificar miembros de desagregación (ej. confundir *"área nacional"* con la expresión monetaria *"moneda nacional"*, o asignar códigos de género a variables agregadas).
 3. **Vacíos y Discontinuidades en Encuestas de Hogares:** En América Latina, las encuestas de hogares sufren lagunas interanuales (años no observados). Consultar un año faltante conduce a alucinaciones o interpolaciones artificiales espurias.
 
-`unofficial-cepalstat-mcp` (paquete Python `statscepal`) resuelve este problema mediante un **Motor de Resolución Semántica de 6 etapas**, respaldado por ontologías dimensionales, detección de polaridad económica, guardianes de especificidad no absorbida, y compatibilidad nativa con el **Model Context Protocol (MCP)** para LLMs (Claude, Cursor, Antigravity, OpenWebUI).
+`unofficial-cepalstat-mcp` (módulo Python `unofficial_cepalstat_mcp`) resuelve este problema mediante un **Motor de Resolución Semántica de 6 etapas**, respaldado por ontologías dimensionales, detección de polaridad económica, guardianes de especificidad no absorbida, y compatibilidad nativa con el **Model Context Protocol (MCP)** para LLMs (Claude, Cursor, Antigravity, OpenWebUI).
 
 ---
 
@@ -117,6 +117,17 @@ El sistema cuenta con una batería de pruebas de regresión continua ejecutada s
 
 ## 📦 Instalación
 
+### Desde PyPI
+```bash
+pip install unofficial-cepalstat-mcp
+```
+
+O ejecútalo directamente sin instalación previa con `uvx`:
+```bash
+uvx unofficial-cepalstat-mcp --help
+```
+
+### Para Desarrollo Local
 El proyecto utiliza [`uv`](https://docs.astral.sh/uv/) como administrador de dependencias y entornos de alta velocidad en Python 3.10+.
 
 ```bash
@@ -130,14 +141,38 @@ uv sync --extra dev
 
 ---
 
+## 🐍 Uso en Python
+
+```python
+from unofficial_cepalstat_mcp import CepalStatClient, DataExtractor
+from unofficial_cepalstat_mcp.semantic import SemanticDataFetcher, SemanticResolutionEngine
+
+# 1. Resolución semántica determinista
+engine = SemanticResolutionEngine()
+res = engine.resolve_query("desempleo juvenil en chile 2020")
+print(f"Estado: {res.status.value}")
+if res.selected_candidate:
+    print(f"Indicador: {res.selected_candidate.indicator_id} - {res.selected_candidate.name}")
+
+# 2. Descarga empírica decodificada
+fetcher = SemanticDataFetcher()
+emp_data = fetcher.fetch_resolved_data(res)
+print(f"Observaciones empíricas: {len(emp_data.get('series', []))}")
+```
+
+---
+
 ## 💻 Guía Rápida de Uso (CLI)
+
+> [!TIP]
+> Puedes invocar la CLI tanto con el comando canónico `unofficial-cepalstat-mcp` como con su alias corto `cepalstat-mcp`.
 
 ### 1. Resolución Semántica Explicada
 
 Resuelve una consulta en lenguaje natural identificando el indicador oficial, facetas dimensionales y trazabilidad paso a paso:
 
 ```bash
-uv run statscepal semantic resolve "desempleo juvenil urbano en argentina" --explain
+uv run unofficial-cepalstat-mcp semantic resolve "desempleo juvenil urbano en argentina" --explain
 ```
 
 Salida esperada:
@@ -159,7 +194,7 @@ Polarity:  STATE_INVERSION (Detected: 'desempleo', Expected Sign: UNSPECIFIED)
 Cuando se solicita una especificidad que requiere advertencia (ej. salario agrícola):
 
 ```bash
-uv run statscepal semantic resolve "salario minimo agricola en guatemala" --explain
+uv run unofficial-cepalstat-mcp semantic resolve "salario minimo agricola en guatemala" --explain
 ```
 
 Salida esperada:
@@ -174,17 +209,17 @@ Hint:      Nota: Se propone como alternativa el indicador general 3337 ('Salario
 Descarga las observaciones desde CEPALSTAT con parámetros dimensionales resueltos:
 
 ```bash
-uv run statscepal semantic fetch "pobreza extrema en chile en 2020"
+uv run unofficial-cepalstat-mcp semantic fetch "pobreza extrema en chile en 2020"
 ```
 
 ### 4. Búsqueda Instantánea en el Catálogo Maestro
 
 ```bash
 # Búsqueda instantánea en SQLite local (< 2 ms)
-uv run statscepal search "pobreza" --limit 5
+uv run unofficial-cepalstat-mcp search "pobreza" --limit 5
 
 # Ver detalles oficiales del indicador 4788
-uv run statscepal info 4788
+uv run unofficial-cepalstat-mcp info 4788
 ```
 
 ---
@@ -199,8 +234,24 @@ El servidor MCP expone herramientas de inspección, resolución y descarga estad
 - `cepalstat_catalog_search`: Búsqueda instantánea en el catálogo temático de más de 1,739 indicadores.
 - `cepalstat_indicator_methodology`: Consulta notas técnicas, unidades de medida y fuentes primarias de cada serie.
 
-### Ejemplo de Configuración en Claude Desktop / Cursor:
+### Ejemplo de Configuración en Claude Desktop / Cursor / Antigravity:
 
+Ejecución directa mediante `uvx`:
+```json
+{
+  "mcpServers": {
+    "cepalstat": {
+      "command": "uvx",
+      "args": [
+        "unofficial-cepalstat-mcp",
+        "mcp"
+      ]
+    }
+  }
+}
+```
+
+O en desarrollo local:
 ```json
 {
   "mcpServers": {
@@ -210,7 +261,7 @@ El servidor MCP expone herramientas de inspección, resolución y descarga estad
         "--directory",
         "/ruta/a/unofficial-cepalstat-mcp",
         "run",
-        "statscepal",
+        "unofficial-cepalstat-mcp",
         "mcp"
       ]
     }

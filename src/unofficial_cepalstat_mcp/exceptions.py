@@ -1,10 +1,10 @@
-"""Exceptions for statscepal."""
+"""Exceptions for unofficial_cepalstat_mcp."""
 
 from typing import Any
 
 
 class CepalStatError(Exception):
-    """Base exception for all statscepal errors."""
+    """Base exception for all unofficial_cepalstat_mcp errors."""
 
 
 class CepalStatNetworkError(CepalStatError):

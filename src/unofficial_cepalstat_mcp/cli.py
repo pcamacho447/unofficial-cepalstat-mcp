@@ -68,7 +68,7 @@ def _resolve_prog(prog: str | None = None) -> str:
     if prog:
         return prog
     if sys.argv and sys.argv[0]:
-        stem = Path(sys.argv[0]).stem
+        stem = Path(sys.argv[0]).stem.lower()
         if stem in ("unofficial-cepalstat-mcp", "cepalstat-mcp", "statscepal"):
             return stem
     return "unofficial-cepalstat-mcp"

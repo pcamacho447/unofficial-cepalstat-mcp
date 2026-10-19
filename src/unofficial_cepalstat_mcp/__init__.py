@@ -1,4 +1,4 @@
-"""statscepal: Python client for UN CEPALSTAT Open Data API."""
+"""unofficial_cepalstat_mcp: Unofficial Python client, semantic resolution engine, and MCP server for UN CEPALSTAT Open Data API."""
 
 __version__ = "0.1.0"
 
