@@ -3,9 +3,9 @@
 from unittest.mock import MagicMock
 import pytest
 
-from statscepal.catalog.models import CatalogIndicator
-from statscepal.cli import main
-from statscepal.thematic_tree import IndicatorItem
+from unofficial_cepalstat_mcp.catalog.models import CatalogIndicator
+from unofficial_cepalstat_mcp.cli import main
+from unofficial_cepalstat_mcp.thematic_tree import IndicatorItem
 
 
 @pytest.fixture
@@ -39,14 +39,14 @@ def test_search_uses_local_catalog_when_built(capsys, mocker, sample_catalog_ind
 
     locally with zero network calls and formats output.
     """
-    mock_store_cls = mocker.patch("statscepal.cli.CatalogStore")
+    mock_store_cls = mocker.patch("unofficial_cepalstat_mcp.cli.CatalogStore")
     mock_store = MagicMock()
     mock_store.is_built.return_value = True
     mock_store.search.return_value = sample_catalog_indicators
     mock_store_cls.return_value = mock_store
 
-    mock_client_cls = mocker.patch("statscepal.cli.CepalStatClient")
-    mock_tree_cls = mocker.patch("statscepal.cli.ThematicTree")
+    mock_client_cls = mocker.patch("unofficial_cepalstat_mcp.cli.CepalStatClient")
+    mock_tree_cls = mocker.patch("unofficial_cepalstat_mcp.cli.ThematicTree")
 
     ret = main(["search", "población", "--limit", "5"])
 
@@ -65,14 +65,14 @@ def test_search_uses_local_catalog_when_built(capsys, mocker, sample_catalog_ind
 
 def test_search_uses_local_catalog_no_results(capsys, mocker):
     """When CatalogStore().is_built() is True and no results match."""
-    mock_store_cls = mocker.patch("statscepal.cli.CatalogStore")
+    mock_store_cls = mocker.patch("unofficial_cepalstat_mcp.cli.CatalogStore")
     mock_store = MagicMock()
     mock_store.is_built.return_value = True
     mock_store.search.return_value = []
     mock_store_cls.return_value = mock_store
 
-    mock_client_cls = mocker.patch("statscepal.cli.CepalStatClient")
-    mock_tree_cls = mocker.patch("statscepal.cli.ThematicTree")
+    mock_client_cls = mocker.patch("unofficial_cepalstat_mcp.cli.CepalStatClient")
+    mock_tree_cls = mocker.patch("unofficial_cepalstat_mcp.cli.ThematicTree")
 
     ret = main(["search", "inexistente"])
 
@@ -91,12 +91,12 @@ def test_search_falls_back_to_tree_when_not_built(capsys, mocker):
 
     as before and optionally includes a helpful tip to run statscepal catalog build.
     """
-    mock_store_cls = mocker.patch("statscepal.cli.CatalogStore")
+    mock_store_cls = mocker.patch("unofficial_cepalstat_mcp.cli.CatalogStore")
     mock_store = MagicMock()
     mock_store.is_built.return_value = False
     mock_store_cls.return_value = mock_store
 
-    mock_tree_cls = mocker.patch("statscepal.cli.ThematicTree")
+    mock_tree_cls = mocker.patch("unofficial_cepalstat_mcp.cli.ThematicTree")
     mock_tree = MagicMock()
     mock_tree.search.return_value = [
         IndicatorItem(
@@ -107,7 +107,7 @@ def test_search_falls_back_to_tree_when_not_built(capsys, mocker):
     ]
     mock_tree_cls.return_value = mock_tree
 
-    mocker.patch("statscepal.cli.CepalStatClient")
+    mocker.patch("unofficial_cepalstat_mcp.cli.CepalStatClient")
 
     ret = main(["search", "población"])
 

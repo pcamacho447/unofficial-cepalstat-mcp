@@ -4,12 +4,12 @@ from unittest.mock import MagicMock
 import pandas as pd
 import pytest
 
-from statscepal.analysis import (
+from unofficial_cepalstat_mcp.analysis import (
     CountryPeriodMetric,
     DecouplingAnalyzer,
     DecouplingDataset,
 )
-from statscepal.analysis.service import (
+from unofficial_cepalstat_mcp.analysis.service import (
     COUNTRY_MEMBER_MAP,
     FOOD_INFLATION_MEMBER_MAP,
     DecouplingAnalyzer as DirectDecouplingAnalyzer,
@@ -17,7 +17,7 @@ from statscepal.analysis.service import (
 
 
 def test_analyzer_exports():
-    """Verify DecouplingAnalyzer is exported from statscepal.analysis."""
+    """Verify DecouplingAnalyzer is exported from unofficial_cepalstat_mcp.analysis."""
     assert DecouplingAnalyzer is DirectDecouplingAnalyzer
 
 

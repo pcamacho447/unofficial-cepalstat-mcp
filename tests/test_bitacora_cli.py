@@ -3,8 +3,8 @@ from unittest.mock import MagicMock
 import pandas as pd
 import pytest
 
-from statscepal.bitacora.models import AntiBiasChecklist, BitacoraRecipe, DataQualityReport
-from statscepal.cli import main
+from unofficial_cepalstat_mcp.bitacora.models import AntiBiasChecklist, BitacoraRecipe, DataQualityReport
+from unofficial_cepalstat_mcp.cli import main
 
 
 @pytest.fixture
@@ -63,7 +63,7 @@ def test_cli_bitacora_no_subcommand(capsys):
 
 def test_cli_bitacora_list(capsys, mocker, sample_recipe):
     """Test statscepal bitacora list displays recipes stored in BitacoraStore."""
-    mock_store_cls = mocker.patch("statscepal.cli.BitacoraStore")
+    mock_store_cls = mocker.patch("unofficial_cepalstat_mcp.cli.BitacoraStore")
     mock_store_instance = MagicMock()
     mock_store_instance.list_recipes.return_value = [sample_recipe]
     mock_store_cls.return_value = mock_store_instance
@@ -80,7 +80,7 @@ def test_cli_bitacora_list(capsys, mocker, sample_recipe):
 
 def test_cli_bitacora_list_empty(capsys, mocker):
     """Test statscepal bitacora list when no recipes are found."""
-    mock_store_cls = mocker.patch("statscepal.cli.BitacoraStore")
+    mock_store_cls = mocker.patch("unofficial_cepalstat_mcp.cli.BitacoraStore")
     mock_store_instance = MagicMock()
     mock_store_instance.list_recipes.return_value = []
     mock_store_cls.return_value = mock_store_instance
@@ -93,7 +93,7 @@ def test_cli_bitacora_list_empty(capsys, mocker):
 
 def test_cli_bitacora_lookup(capsys, mocker, sample_recipe):
     """Test statscepal bitacora lookup searches by query, country, and tag."""
-    mock_store_cls = mocker.patch("statscepal.cli.BitacoraStore")
+    mock_store_cls = mocker.patch("unofficial_cepalstat_mcp.cli.BitacoraStore")
     mock_store_instance = MagicMock()
     mock_store_instance.lookup.return_value = [sample_recipe]
     mock_store_cls.return_value = mock_store_instance
@@ -113,7 +113,7 @@ def test_cli_bitacora_lookup(capsys, mocker, sample_recipe):
 
 def test_cli_bitacora_lookup_no_results(capsys, mocker):
     """Test statscepal bitacora lookup with no matching recipes."""
-    mock_store_cls = mocker.patch("statscepal.cli.BitacoraStore")
+    mock_store_cls = mocker.patch("unofficial_cepalstat_mcp.cli.BitacoraStore")
     mock_store_instance = MagicMock()
     mock_store_instance.lookup.return_value = []
     mock_store_cls.return_value = mock_store_instance
@@ -126,7 +126,7 @@ def test_cli_bitacora_lookup_no_results(capsys, mocker):
 
 def test_cli_bitacora_sync(capsys, mocker):
     """Test statscepal bitacora sync triggers index rebuild."""
-    mock_store_cls = mocker.patch("statscepal.cli.BitacoraStore")
+    mock_store_cls = mocker.patch("unofficial_cepalstat_mcp.cli.BitacoraStore")
     mock_store_instance = MagicMock()
     mock_store_instance.sync.return_value = 7
     mock_store_cls.return_value = mock_store_instance
@@ -142,11 +142,11 @@ def test_cli_bitacora_sync(capsys, mocker):
 
 def test_cli_bitacora_add(capsys, mocker):
     """Test statscepal bitacora add certifies and stores a recipe."""
-    mock_client = mocker.patch("statscepal.cli.CepalStatClient")
+    mock_client = mocker.patch("unofficial_cepalstat_mcp.cli.CepalStatClient")
     mock_client_instance = MagicMock()
     mock_client.return_value.__enter__.return_value = mock_client_instance
 
-    mock_extractor_cls = mocker.patch("statscepal.cli.DataExtractor")
+    mock_extractor_cls = mocker.patch("unofficial_cepalstat_mcp.cli.DataExtractor")
     mock_extractor = MagicMock()
     mock_extractor.get_metadata.return_value = {
         "indicator_name": "Población total, según sexo",
@@ -160,14 +160,14 @@ def test_cli_bitacora_add(capsys, mocker):
     mock_extractor_cls.return_value = mock_extractor
 
     mock_audit = mocker.patch(
-        "statscepal.cli.AntiBiasValidator.audit",
+        "unofficial_cepalstat_mcp.cli.AntiBiasValidator.audit",
         return_value=(
             DataQualityReport(total_records=2, min_year=2020, max_year=2021),
             AntiBiasChecklist(unit_verified=True, scale_factor_note="Miles", warnings=[]),
         ),
     )
 
-    mock_store_cls = mocker.patch("statscepal.cli.BitacoraStore")
+    mock_store_cls = mocker.patch("unofficial_cepalstat_mcp.cli.BitacoraStore")
     mock_store_instance = MagicMock()
     mock_store_instance.save_recipe.return_value = Path("bitacoras/paises/chile/4788_recipe-chile-4788.md")
     mock_store_cls.return_value = mock_store_instance
@@ -213,10 +213,10 @@ def test_cli_bitacora_add_invalid_members(capsys):
 
 def test_cli_bitacora_add_indicator_not_found(capsys, mocker):
     """Test statscepal bitacora add when indicator metadata is empty."""
-    mock_client = mocker.patch("statscepal.cli.CepalStatClient")
+    mock_client = mocker.patch("unofficial_cepalstat_mcp.cli.CepalStatClient")
     mock_client.return_value.__enter__.return_value = MagicMock()
 
-    mock_extractor_cls = mocker.patch("statscepal.cli.DataExtractor")
+    mock_extractor_cls = mocker.patch("unofficial_cepalstat_mcp.cli.DataExtractor")
     mock_extractor = MagicMock()
     mock_extractor.get_metadata.return_value = {}
     mock_extractor_cls.return_value = mock_extractor
@@ -229,12 +229,12 @@ def test_cli_bitacora_add_indicator_not_found(capsys, mocker):
 
 def test_cli_bitacora_add_cepalstat_error(capsys, mocker):
     """Test statscepal bitacora add handles CepalStatError cleanly."""
-    from statscepal.exceptions import CepalStatNetworkError
+    from unofficial_cepalstat_mcp.exceptions import CepalStatNetworkError
 
-    mock_client = mocker.patch("statscepal.cli.CepalStatClient")
+    mock_client = mocker.patch("unofficial_cepalstat_mcp.cli.CepalStatClient")
     mock_client.return_value.__enter__.return_value = MagicMock()
 
-    mock_extractor_cls = mocker.patch("statscepal.cli.DataExtractor")
+    mock_extractor_cls = mocker.patch("unofficial_cepalstat_mcp.cli.DataExtractor")
     mock_extractor = MagicMock()
     mock_extractor.get_metadata.side_effect = CepalStatNetworkError("Network unreachable")
     mock_extractor_cls.return_value = mock_extractor
@@ -247,10 +247,10 @@ def test_cli_bitacora_add_cepalstat_error(capsys, mocker):
 
 def test_cli_bitacora_add_with_warnings_and_custom_id(capsys, mocker):
     """Test statscepal bitacora add with custom id and printing anti-bias warnings."""
-    mock_client = mocker.patch("statscepal.cli.CepalStatClient")
+    mock_client = mocker.patch("unofficial_cepalstat_mcp.cli.CepalStatClient")
     mock_client.return_value.__enter__.return_value = MagicMock()
 
-    mock_extractor_cls = mocker.patch("statscepal.cli.DataExtractor")
+    mock_extractor_cls = mocker.patch("unofficial_cepalstat_mcp.cli.DataExtractor")
     mock_extractor = MagicMock()
     mock_extractor.get_metadata.return_value = {
         "indicator_name": "Proyecciones de población",
@@ -260,7 +260,7 @@ def test_cli_bitacora_add_with_warnings_and_custom_id(capsys, mocker):
     mock_extractor_cls.return_value = mock_extractor
 
     mocker.patch(
-        "statscepal.cli.AntiBiasValidator.audit",
+        "unofficial_cepalstat_mcp.cli.AntiBiasValidator.audit",
         return_value=(
             DataQualityReport(total_records=1),
             AntiBiasChecklist(
@@ -270,7 +270,7 @@ def test_cli_bitacora_add_with_warnings_and_custom_id(capsys, mocker):
         ),
     )
 
-    mock_store_cls = mocker.patch("statscepal.cli.BitacoraStore")
+    mock_store_cls = mocker.patch("unofficial_cepalstat_mcp.cli.BitacoraStore")
     mock_store = MagicMock()
     mock_store.save_recipe.return_value = Path("bitacoras/paises/custom/recipe-custom.md")
     mock_store_cls.return_value = mock_store

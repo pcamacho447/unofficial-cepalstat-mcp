@@ -5,7 +5,7 @@ from pathlib import Path
 import statistics
 import time
 import pytest
-from statscepal.semantic import (
+from unofficial_cepalstat_mcp.semantic import (
     RelationshipType,
     ResolutionStatus,
     SemanticResolutionEngine,

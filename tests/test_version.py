@@ -1,5 +1,5 @@
-import statscepal
+import unofficial_cepalstat_mcp
 
 
 def test_package_version():
-    assert statscepal.__version__ == "0.1.0"
+    assert unofficial_cepalstat_mcp.__version__ == "0.1.0"

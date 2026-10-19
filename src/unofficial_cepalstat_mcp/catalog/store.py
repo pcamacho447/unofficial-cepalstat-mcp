@@ -9,10 +9,10 @@ import sqlite3
 from typing import Any
 import unicodedata
 import pandas as pd
-from statscepal.catalog.models import CatalogIndicator, CatalogStats
-from statscepal.client import CepalStatClient
-from statscepal.dimensions import Dimension, Member
-from statscepal.thematic_tree import ThematicTree
+from unofficial_cepalstat_mcp.catalog.models import CatalogIndicator, CatalogStats
+from unofficial_cepalstat_mcp.client import CepalStatClient
+from unofficial_cepalstat_mcp.dimensions import Dimension, Member
+from unofficial_cepalstat_mcp.thematic_tree import ThematicTree
 
 DEFAULT_DB_PATH = Path(".statscepal_cache.db")
 
@@ -671,7 +671,7 @@ class CatalogStore:
 
     def populate_official_indicators(self) -> None:
         """Seed SQLite semantic tables with the 25 official CEPALSTAT indicators, dimensions, and relationships."""
-        from statscepal.semantic.registry import DEFAULT_OFFICIAL_DIMENSIONS, VERTICAL_SLICE_INDICATORS
+        from unofficial_cepalstat_mcp.semantic.registry import DEFAULT_OFFICIAL_DIMENSIONS, VERTICAL_SLICE_INDICATORS
 
         self.init_semantic_tables()
         for ind_id, meta in VERTICAL_SLICE_INDICATORS.items():

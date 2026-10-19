@@ -4,16 +4,16 @@ from __future__ import annotations
 
 import sqlite3
 from typing import TYPE_CHECKING, Any
-from statscepal.dimensions import Dimension, Member
-from statscepal.semantic.facet_ontology import DEFAULT_FACET_ONTOLOGY, FacetOntology
-from statscepal.semantic.models import (
+from unofficial_cepalstat_mcp.dimensions import Dimension, Member
+from unofficial_cepalstat_mcp.semantic.facet_ontology import DEFAULT_FACET_ONTOLOGY, FacetOntology
+from unofficial_cepalstat_mcp.semantic.models import (
     MeasureType,
     RelationshipType,
     TemporalAvailabilityStatus,
 )
 
 if TYPE_CHECKING:
-    from statscepal.catalog.store import CatalogStore
+    from unofficial_cepalstat_mcp.catalog.store import CatalogStore
 
 
 class IndicatorMetadata:

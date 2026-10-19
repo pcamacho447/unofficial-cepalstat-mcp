@@ -1,6 +1,6 @@
 import pytest
 from pydantic import ValidationError
-from statscepal.catalog.models import CatalogIndicator, CatalogStats
+from unofficial_cepalstat_mcp.catalog.models import CatalogIndicator, CatalogStats
 
 
 def test_catalog_indicator_creation():

@@ -15,9 +15,9 @@ from typing import Any
 
 import pytest
 
-from statscepal.semantic.engine import SemanticResolutionEngine
-from statscepal.semantic.models import RelationshipType, ResolutionStatus
-from statscepal.semantic.parser import QueryParser
+from unofficial_cepalstat_mcp.semantic.engine import SemanticResolutionEngine
+from unofficial_cepalstat_mcp.semantic.models import RelationshipType, ResolutionStatus
+from unofficial_cepalstat_mcp.semantic.parser import QueryParser
 
 COVERAGE_CASES_PATH = Path(__file__).parent / "benchmark" / "facet_coverage_cases.json"
 

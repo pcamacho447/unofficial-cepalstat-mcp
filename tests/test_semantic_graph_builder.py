@@ -2,7 +2,7 @@
 
 from pathlib import Path
 import sqlite3
-from statscepal.catalog.store import CatalogStore
+from unofficial_cepalstat_mcp.catalog.store import CatalogStore
 
 
 def test_store_relationship_provenance_and_curated_precedence(tmp_path: Path) -> None:
@@ -82,8 +82,8 @@ def test_fresh_store_relationship_default_provenance(tmp_path: Path) -> None:
 
 def test_graph_builder_extracts_stems_and_infers_breakdown_from_harvested_dims(tmp_path: Path) -> None:
     import json
-    from statscepal.catalog.harvester import CatalogHarvester
-    from statscepal.semantic.graph_builder import GraphBuilder
+    from unofficial_cepalstat_mcp.catalog.harvester import CatalogHarvester
+    from unofficial_cepalstat_mcp.semantic.graph_builder import GraphBuilder
 
     db_path = tmp_path / "graph_infer.db"
     store = CatalogStore(db_path=db_path)
@@ -134,8 +134,8 @@ def test_graph_builder_extracts_stems_and_infers_breakdown_from_harvested_dims(t
 
 
 def test_graph_builder_zero_false_edges_on_45_curated_indicators(tmp_path: Path) -> None:
-    from statscepal.semantic.graph_builder import GraphBuilder
-    from statscepal.semantic.registry import VERTICAL_SLICE_INDICATORS
+    from unofficial_cepalstat_mcp.semantic.graph_builder import GraphBuilder
+    from unofficial_cepalstat_mcp.semantic.registry import VERTICAL_SLICE_INDICATORS
 
     db_path = tmp_path / "graph_45.db"
     store = CatalogStore(db_path=db_path)
@@ -154,7 +154,7 @@ def test_graph_builder_zero_false_edges_on_45_curated_indicators(tmp_path: Path)
 
 def test_cli_catalog_build_graph_ascii_and_json(tmp_path: Path, capsys, monkeypatch) -> None:
     import json
-    from statscepal.cli import main
+    from unofficial_cepalstat_mcp.cli import main
 
     db_path = tmp_path / "cli_catalog.db"
     store = CatalogStore(db_path=db_path)
@@ -162,7 +162,7 @@ def test_cli_catalog_build_graph_ascii_and_json(tmp_path: Path, capsys, monkeypa
     store.init_semantic_tables()
     store.populate_official_indicators()
 
-    monkeypatch.setattr("statscepal.cli.CatalogStore", lambda *args, **kwargs: CatalogStore(db_path=db_path))
+    monkeypatch.setattr("unofficial_cepalstat_mcp.cli.CatalogStore", lambda *args, **kwargs: CatalogStore(db_path=db_path))
 
     # 1. ASCII output mode
     exit_code = main(["catalog", "build-graph"])

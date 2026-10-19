@@ -2,13 +2,13 @@
 
 import inspect
 from pathlib import Path
-from statscepal.catalog.store import CatalogStore
-from statscepal.dimensions import Dimension, Member
-from statscepal.semantic.facet_ontology import DEFAULT_FACET_ONTOLOGY, get_default_facet_ontology
-from statscepal.semantic.models import RelationshipType
-from statscepal.semantic.parser import QueryParser
-from statscepal.semantic.registry import SemanticRegistry
-from statscepal.semantic.thesaurus import get_default_thesaurus
+from unofficial_cepalstat_mcp.catalog.store import CatalogStore
+from unofficial_cepalstat_mcp.dimensions import Dimension, Member
+from unofficial_cepalstat_mcp.semantic.facet_ontology import DEFAULT_FACET_ONTOLOGY, get_default_facet_ontology
+from unofficial_cepalstat_mcp.semantic.models import RelationshipType
+from unofficial_cepalstat_mcp.semantic.parser import QueryParser
+from unofficial_cepalstat_mcp.semantic.registry import SemanticRegistry
+from unofficial_cepalstat_mcp.semantic.thesaurus import get_default_thesaurus
 
 
 def test_facet_ontology_extracts_facets_from_query_generically():
@@ -133,7 +133,7 @@ def test_semantic_registry_builds_in_memory_index_from_sqlite_and_synthesizes_me
 
 
 def test_engine_stage4_has_zero_hardcoded_facet_or_indicator_literals():
-    from statscepal.semantic.engine import SemanticResolutionEngine
+    from unofficial_cepalstat_mcp.semantic.engine import SemanticResolutionEngine
 
     source = inspect.getsource(SemanticResolutionEngine.resolve)
     assert '"etnia"' not in source, "SemanticResolutionEngine.resolve must not contain hardcoded \"etnia\""
@@ -144,9 +144,9 @@ def test_engine_stage4_has_zero_hardcoded_facet_or_indicator_literals():
 
 
 def test_engine_routes_generically_to_sqlite_inferred_breakdown_indicator(tmp_path: Path):
-    from statscepal.semantic.engine import SemanticResolutionEngine
-    from statscepal.semantic.graph_builder import GraphBuilder
-    from statscepal.semantic.models import RelationshipType, ResolutionStatus
+    from unofficial_cepalstat_mcp.semantic.engine import SemanticResolutionEngine
+    from unofficial_cepalstat_mcp.semantic.graph_builder import GraphBuilder
+    from unofficial_cepalstat_mcp.semantic.models import RelationshipType, ResolutionStatus
 
     db_path = tmp_path / "test_engine_sqlite_inferred.db"
     store = CatalogStore(db_path=db_path)
@@ -227,8 +227,8 @@ def test_engine_routes_generically_to_sqlite_inferred_breakdown_indicator(tmp_pa
 
 def test_stage3_ambiguity_conversational_hint_matches_selected_and_alternative_indicators():
     """Verify Stage 3 ambiguity conversational_hint describes the actual selected indicator and its alternatives, never hardcoding ID 127 for non-labor queries."""
-    from statscepal.semantic.engine import SemanticResolutionEngine
-    from statscepal.semantic.models import ResolutionStatus
+    from unofficial_cepalstat_mcp.semantic.engine import SemanticResolutionEngine
+    from unofficial_cepalstat_mcp.semantic.models import ResolutionStatus
 
     engine = SemanticResolutionEngine()
 

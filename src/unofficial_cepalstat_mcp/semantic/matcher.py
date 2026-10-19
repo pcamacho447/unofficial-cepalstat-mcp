@@ -5,15 +5,15 @@ from __future__ import annotations
 import re
 import unicodedata
 from typing import TYPE_CHECKING
-from statscepal.semantic.facet_ontology import (
+from unofficial_cepalstat_mcp.semantic.facet_ontology import (
     DEFAULT_FACET_ONTOLOGY,
     FacetOntology,
     strip_accents,
 )
-from statscepal.semantic.models import AppliedDimensionFilter
+from unofficial_cepalstat_mcp.semantic.models import AppliedDimensionFilter
 
 if TYPE_CHECKING:
-    from statscepal.dimensions import Dimension, Member
+    from unofficial_cepalstat_mcp.dimensions import Dimension, Member
 
 
 DIMENSION_KEY_PATTERNS: dict[str, list[str]] = DEFAULT_FACET_ONTOLOGY.build_dimension_key_patterns()

@@ -4,11 +4,11 @@ import re
 import unicodedata
 from pydantic import BaseModel, Field
 
-from statscepal.semantic.facet_ontology import (
+from unofficial_cepalstat_mcp.semantic.facet_ontology import (
     DEFAULT_FACET_ONTOLOGY,
     FacetOntology,
 )
-from statscepal.semantic.thesaurus import (
+from unofficial_cepalstat_mcp.semantic.thesaurus import (
     PolarityResolution,
     PolarityType,
     Thesaurus,

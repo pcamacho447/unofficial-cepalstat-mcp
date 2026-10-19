@@ -3,7 +3,7 @@
 import pandas as pd
 import pytest
 
-from statscepal.bitacora.validator import AntiBiasValidator
+from unofficial_cepalstat_mcp.bitacora.validator import AntiBiasValidator
 
 
 def test_validator_with_clean_data():

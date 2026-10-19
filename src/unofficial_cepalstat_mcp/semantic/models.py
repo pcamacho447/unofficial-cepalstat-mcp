@@ -4,8 +4,8 @@ from enum import Enum
 from typing import Any
 from pydantic import BaseModel, ConfigDict, Field
 
-from statscepal.semantic.thesaurus import PolarityResolution
-from statscepal.semantic.parser import ParsedIntent
+from unofficial_cepalstat_mcp.semantic.thesaurus import PolarityResolution
+from unofficial_cepalstat_mcp.semantic.parser import ParsedIntent
 
 
 class ResolutionStatus(str, Enum):

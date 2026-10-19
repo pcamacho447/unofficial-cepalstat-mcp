@@ -1,6 +1,6 @@
 from pathlib import Path
 import pytest
-from statscepal.bitacora.store import BitacoraStore
+from unofficial_cepalstat_mcp.bitacora.store import BitacoraStore
 
 
 def test_seed_recipes_chile_discovery():

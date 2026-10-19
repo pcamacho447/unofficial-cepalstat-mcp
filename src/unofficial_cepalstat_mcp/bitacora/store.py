@@ -7,7 +7,7 @@ import sqlite3
 from typing import Any
 import yaml
 
-from statscepal.bitacora.models import BitacoraRecipe
+from unofficial_cepalstat_mcp.bitacora.models import BitacoraRecipe
 
 DEFAULT_BITACORAS_DIR = Path("bitacoras")
 DEFAULT_DB_PATH = Path(".statscepal_cache.db")

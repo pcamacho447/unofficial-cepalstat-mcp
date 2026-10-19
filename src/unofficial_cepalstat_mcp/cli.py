@@ -9,21 +9,21 @@ from typing import Sequence
 
 import pandas as pd
 
-from statscepal.analysis import DecouplingAnalyzer
-from statscepal.bitacora import AntiBiasValidator, BitacoraRecipe, BitacoraStore
-from statscepal.catalog import CatalogStore
-from statscepal.catalog.harvester import CatalogHarvester
-from statscepal.client import CepalStatClient
-from statscepal.exceptions import CepalStatError
-from statscepal.extractor import DataExtractor
-from statscepal.semantic import (
+from unofficial_cepalstat_mcp.analysis import DecouplingAnalyzer
+from unofficial_cepalstat_mcp.bitacora import AntiBiasValidator, BitacoraRecipe, BitacoraStore
+from unofficial_cepalstat_mcp.catalog import CatalogStore
+from unofficial_cepalstat_mcp.catalog.harvester import CatalogHarvester
+from unofficial_cepalstat_mcp.client import CepalStatClient
+from unofficial_cepalstat_mcp.exceptions import CepalStatError
+from unofficial_cepalstat_mcp.extractor import DataExtractor
+from unofficial_cepalstat_mcp.semantic import (
     GraphBuilder,
     SemanticDataFetcher,
     SemanticRegistry,
     SemanticResolutionEngine,
 )
-from statscepal.semantic.facet_ontology import DEFAULT_FACET_ONTOLOGY
-from statscepal.thematic_tree import ThematicTree
+from unofficial_cepalstat_mcp.semantic.facet_ontology import DEFAULT_FACET_ONTOLOGY
+from unofficial_cepalstat_mcp.thematic_tree import ThematicTree
 
 
 def _handle_catalog_build_graph(args: argparse.Namespace) -> int:
@@ -390,7 +390,7 @@ def main(args: Sequence[str] | None = None) -> int:
 
                     members_code = f", members={member_ids}" if member_ids else ""
                     python_code = (
-                        f"from statscepal import CepalStatClient, DataExtractor\n\n"
+                        f"from unofficial_cepalstat_mcp import CepalStatClient, DataExtractor\n\n"
                         f"with CepalStatClient() as client:\n"
                         f"    extractor = DataExtractor(client)\n"
                         f"    df = extractor.get_dataframe({parsed.indicator_id}{members_code}, decode_labels=True)"
@@ -911,7 +911,7 @@ def main(args: Sequence[str] | None = None) -> int:
                 extractor = DataExtractor(client)
                 target_id = parsed.indicator_id
                 mapped_from = None
-                from statscepal.semantic.registry import EMPIRICAL_INDICATOR_ID_MAP
+                from unofficial_cepalstat_mcp.semantic.registry import EMPIRICAL_INDICATOR_ID_MAP
 
                 if (
                     target_id in EMPIRICAL_INDICATOR_ID_MAP

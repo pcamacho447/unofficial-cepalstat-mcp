@@ -2,9 +2,9 @@ import pytest
 import respx
 import httpx
 import pandas as pd
-from statscepal.client import CepalStatClient
-from statscepal.dimensions import DimensionManager
-from statscepal.extractor import DataExtractor
+from unofficial_cepalstat_mcp.client import CepalStatClient
+from unofficial_cepalstat_mcp.dimensions import DimensionManager
+from unofficial_cepalstat_mcp.extractor import DataExtractor
 
 
 MOCK_METADATA_PAYLOAD = {

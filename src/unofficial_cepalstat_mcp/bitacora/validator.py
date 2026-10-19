@@ -5,7 +5,7 @@ from typing import Any
 
 import pandas as pd
 
-from statscepal.bitacora.models import AntiBiasChecklist, DataQualityReport
+from unofficial_cepalstat_mcp.bitacora.models import AntiBiasChecklist, DataQualityReport
 
 
 class AntiBiasValidator:

@@ -3,8 +3,8 @@
 from typing import Any
 import pandas as pd
 
-from statscepal.client import CepalStatClient
-from statscepal.dimensions import DimensionManager
+from unofficial_cepalstat_mcp.client import CepalStatClient
+from unofficial_cepalstat_mcp.dimensions import DimensionManager
 
 
 class DataExtractor:

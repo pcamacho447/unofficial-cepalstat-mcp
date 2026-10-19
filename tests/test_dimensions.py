@@ -1,8 +1,8 @@
 import pytest
 import respx
 import httpx
-from statscepal.client import CepalStatClient
-from statscepal.dimensions import Dimension, DimensionManager, Member
+from unofficial_cepalstat_mcp.client import CepalStatClient
+from unofficial_cepalstat_mcp.dimensions import Dimension, DimensionManager, Member
 
 
 MOCK_DIMENSIONS_PAYLOAD = {

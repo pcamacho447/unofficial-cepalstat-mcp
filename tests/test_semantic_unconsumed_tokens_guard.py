@@ -1,6 +1,6 @@
 """Tests for Unconsumed Semantic Tokens Guard and currency/area collision fix."""
 
-from statscepal.semantic.parser import QueryParser
+from unofficial_cepalstat_mcp.semantic.parser import QueryParser
 
 
 def test_moneda_nacional_does_not_trigger_area_nacional_facet():
@@ -74,7 +74,7 @@ def test_unconsumed_tokens_extraction_on_domain_modifiers():
 
 def test_guard_prevents_false_substitution_on_manufacturing_gdp():
     """Verify that unconsumed 'manufacturero' prevents resolving as aggregate GDP per capita (730)."""
-    from statscepal.semantic import ResolutionStatus, SemanticResolutionEngine
+    from unofficial_cepalstat_mcp.semantic import ResolutionStatus, SemanticResolutionEngine
 
     engine = SemanticResolutionEngine()
     resp = engine.resolve("valor agregado manufacturero por habitante en mexico")
@@ -85,7 +85,7 @@ def test_guard_prevents_false_substitution_on_manufacturing_gdp():
 
 def test_guard_downgrades_on_agricultural_minimum_wage():
     """Verify that unconsumed 'agricola' downgrades minimum wage candidate from 1.0 to ALTERNATIVE_PROPOSED."""
-    from statscepal.semantic import ResolutionStatus, SemanticResolutionEngine
+    from unofficial_cepalstat_mcp.semantic import ResolutionStatus, SemanticResolutionEngine
 
     engine = SemanticResolutionEngine()
     resp = engine.resolve("salario minimo agricola en guatemala")
@@ -98,7 +98,7 @@ def test_guard_downgrades_on_agricultural_minimum_wage():
 
 def test_guard_prevents_false_substitution_on_quarterly_gdp_expenditure():
     """Verify that unconsumed expenditure tokens prevent false 1.0 resolution on quarterly GDP."""
-    from statscepal.semantic import ResolutionStatus, SemanticResolutionEngine
+    from unofficial_cepalstat_mcp.semantic import ResolutionStatus, SemanticResolutionEngine
 
     engine = SemanticResolutionEngine()
     resp = engine.resolve("pib trimestral por componente del gasto en brasil")
@@ -108,7 +108,7 @@ def test_guard_prevents_false_substitution_on_quarterly_gdp_expenditure():
 
 def test_guard_preserves_canonical_queries():
     """Verify that canonical queries with no unconsumed modifiers resolve cleanly with score 1.0."""
-    from statscepal.semantic import ResolutionStatus, SemanticResolutionEngine
+    from unofficial_cepalstat_mcp.semantic import ResolutionStatus, SemanticResolutionEngine
 
     engine = SemanticResolutionEngine()
 
@@ -127,8 +127,8 @@ def test_guard_preserves_canonical_queries():
 
 def test_token_coverage_does_not_falsely_match_substrings():
     """Verify that short tokens like 'iva' do not match inside words like 'privada'."""
-    from statscepal.semantic.engine import _is_token_covered_by_indicator
-    from statscepal.semantic.registry import IndicatorMetadata
+    from unofficial_cepalstat_mcp.semantic.engine import _is_token_covered_by_indicator
+    from unofficial_cepalstat_mcp.semantic.registry import IndicatorMetadata
 
     mock_meta = IndicatorMetadata(
         indicator_id=9999,
@@ -144,8 +144,8 @@ def test_token_coverage_does_not_falsely_match_substrings():
 
 def test_token_coverage_matches_spanish_gender_inflections():
     """Verify that Spanish gender inflections (agropecuario/agropecuaria) match properly."""
-    from statscepal.semantic.engine import _is_token_covered_by_indicator
-    from statscepal.semantic.registry import IndicatorMetadata
+    from unofficial_cepalstat_mcp.semantic.engine import _is_token_covered_by_indicator
+    from unofficial_cepalstat_mcp.semantic.registry import IndicatorMetadata
 
     mock_meta = IndicatorMetadata(
         indicator_id=9999,
@@ -162,7 +162,7 @@ def test_token_coverage_matches_spanish_gender_inflections():
 
 def test_government_consumption_triggers_unresolved_specificity():
     """Verify that ADV_B09 (consumo final del gobierno) resolves to UNRESOLVED_SPECIFICITY and forbids 729."""
-    from statscepal.semantic import ResolutionStatus, SemanticResolutionEngine
+    from unofficial_cepalstat_mcp.semantic import ResolutionStatus, SemanticResolutionEngine
 
     engine = SemanticResolutionEngine()
     resp = engine.resolve("gasto en consumo final del gobierno en bolivia")
@@ -173,7 +173,7 @@ def test_government_consumption_triggers_unresolved_specificity():
 
 def test_medication_and_health_expenditure_proposes_alternative_4405():
     """Verify that ADV_A09 proposes aggregate social expenditure 4405 with score 0.65."""
-    from statscepal.semantic import ResolutionStatus, SemanticResolutionEngine
+    from unofficial_cepalstat_mcp.semantic import ResolutionStatus, SemanticResolutionEngine
 
     engine = SemanticResolutionEngine()
     resp = engine.resolve("gasto publico en medicamentos y salud en argentina")

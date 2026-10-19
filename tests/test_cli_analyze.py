@@ -4,9 +4,9 @@ from unittest.mock import MagicMock, patch
 import pandas as pd
 import pytest
 
-from statscepal.analysis.models import CountryPeriodMetric, DecouplingDataset
-from statscepal.cli import main
-from statscepal.exceptions import CepalStatError
+from unofficial_cepalstat_mcp.analysis.models import CountryPeriodMetric, DecouplingDataset
+from unofficial_cepalstat_mcp.cli import main
+from unofficial_cepalstat_mcp.exceptions import CepalStatError
 
 
 def test_cli_analyze_help(capsys):
@@ -35,9 +35,9 @@ def test_cli_analyze_desacople_help(capsys):
     assert "--econometrics" in captured.out
 
 
-@patch("statscepal.cli.DecouplingAnalyzer")
-@patch("statscepal.cli.DataExtractor")
-@patch("statscepal.cli.CepalStatClient")
+@patch("unofficial_cepalstat_mcp.cli.DecouplingAnalyzer")
+@patch("unofficial_cepalstat_mcp.cli.DataExtractor")
+@patch("unofficial_cepalstat_mcp.cli.CepalStatClient")
 def test_cli_analyze_desacople(mock_client, mock_extractor, mock_analyzer, capsys):
     mock_instance = MagicMock()
     mock_instance.analyze_countries.return_value = DecouplingDataset(
@@ -74,9 +74,9 @@ def test_cli_analyze_desacople(mock_client, mock_extractor, mock_analyzer, capsy
     )
 
 
-@patch("statscepal.cli.DecouplingAnalyzer")
-@patch("statscepal.cli.DataExtractor")
-@patch("statscepal.cli.CepalStatClient")
+@patch("unofficial_cepalstat_mcp.cli.DecouplingAnalyzer")
+@patch("unofficial_cepalstat_mcp.cli.DataExtractor")
+@patch("unofficial_cepalstat_mcp.cli.CepalStatClient")
 def test_cli_analyze_desacople_default_countries(
     mock_client, mock_extractor, mock_analyzer, capsys
 ):
@@ -105,9 +105,9 @@ def test_cli_analyze_desacople_default_countries(
     assert "Doble Vulnerabilidad" in captured.out
 
 
-@patch("statscepal.cli.DecouplingAnalyzer")
-@patch("statscepal.cli.DataExtractor")
-@patch("statscepal.cli.CepalStatClient")
+@patch("unofficial_cepalstat_mcp.cli.DecouplingAnalyzer")
+@patch("unofficial_cepalstat_mcp.cli.DataExtractor")
+@patch("unofficial_cepalstat_mcp.cli.CepalStatClient")
 def test_cli_analyze_desacople_output_csv(
     mock_client, mock_extractor, mock_analyzer, tmp_path, capsys
 ):
@@ -144,13 +144,13 @@ def test_cli_analyze_desacople_output_csv(
     assert f"Saved 1 rows to {csv_file}" in captured.out
 
 
-@patch("statscepal.cli.DecouplingAnalyzer")
-@patch("statscepal.cli.DataExtractor")
-@patch("statscepal.cli.CepalStatClient")
+@patch("unofficial_cepalstat_mcp.cli.DecouplingAnalyzer")
+@patch("unofficial_cepalstat_mcp.cli.DataExtractor")
+@patch("unofficial_cepalstat_mcp.cli.CepalStatClient")
 def test_cli_analyze_desacople_econometrics(
     mock_client, mock_extractor, mock_analyzer, capsys
 ):
-    from statscepal.analysis.models import RegressionModelSummary
+    from unofficial_cepalstat_mcp.analysis.models import RegressionModelSummary
 
     mock_instance = MagicMock()
     mock_dataset = DecouplingDataset(
@@ -224,9 +224,9 @@ def test_cli_analyze_desacople_econometrics(
     assert "0.3456" in captured.out
 
 
-@patch("statscepal.cli.DecouplingAnalyzer")
-@patch("statscepal.cli.DataExtractor")
-@patch("statscepal.cli.CepalStatClient")
+@patch("unofficial_cepalstat_mcp.cli.DecouplingAnalyzer")
+@patch("unofficial_cepalstat_mcp.cli.DataExtractor")
+@patch("unofficial_cepalstat_mcp.cli.CepalStatClient")
 def test_cli_analyze_desacople_without_econometrics(
     mock_client, mock_extractor, mock_analyzer, capsys
 ):
@@ -258,9 +258,9 @@ def test_cli_analyze_desacople_without_econometrics(
     assert "CEPALSTAT ECONOMETRIC REGRESSION SUMMARY (OLS)" not in captured.out
 
 
-@patch("statscepal.cli.DecouplingAnalyzer")
-@patch("statscepal.cli.DataExtractor")
-@patch("statscepal.cli.CepalStatClient")
+@patch("unofficial_cepalstat_mcp.cli.DecouplingAnalyzer")
+@patch("unofficial_cepalstat_mcp.cli.DataExtractor")
+@patch("unofficial_cepalstat_mcp.cli.CepalStatClient")
 def test_cli_analyze_desacople_empty(
     mock_client, mock_extractor, mock_analyzer, capsys
 ):
@@ -274,9 +274,9 @@ def test_cli_analyze_desacople_empty(
     assert "No records found." in captured.out
 
 
-@patch("statscepal.cli.DecouplingAnalyzer")
-@patch("statscepal.cli.DataExtractor")
-@patch("statscepal.cli.CepalStatClient")
+@patch("unofficial_cepalstat_mcp.cli.DecouplingAnalyzer")
+@patch("unofficial_cepalstat_mcp.cli.DataExtractor")
+@patch("unofficial_cepalstat_mcp.cli.CepalStatClient")
 def test_cli_analyze_desacople_error(
     mock_client, mock_extractor, mock_analyzer, capsys
 ):

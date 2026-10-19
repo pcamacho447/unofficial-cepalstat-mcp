@@ -1,11 +1,11 @@
 import pytest
-from statscepal.analysis import (
+from unofficial_cepalstat_mcp.analysis import (
     classify_quadrant,
     compute_decoupling_score,
     compute_elasticity,
     compute_food_wage_gap,
 )
-from statscepal.analysis.metrics import (
+from unofficial_cepalstat_mcp.analysis.metrics import (
     classify_quadrant as classify_quadrant_direct,
     compute_decoupling_score as compute_decoupling_score_direct,
     compute_elasticity as compute_elasticity_direct,

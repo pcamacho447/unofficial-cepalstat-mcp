@@ -1,8 +1,8 @@
 from unittest.mock import patch
 import pandas as pd
 import pytest
-from statscepal.semantic.fetcher import SemanticDataFetcher
-from statscepal.semantic.models import (
+from unofficial_cepalstat_mcp.semantic.fetcher import SemanticDataFetcher
+from unofficial_cepalstat_mcp.semantic.models import (
     AppliedFilters,
     ParsedIntent,
     ResolutionStatus,
@@ -48,14 +48,14 @@ def test_parsed_intent_default_values():
 
 
 def test_parsed_intent_importable_from_models_and_parser():
-    from statscepal.semantic.parser import ParsedIntent as ParserParsedIntent
-    from statscepal.semantic.models import ParsedIntent as ModelsParsedIntent
+    from unofficial_cepalstat_mcp.semantic.parser import ParsedIntent as ParserParsedIntent
+    from unofficial_cepalstat_mcp.semantic.models import ParsedIntent as ModelsParsedIntent
 
     assert ParserParsedIntent is ModelsParsedIntent
 
 
 def test_parser_extracts_discrete_year_list():
-    from statscepal.semantic.parser import QueryParser
+    from unofficial_cepalstat_mcp.semantic.parser import QueryParser
 
     parser = QueryParser()
     intent = parser.parse("Cual fue la plata minima real en peru en el 2023 y 2022")
@@ -65,7 +65,7 @@ def test_parser_extracts_discrete_year_list():
 
 
 def test_parser_extracts_closed_year_range():
-    from statscepal.semantic.parser import QueryParser
+    from unofficial_cepalstat_mcp.semantic.parser import QueryParser
 
     parser = QueryParser()
     intent = parser.parse("inflacion en chile del 2019 al 2022")
@@ -80,7 +80,7 @@ def test_parser_extracts_closed_year_range():
 
 
 def test_parser_extracts_relative_time_window():
-    from statscepal.semantic.parser import QueryParser
+    from unofficial_cepalstat_mcp.semantic.parser import QueryParser
 
     parser = QueryParser()
     intent = parser.parse("inflacion de alimentos en peru los ultimos 4 anos")
@@ -105,7 +105,7 @@ def test_parser_extracts_relative_time_window():
 
 
 def test_parser_single_year_canonical_mode():
-    from statscepal.semantic.parser import QueryParser
+    from unofficial_cepalstat_mcp.semantic.parser import QueryParser
 
     parser = QueryParser()
     intent = parser.parse("pobreza en chile 2021")
@@ -115,7 +115,7 @@ def test_parser_single_year_canonical_mode():
 
 
 def test_engine_propagates_multi_year_filters():
-    from statscepal.semantic.engine import SemanticResolutionEngine
+    from unofficial_cepalstat_mcp.semantic.engine import SemanticResolutionEngine
 
     engine = SemanticResolutionEngine()
     res = engine.resolve_query("inflacion en chile del 2019 al 2022")
@@ -176,7 +176,7 @@ def test_fetcher_extracts_relative_window_series():
 
 
 def test_engine_resolves_multi_year_range_in_trace_and_stage5_audit():
-    from statscepal.semantic.engine import SemanticResolutionEngine
+    from unofficial_cepalstat_mcp.semantic.engine import SemanticResolutionEngine
 
     engine = SemanticResolutionEngine()
     res = engine.resolve("cual es la pobreza extrema etnica en el peru de 2019 al 2021")
@@ -201,7 +201,7 @@ def test_engine_resolves_multi_year_range_in_trace_and_stage5_audit():
 
 
 def test_engine_multi_year_range_with_survey_gaps_reports_observed_and_unobserved_years():
-    from statscepal.semantic.engine import SemanticResolutionEngine
+    from unofficial_cepalstat_mcp.semantic.engine import SemanticResolutionEngine
 
     engine = SemanticResolutionEngine()
     res = engine.resolve("tasa de pobreza en chile de 2019 al 2022")
@@ -216,7 +216,7 @@ def test_engine_multi_year_range_with_survey_gaps_reports_observed_and_unobserve
 
 
 def test_cli_displays_multi_year_range_and_breakdown_series(capsys):
-    from statscepal.cli import main
+    from unofficial_cepalstat_mcp.cli import main
 
     ret = main(["semantic", "resolve", "cual es la pobreza extrema etnica en el peru de 2019 al 2021", "--explain"])
     assert ret == 0
@@ -228,7 +228,7 @@ def test_cli_displays_multi_year_range_and_breakdown_series(capsys):
 
 
 def test_parser_extracts_multiple_countries_in_query_order():
-    from statscepal.semantic.parser import QueryParser
+    from unofficial_cepalstat_mcp.semantic.parser import QueryParser
 
     parser = QueryParser()
     intent = parser.parse("cual fue el ingreso en peru colombia y chile en el 2022")
@@ -239,7 +239,7 @@ def test_parser_extracts_multiple_countries_in_query_order():
 
 
 def test_engine_resolves_multi_country_query_and_audits_all_countries():
-    from statscepal.semantic.engine import SemanticResolutionEngine
+    from unofficial_cepalstat_mcp.semantic.engine import SemanticResolutionEngine
 
     engine = SemanticResolutionEngine()
 
@@ -262,8 +262,8 @@ def test_engine_resolves_multi_country_query_and_audits_all_countries():
 
 
 def test_fetcher_and_cli_support_multi_country_extraction(capsys):
-    from statscepal.cli import main
-    from statscepal.semantic.engine import SemanticResolutionEngine
+    from unofficial_cepalstat_mcp.cli import main
+    from unofficial_cepalstat_mcp.semantic.engine import SemanticResolutionEngine
 
     ret = main(["semantic", "resolve", "cual fue el ingreso en peru colombia y chile en el 2022", "--explain"])
     assert ret == 0
@@ -290,7 +290,7 @@ def test_fetcher_and_cli_support_multi_country_extraction(capsys):
 
 
 def test_stage5_populates_per_country_anchors_and_explicit_disclaimer():
-    from statscepal.semantic.engine import SemanticResolutionEngine
+    from unofficial_cepalstat_mcp.semantic.engine import SemanticResolutionEngine
 
     engine = SemanticResolutionEngine()
     res = engine.resolve("tasa de pobreza en peru colombia y chile en el 2021")
@@ -312,7 +312,7 @@ def test_stage5_populates_per_country_anchors_and_explicit_disclaimer():
 
 
 def test_fetcher_rescues_anchor_years_for_unobserved_country_in_multi_country_query():
-    from statscepal.semantic.engine import SemanticResolutionEngine
+    from unofficial_cepalstat_mcp.semantic.engine import SemanticResolutionEngine
 
     engine = SemanticResolutionEngine()
     res = engine.resolve("tasa de pobreza en peru colombia y chile en el 2021")
@@ -342,7 +342,7 @@ def test_fetcher_rescues_anchor_years_for_unobserved_country_in_multi_country_qu
 
 
 def test_fetcher_rescues_anchor_years_for_single_country_query():
-    from statscepal.semantic.engine import SemanticResolutionEngine
+    from unofficial_cepalstat_mcp.semantic.engine import SemanticResolutionEngine
 
     engine = SemanticResolutionEngine()
     res = engine.resolve("tasa de pobreza en chile en el 2021")
@@ -370,7 +370,7 @@ def test_fetcher_rescues_anchor_years_for_single_country_query():
 
 
 def test_cli_displays_per_country_anchors_and_rescued_fetch_rows(capsys):
-    from statscepal.cli import main
+    from unofficial_cepalstat_mcp.cli import main
 
     ret = main([
         "semantic",
@@ -396,7 +396,7 @@ def test_cli_displays_per_country_anchors_and_rescued_fetch_rows(capsys):
         ],
     }
     with patch(
-        "statscepal.semantic.fetcher.SemanticDataFetcher.fetch_resolved_data",
+        "unofficial_cepalstat_mcp.semantic.fetcher.SemanticDataFetcher.fetch_resolved_data",
         return_value=mock_payload,
     ):
         ret_fetch = main([
@@ -414,7 +414,7 @@ def test_cli_displays_per_country_anchors_and_rescued_fetch_rows(capsys):
 
 def test_badehog_family_indicators_report_chile_2021_anchors_in_stage5():
     """Verify swapped/breakdown household survey indicators (3342, 3341, 3329, 3289) detect Chile's 2021 CASEN gap in Stage 5."""
-    from statscepal.semantic.engine import SemanticResolutionEngine
+    from unofficial_cepalstat_mcp.semantic.engine import SemanticResolutionEngine
 
     engine = SemanticResolutionEngine()
 
@@ -437,8 +437,8 @@ def test_badehog_family_indicators_report_chile_2021_anchors_in_stage5():
 def test_fetcher_dynamically_rescues_empirical_anchors_even_when_unindexed_in_stage5():
     """Verify SemanticDataFetcher dynamically computes and rescues anchor years from the DataFrame if a country lacks data in requested year."""
     import pandas as pd
-    from statscepal.semantic.engine import SemanticResolutionEngine
-    from statscepal.semantic.fetcher import SemanticDataFetcher
+    from unofficial_cepalstat_mcp.semantic.engine import SemanticResolutionEngine
+    from unofficial_cepalstat_mcp.semantic.fetcher import SemanticDataFetcher
 
     engine = SemanticResolutionEngine()
     # Suppose Bolivia has an unindexed gap in 2021 in the empirical DataFrame (only 2020 and 2022 exist)

@@ -3,7 +3,7 @@
 import time
 import pytest
 
-from statscepal.semantic.thesaurus import (
+from unofficial_cepalstat_mcp.semantic.thesaurus import (
     AntonymRule,
     ExpectedSign,
     PolarityResolution,
@@ -103,7 +103,7 @@ def test_thesaurus_latency_benchmark():
 
 
 def test_default_thesaurus_regionalisms():
-    from statscepal.semantic.thesaurus import get_default_thesaurus
+    from unofficial_cepalstat_mcp.semantic.thesaurus import get_default_thesaurus
 
     th = get_default_thesaurus()
 
@@ -129,7 +129,7 @@ def test_default_thesaurus_regionalisms():
 
 
 def test_match_all_synsets_multi_facet():
-    from statscepal.semantic.thesaurus import get_default_thesaurus
+    from unofficial_cepalstat_mcp.semantic.thesaurus import get_default_thesaurus
 
     th = get_default_thesaurus()
     matches = th.match_all_synsets("facet_canasta", "comprar comida y luego cargar bencina")
@@ -140,7 +140,7 @@ def test_match_all_synsets_multi_facet():
 
 
 def test_default_thesaurus_all_canonical_domains():
-    from statscepal.semantic.thesaurus import get_default_thesaurus
+    from unofficial_cepalstat_mcp.semantic.thesaurus import get_default_thesaurus
 
     th = get_default_thesaurus()
 
@@ -173,7 +173,7 @@ def test_default_thesaurus_all_canonical_domains():
 
 
 def test_econometric_antonym_polarities():
-    from statscepal.semantic.thesaurus import get_default_thesaurus, PolarityType, ExpectedSign
+    from unofficial_cepalstat_mcp.semantic.thesaurus import get_default_thesaurus, PolarityType, ExpectedSign
 
     th = get_default_thesaurus()
 
@@ -225,8 +225,8 @@ def test_econometric_antonym_polarities():
 
 
 def test_semantic_resolution_response_polarity_field():
-    from statscepal.semantic.models import SemanticResolutionResponse, ResolutionStatus
-    from statscepal.semantic.thesaurus import PolarityResolution, PolarityType
+    from unofficial_cepalstat_mcp.semantic.models import SemanticResolutionResponse, ResolutionStatus
+    from unofficial_cepalstat_mcp.semantic.thesaurus import PolarityResolution, PolarityType
 
     resp = SemanticResolutionResponse(
         status=ResolutionStatus.RESOLVED,
@@ -242,7 +242,7 @@ def test_semantic_resolution_response_polarity_field():
 
 
 def test_default_thesaurus_latency_benchmark():
-    from statscepal.semantic.thesaurus import get_default_thesaurus
+    from unofficial_cepalstat_mcp.semantic.thesaurus import get_default_thesaurus
 
     th = get_default_thesaurus()
     query = "deficit primario como porcentaje del pib en brasil 2020 y empleo informal en zona rural"
@@ -264,10 +264,10 @@ def test_default_thesaurus_latency_benchmark():
 
 
 def test_end_to_end_synonyms_and_antonyms_queries():
-    from statscepal.catalog.store import CatalogStore
-    from statscepal.semantic.registry import SemanticRegistry
-    from statscepal.semantic.engine import SemanticResolutionEngine
-    from statscepal.semantic.models import ResolutionStatus
+    from unofficial_cepalstat_mcp.catalog.store import CatalogStore
+    from unofficial_cepalstat_mcp.semantic.registry import SemanticRegistry
+    from unofficial_cepalstat_mcp.semantic.engine import SemanticResolutionEngine
+    from unofficial_cepalstat_mcp.semantic.models import ResolutionStatus
 
     store = CatalogStore()
     registry = SemanticRegistry(store=store)
@@ -297,7 +297,7 @@ def test_end_to_end_synonyms_and_antonyms_queries():
 
 
 def test_thesaurus_ethnic_synsets():
-    from statscepal.semantic.thesaurus import get_default_thesaurus
+    from unofficial_cepalstat_mcp.semantic.thesaurus import get_default_thesaurus
     thesaurus = get_default_thesaurus()
 
     # General ethnic term

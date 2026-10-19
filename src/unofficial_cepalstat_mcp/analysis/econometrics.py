@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 import statsmodels.api as sm
 
-from statscepal.analysis.models import DecouplingDataset, RegressionModelSummary
+from unofficial_cepalstat_mcp.analysis.models import DecouplingDataset, RegressionModelSummary
 
 
 def _clean_metric(val: Any, default: float = 0.0) -> float:

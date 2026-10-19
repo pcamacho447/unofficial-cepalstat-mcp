@@ -7,11 +7,11 @@ import time
 from typing import Any, Callable
 import httpx
 
-from statscepal.catalog.models import HarvestSummary
-from statscepal.catalog.store import CatalogStore
-from statscepal.client import CepalStatClient
-from statscepal.dimensions import Dimension, Member
-from statscepal.exceptions import CepalStatAPIError, CepalStatNetworkError
+from unofficial_cepalstat_mcp.catalog.models import HarvestSummary
+from unofficial_cepalstat_mcp.catalog.store import CatalogStore
+from unofficial_cepalstat_mcp.client import CepalStatClient
+from unofficial_cepalstat_mcp.dimensions import Dimension, Member
+from unofficial_cepalstat_mcp.exceptions import CepalStatAPIError, CepalStatNetworkError
 
 
 class CatalogHarvester:

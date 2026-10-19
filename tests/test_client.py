@@ -1,8 +1,8 @@
 import pytest
 import respx
 import httpx
-from statscepal.client import CepalStatClient
-from statscepal.exceptions import (
+from unofficial_cepalstat_mcp.client import CepalStatClient
+from unofficial_cepalstat_mcp.exceptions import (
     CepalStatError,
     CepalStatAPIError,
     CepalStatNetworkError,
@@ -122,10 +122,10 @@ def test_client_context_manager():
 
 
 def test_package_exports():
-    import statscepal
+    import unofficial_cepalstat_mcp
 
-    assert hasattr(statscepal, "CepalStatClient")
-    assert hasattr(statscepal, "CepalStatError")
-    assert hasattr(statscepal, "CepalStatNetworkError")
-    assert hasattr(statscepal, "CepalStatAPIError")
+    assert hasattr(unofficial_cepalstat_mcp, "CepalStatClient")
+    assert hasattr(unofficial_cepalstat_mcp, "CepalStatError")
+    assert hasattr(unofficial_cepalstat_mcp, "CepalStatNetworkError")
+    assert hasattr(unofficial_cepalstat_mcp, "CepalStatAPIError")
 

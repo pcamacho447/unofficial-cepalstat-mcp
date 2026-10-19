@@ -3,8 +3,8 @@ import httpx
 import pandas as pd
 import pytest
 import respx
-from statscepal.catalog.store import CatalogStore
-from statscepal.client import CepalStatClient
+from unofficial_cepalstat_mcp.catalog.store import CatalogStore
+from unofficial_cepalstat_mcp.client import CepalStatClient
 
 MOCK_TREE_PAYLOAD = {
     "header": {"success": True, "code": 200},

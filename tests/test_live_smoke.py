@@ -5,11 +5,11 @@ import sys
 import pandas as pd
 import pytest
 
-from statscepal.cli import main
-from statscepal.client import CepalStatClient
-from statscepal.dimensions import DimensionManager
-from statscepal.extractor import DataExtractor
-from statscepal.thematic_tree import ThematicTree
+from unofficial_cepalstat_mcp.cli import main
+from unofficial_cepalstat_mcp.client import CepalStatClient
+from unofficial_cepalstat_mcp.dimensions import DimensionManager
+from unofficial_cepalstat_mcp.extractor import DataExtractor
+from unofficial_cepalstat_mcp.thematic_tree import ThematicTree
 
 
 @pytest.mark.integration

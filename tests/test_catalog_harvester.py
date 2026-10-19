@@ -8,11 +8,11 @@ import pytest
 import respx
 import httpx
 
-from statscepal.catalog.harvester import CatalogHarvester
-from statscepal.catalog.store import CatalogStore
-from statscepal.cli import main
-from statscepal.client import CepalStatClient
-from statscepal.dimensions import Dimension, Member
+from unofficial_cepalstat_mcp.catalog.harvester import CatalogHarvester
+from unofficial_cepalstat_mcp.catalog.store import CatalogStore
+from unofficial_cepalstat_mcp.cli import main
+from unofficial_cepalstat_mcp.client import CepalStatClient
+from unofficial_cepalstat_mcp.dimensions import Dimension, Member
 
 
 
@@ -308,7 +308,7 @@ def test_cli_catalog_harvest_success(capsys, tmp_path, monkeypatch):
         status_code=200, json=fixture_3328
     )
 
-    monkeypatch.setattr("statscepal.cli.CatalogStore", lambda: store)
+    monkeypatch.setattr("unofficial_cepalstat_mcp.cli.CatalogStore", lambda: store)
 
     exit_code = main(["catalog", "harvest", "--rate", "0.0"])
     assert exit_code == 0
@@ -351,7 +351,7 @@ def test_cli_catalog_harvest_with_ids_and_force(capsys, tmp_path, monkeypatch):
         status_code=200, json=fixture_3342
     )
 
-    monkeypatch.setattr("statscepal.cli.CatalogStore", lambda: store)
+    monkeypatch.setattr("unofficial_cepalstat_mcp.cli.CatalogStore", lambda: store)
 
     # First run with --ids 3342
     exit_code = main(["catalog", "harvest", "--ids", "3342", "--rate", "0.0"])
@@ -379,7 +379,7 @@ def test_cli_catalog_harvest_with_ids_and_force(capsys, tmp_path, monkeypatch):
 
 def test_cli_catalog_harvest_invalid_ids(capsys, monkeypatch, tmp_path):
     store = CatalogStore(db_path=tmp_path / "test_cli_invalid.db")
-    monkeypatch.setattr("statscepal.cli.CatalogStore", lambda: store)
+    monkeypatch.setattr("unofficial_cepalstat_mcp.cli.CatalogStore", lambda: store)
     exit_code = main(["catalog", "harvest", "--ids", "not-a-number"])
     assert exit_code == 1
 

@@ -13,13 +13,13 @@ import re
 from typing import Any
 from pydantic import BaseModel, Field
 
-from statscepal.catalog.store import CatalogStore
-from statscepal.semantic.facet_ontology import (
+from unofficial_cepalstat_mcp.catalog.store import CatalogStore
+from unofficial_cepalstat_mcp.semantic.facet_ontology import (
     DEFAULT_FACET_ONTOLOGY,
     FacetOntology,
     strip_accents,
 )
-from statscepal.semantic.registry import (
+from unofficial_cepalstat_mcp.semantic.registry import (
     DEFAULT_OFFICIAL_DIMENSIONS,
     VERTICAL_SLICE_INDICATORS,
 )

@@ -1,9 +1,9 @@
 from pathlib import Path
 import pytest
-from statscepal.catalog.store import CatalogStore
-from statscepal.dimensions import Dimension, Member
-from statscepal.semantic.registry import SemanticRegistry
-from statscepal.semantic.models import RelationshipType, TemporalAvailabilityStatus
+from unofficial_cepalstat_mcp.catalog.store import CatalogStore
+from unofficial_cepalstat_mcp.dimensions import Dimension, Member
+from unofficial_cepalstat_mcp.semantic.registry import SemanticRegistry
+from unofficial_cepalstat_mcp.semantic.models import RelationshipType, TemporalAvailabilityStatus
 
 
 def test_catalog_store_relational_schema(tmp_path: Path):

@@ -2,8 +2,8 @@
 
 import pytest
 
-from statscepal.analysis.econometrics import EconometricEstimator
-from statscepal.analysis.models import (
+from unofficial_cepalstat_mcp.analysis.econometrics import EconometricEstimator
+from unofficial_cepalstat_mcp.analysis.models import (
     CountryPeriodMetric,
     DecouplingDataset,
     RegressionModelSummary,

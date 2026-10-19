@@ -6,14 +6,14 @@ import pandas as pd
 import pytest
 import respx
 
-from statscepal.cli import main
-from statscepal.thematic_tree import IndicatorItem
+from unofficial_cepalstat_mcp.cli import main
+from unofficial_cepalstat_mcp.thematic_tree import IndicatorItem
 
 
 @pytest.fixture(autouse=True)
 def mock_catalog_not_built(mocker):
     """Ensure test_cli tests online/fallback behavior by default."""
-    mocker.patch("statscepal.cli.CatalogStore.is_built", return_value=False)
+    mocker.patch("unofficial_cepalstat_mcp.cli.CatalogStore.is_built", return_value=False)
 
 
 def test_cli_help(capsys):
@@ -30,7 +30,7 @@ def test_cli_help(capsys):
 def test_cli_help_subprocess():
     """Test running cli module via python -m statscepal.cli --help."""
     result = subprocess.run(
-        [sys.executable, "-m", "statscepal.cli", "--help"],
+        [sys.executable, "-m", "unofficial_cepalstat_mcp.cli", "--help"],
         capture_output=True,
         text=True,
     )
@@ -50,7 +50,7 @@ def test_cli_no_args(capsys):
 def test_cli_search_invokes_thematic_tree(capsys, mocker):
     """Test search invokes ThematicTree.search and displays results."""
     mock_search = mocker.patch(
-        "statscepal.thematic_tree.ThematicTree.search",
+        "unofficial_cepalstat_mcp.thematic_tree.ThematicTree.search",
         return_value=[
             IndicatorItem(
                 indicator_id=4788,
@@ -79,7 +79,7 @@ def test_cli_search_invokes_thematic_tree(capsys, mocker):
 
 def test_cli_search_no_results(capsys, mocker):
     """Test search when no indicators match."""
-    mocker.patch("statscepal.thematic_tree.ThematicTree.search", return_value=[])
+    mocker.patch("unofficial_cepalstat_mcp.thematic_tree.ThematicTree.search", return_value=[])
 
     ret = main(["search", "inexistente"])
     assert ret == 0
@@ -90,7 +90,7 @@ def test_cli_search_no_results(capsys, mocker):
 def test_cli_info_invokes_get_metadata(capsys, mocker):
     """Test info invokes DataExtractor.get_metadata and prints metadata."""
     mock_meta = mocker.patch(
-        "statscepal.extractor.DataExtractor.get_metadata",
+        "unofficial_cepalstat_mcp.extractor.DataExtractor.get_metadata",
         return_value={
             "indicator_name": "Población total, según sexo",
             "area": "Demografía",
@@ -113,7 +113,7 @@ def test_cli_info_invokes_get_metadata(capsys, mocker):
 
 def test_cli_info_not_found(capsys, mocker):
     """Test info when indicator metadata is not found."""
-    mocker.patch("statscepal.extractor.DataExtractor.get_metadata", return_value={})
+    mocker.patch("unofficial_cepalstat_mcp.extractor.DataExtractor.get_metadata", return_value={})
 
     ret = main(["info", "999999"])
     assert ret == 1
@@ -130,7 +130,7 @@ def test_cli_fetch_prints_table(capsys, mocker):
         ]
     )
     mock_get_df = mocker.patch(
-        "statscepal.extractor.DataExtractor.get_dataframe",
+        "unofficial_cepalstat_mcp.extractor.DataExtractor.get_dataframe",
         return_value=df_mock,
     )
 
@@ -151,7 +151,7 @@ def test_cli_fetch_saves_csv(tmp_path, capsys, mocker):
         ]
     )
     mocker.patch(
-        "statscepal.extractor.DataExtractor.get_dataframe",
+        "unofficial_cepalstat_mcp.extractor.DataExtractor.get_dataframe",
         return_value=df_mock,
     )
 
@@ -171,7 +171,7 @@ def test_cli_fetch_saves_csv(tmp_path, capsys, mocker):
 def test_cli_fetch_empty(capsys, mocker):
     """Test fetch with no records returned."""
     mocker.patch(
-        "statscepal.extractor.DataExtractor.get_dataframe",
+        "unofficial_cepalstat_mcp.extractor.DataExtractor.get_dataframe",
         return_value=pd.DataFrame(),
     )
 
@@ -219,10 +219,10 @@ def test_cli_fetch_invalid_members(capsys):
 
 def test_cli_cepalstat_error_handling(capsys, mocker):
     """Test handling of CepalStatError prints to stderr and returns 1."""
-    from statscepal.exceptions import CepalStatNetworkError
+    from unofficial_cepalstat_mcp.exceptions import CepalStatNetworkError
 
     mocker.patch(
-        "statscepal.thematic_tree.ThematicTree.search",
+        "unofficial_cepalstat_mcp.thematic_tree.ThematicTree.search",
         side_effect=CepalStatNetworkError("Connection timed out"),
     )
 

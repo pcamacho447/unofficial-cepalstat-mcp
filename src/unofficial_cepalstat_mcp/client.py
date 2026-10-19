@@ -3,7 +3,7 @@
 from typing import Any
 import httpx
 
-from statscepal.exceptions import CepalStatAPIError, CepalStatNetworkError
+from unofficial_cepalstat_mcp.exceptions import CepalStatAPIError, CepalStatNetworkError
 
 DEFAULT_BASE_URL = "https://api-cepalstat.cepal.org"
 DEFAULT_TIMEOUT = 30.0

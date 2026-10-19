@@ -2,9 +2,9 @@
 
 from pathlib import Path
 import pytest
-from statscepal.catalog.store import CatalogStore
-from statscepal.semantic.models import RelationshipType
-from statscepal.semantic.registry import SemanticRegistry
+from unofficial_cepalstat_mcp.catalog.store import CatalogStore
+from unofficial_cepalstat_mcp.semantic.models import RelationshipType
+from unofficial_cepalstat_mcp.semantic.registry import SemanticRegistry
 
 EXPECTED_25_INDICATORS = {
     3328: {
@@ -240,7 +240,7 @@ def test_catalog_store_persists_25_indicators_and_relationships(tmp_path: Path):
 
 
 def test_registry_contains_ethnic_poverty_indicator_3342():
-    from statscepal.semantic.registry import VERTICAL_SLICE_INDICATORS, DEFAULT_OFFICIAL_DIMENSIONS, RelationshipType
+    from unofficial_cepalstat_mcp.semantic.registry import VERTICAL_SLICE_INDICATORS, DEFAULT_OFFICIAL_DIMENSIONS, RelationshipType
     assert 3342 in VERTICAL_SLICE_INDICATORS
     ind_3342 = VERTICAL_SLICE_INDICATORS[3342]
     assert ind_3342.concept == "POBREZA"
@@ -263,7 +263,7 @@ def test_registry_contains_ethnic_poverty_indicator_3342():
 
 def test_default_official_dimensions_shared_dim_id_consistency():
     """Assert that whenever a dim_id is shared across indicators, its member IDs do not conflict."""
-    from statscepal.semantic.registry import DEFAULT_OFFICIAL_DIMENSIONS
+    from unofficial_cepalstat_mcp.semantic.registry import DEFAULT_OFFICIAL_DIMENSIONS
 
     dim_registry: dict[int, dict[int, str]] = {}
     for ind_id, dims in DEFAULT_OFFICIAL_DIMENSIONS.items():
@@ -290,7 +290,7 @@ def test_default_official_dimensions_shared_dim_id_consistency():
 
 def test_vertical_slice_indicators_with_supported_facets_have_default_official_dimensions():
     """Assert all indicators in VERTICAL_SLICE_INDICATORS declaring supported_facets have dimension entries."""
-    from statscepal.semantic.registry import DEFAULT_OFFICIAL_DIMENSIONS, VERTICAL_SLICE_INDICATORS
+    from unofficial_cepalstat_mcp.semantic.registry import DEFAULT_OFFICIAL_DIMENSIONS, VERTICAL_SLICE_INDICATORS
 
     missing = []
     for ind_id, info in VERTICAL_SLICE_INDICATORS.items():

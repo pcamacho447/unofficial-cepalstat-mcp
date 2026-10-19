@@ -1,8 +1,8 @@
 """CEPALSTAT Semantic Intent Disambiguation Engine and Statistical Validator."""
 
-from statscepal.semantic.engine import SemanticResolutionEngine
-from statscepal.semantic.evaluator import BenchmarkEvaluator
-from statscepal.semantic.models import (
+from unofficial_cepalstat_mcp.semantic.engine import SemanticResolutionEngine
+from unofficial_cepalstat_mcp.semantic.evaluator import BenchmarkEvaluator
+from unofficial_cepalstat_mcp.semantic.models import (
     AlternativeCandidate,
     AppliedFilters,
     BenchmarkCase,
@@ -18,16 +18,16 @@ from statscepal.semantic.models import (
     TemporalAnchorInfo,
     TemporalAvailabilityStatus,
 )
-from statscepal.semantic.fetcher import SemanticDataFetcher
-from statscepal.semantic.graph_builder import (
+from unofficial_cepalstat_mcp.semantic.fetcher import SemanticDataFetcher
+from unofficial_cepalstat_mcp.semantic.graph_builder import (
     GraphBuildReport,
     GraphBuilder,
     InferredEdge,
 )
-from statscepal.semantic.matcher import DynamicMemberMatcher
-from statscepal.semantic.parser import QueryParser
-from statscepal.semantic.registry import SemanticRegistry
-from statscepal.semantic.thesaurus import (
+from unofficial_cepalstat_mcp.semantic.matcher import DynamicMemberMatcher
+from unofficial_cepalstat_mcp.semantic.parser import QueryParser
+from unofficial_cepalstat_mcp.semantic.registry import SemanticRegistry
+from unofficial_cepalstat_mcp.semantic.thesaurus import (
     AntonymRule,
     ExpectedSign,
     PolarityResolution,

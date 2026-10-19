@@ -1,6 +1,6 @@
 """Tests for multidimensional breakdowns and facet conmutation."""
 import pytest
-from statscepal.semantic.parser import QueryParser
+from unofficial_cepalstat_mcp.semantic.parser import QueryParser
 
 
 def test_parser_extracts_ethnic_facet():
@@ -28,8 +28,8 @@ def test_parser_extracts_ethnic_facet():
 
 
 def test_member_matcher_resolves_ethnic_dimension():
-    from statscepal.semantic.matcher import DynamicMemberMatcher
-    from statscepal.semantic.registry import DEFAULT_OFFICIAL_DIMENSIONS
+    from unofficial_cepalstat_mcp.semantic.matcher import DynamicMemberMatcher
+    from unofficial_cepalstat_mcp.semantic.registry import DEFAULT_OFFICIAL_DIMENSIONS
 
     matcher = DynamicMemberMatcher()
     dims_3342 = DEFAULT_OFFICIAL_DIMENSIONS[3342]
@@ -82,8 +82,8 @@ def test_member_matcher_resolves_ethnic_dimension():
     assert ethnic_filter4.is_breakdown is False
     assert ethnic_filter4.member_name == "No indígena ni afrodescendiente"
 
-from statscepal.semantic.engine import SemanticResolutionEngine
-from statscepal.semantic.models import ResolutionStatus
+from unofficial_cepalstat_mcp.semantic.engine import SemanticResolutionEngine
+from unofficial_cepalstat_mcp.semantic.models import ResolutionStatus
 
 
 def test_engine_resolves_ethnic_poverty_to_3342():
@@ -109,8 +109,8 @@ def test_engine_resolves_ethnic_poverty_to_3342():
 
 def test_critical_facet_never_collapses_to_unrequested_aggregate_member():
     """Fail if any critical facet ends up bound to its aggregate ('Total', 'Nacional', 'Ambos sexos') when not requested."""
-    from statscepal.dimensions import Dimension, Member
-    from statscepal.semantic.matcher import DynamicMemberMatcher
+    from unofficial_cepalstat_mcp.dimensions import Dimension, Member
+    from unofficial_cepalstat_mcp.semantic.matcher import DynamicMemberMatcher
 
     engine = SemanticResolutionEngine()
 
@@ -190,8 +190,8 @@ def test_engine_abstains_on_unsupported_facet_without_false_substitution():
 
 
 def test_fetcher_extracts_ethnic_observation():
-    from statscepal.semantic.engine import SemanticResolutionEngine
-    from statscepal.semantic.fetcher import SemanticDataFetcher
+    from unofficial_cepalstat_mcp.semantic.engine import SemanticResolutionEngine
+    from unofficial_cepalstat_mcp.semantic.fetcher import SemanticDataFetcher
     import pandas as pd
 
     engine = SemanticResolutionEngine()
@@ -213,8 +213,8 @@ def test_fetcher_extracts_ethnic_observation():
 
 
 def test_fetcher_accent_resilient_dimension_filtering():
-    from statscepal.semantic.engine import SemanticResolutionEngine
-    from statscepal.semantic.fetcher import SemanticDataFetcher
+    from unofficial_cepalstat_mcp.semantic.engine import SemanticResolutionEngine
+    from unofficial_cepalstat_mcp.semantic.fetcher import SemanticDataFetcher
     import pandas as pd
 
     engine = SemanticResolutionEngine()
@@ -280,8 +280,8 @@ def test_generic_breakdowns_for_sexo_area_edad_and_deciles():
 
 def test_ethnic_population_query_with_demonym_resolves_to_indigenous_population_breakdown():
     """Verify 'necesito datos etnicos de la poblacion peruana' extracts PER from 'peruana' and resolves to 4968 with ethnic breakdown."""
-    from statscepal.semantic.engine import SemanticResolutionEngine
-    from statscepal.semantic.models import ResolutionStatus
+    from unofficial_cepalstat_mcp.semantic.engine import SemanticResolutionEngine
+    from unofficial_cepalstat_mcp.semantic.models import ResolutionStatus
 
     engine = SemanticResolutionEngine()
 
@@ -303,8 +303,8 @@ def test_ethnic_population_query_with_demonym_resolves_to_indigenous_population_
 
 def test_specific_population_queries_route_to_total_indigenous_and_afrodescendant_indicators():
     """Verify total, indigenous, and afrodescendant population queries resolve to 4788, 4968, and 4969."""
-    from statscepal.semantic.engine import SemanticResolutionEngine
-    from statscepal.semantic.models import ResolutionStatus
+    from unofficial_cepalstat_mcp.semantic.engine import SemanticResolutionEngine
+    from unofficial_cepalstat_mcp.semantic.models import ResolutionStatus
 
     engine = SemanticResolutionEngine()
 
@@ -329,14 +329,14 @@ def test_specific_population_queries_route_to_total_indigenous_and_afrodescendan
 
 @pytest.fixture
 def engine():
-    from statscepal.semantic.engine import SemanticResolutionEngine
+    from unofficial_cepalstat_mcp.semantic.engine import SemanticResolutionEngine
 
     return SemanticResolutionEngine()
 
 
 def test_poblacion_por_quintil_y_etnia_routes_to_indicator_4639(engine):
     """Assert 'poblacion indigena por quintil en peru 2021' routes to 4639, not 3340."""
-    from statscepal.semantic.models import ResolutionStatus
+    from unofficial_cepalstat_mcp.semantic.models import ResolutionStatus
 
     res = engine.resolve("poblacion indigena por quintil en peru 2021")
     assert res.status == ResolutionStatus.RESOLVED
@@ -347,7 +347,7 @@ def test_poblacion_por_quintil_y_etnia_routes_to_indicator_4639(engine):
 
 def test_poblacion_especifica_afrodescendiente_no_bloqueada_por_etnico_total(engine):
     """Assert 'poblacion del grupo etnico afrodescendiente en brasil 2020' routes to 4969."""
-    from statscepal.semantic.models import ResolutionStatus
+    from unofficial_cepalstat_mcp.semantic.models import ResolutionStatus
 
     res = engine.resolve("poblacion del grupo etnico afrodescendiente en brasil 2020")
     assert res.status == ResolutionStatus.RESOLVED
@@ -357,7 +357,7 @@ def test_poblacion_especifica_afrodescendiente_no_bloqueada_por_etnico_total(eng
 
 def test_poblacion_por_area_urbana_rural_routes_to_indicator_4992(engine):
     """Assert 'poblacion por area urbana y rural en colombia 2022' routes to 4992."""
-    from statscepal.semantic.models import ResolutionStatus
+    from unofficial_cepalstat_mcp.semantic.models import ResolutionStatus
 
     res = engine.resolve("poblacion por area en colombia 2022")
     assert res.status == ResolutionStatus.RESOLVED

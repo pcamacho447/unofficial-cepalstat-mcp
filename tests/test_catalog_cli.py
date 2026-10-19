@@ -4,9 +4,9 @@ from pathlib import Path
 from unittest.mock import MagicMock
 import pytest
 
-from statscepal.catalog.models import CatalogIndicator, CatalogStats
-from statscepal.cli import main
-from statscepal.exceptions import CepalStatNetworkError
+from unofficial_cepalstat_mcp.catalog.models import CatalogIndicator, CatalogStats
+from unofficial_cepalstat_mcp.cli import main
+from unofficial_cepalstat_mcp.exceptions import CepalStatNetworkError
 
 
 @pytest.fixture
@@ -69,7 +69,7 @@ def test_cli_catalog_no_subcommand(capsys):
 
 def test_cli_catalog_stats(capsys, mocker, sample_stats):
     """Test statscepal catalog stats outputs summary statistics."""
-    mock_store_cls = mocker.patch("statscepal.cli.CatalogStore")
+    mock_store_cls = mocker.patch("unofficial_cepalstat_mcp.cli.CatalogStore")
     mock_store = MagicMock()
     mock_store.get_stats.return_value = sample_stats
     mock_store_cls.return_value = mock_store
@@ -88,7 +88,7 @@ def test_cli_catalog_stats(capsys, mocker, sample_stats):
 
 def test_cli_catalog_search(capsys, mocker, sample_indicators):
     """Test statscepal catalog search <query> with optional --theme and --limit."""
-    mock_store_cls = mocker.patch("statscepal.cli.CatalogStore")
+    mock_store_cls = mocker.patch("unofficial_cepalstat_mcp.cli.CatalogStore")
     mock_store = MagicMock()
     mock_store.search.return_value = [sample_indicators[0]]
     mock_store_cls.return_value = mock_store
@@ -117,7 +117,7 @@ def test_cli_catalog_search(capsys, mocker, sample_indicators):
 
 def test_cli_catalog_search_no_results(capsys, mocker):
     """Test statscepal catalog search with no matches."""
-    mock_store_cls = mocker.patch("statscepal.cli.CatalogStore")
+    mock_store_cls = mocker.patch("unofficial_cepalstat_mcp.cli.CatalogStore")
     mock_store = MagicMock()
     mock_store.search.return_value = []
     mock_store_cls.return_value = mock_store
@@ -136,7 +136,7 @@ def test_cli_catalog_search_no_results(capsys, mocker):
 
 def test_cli_catalog_export(capsys, mocker, tmp_path: Path):
     """Test exporting catalog to JSON or CSV."""
-    mock_store_cls = mocker.patch("statscepal.cli.CatalogStore")
+    mock_store_cls = mocker.patch("unofficial_cepalstat_mcp.cli.CatalogStore")
     mock_store = MagicMock()
     out_json = tmp_path / "catalog_dump.json"
     mock_store.export.return_value = out_json
@@ -168,7 +168,7 @@ def test_cli_catalog_export_missing_file(capsys):
 
 def test_cli_catalog_build(capsys, mocker):
     """Test running statscepal catalog build [--force] using mocked CatalogStore.build."""
-    mock_store_cls = mocker.patch("statscepal.cli.CatalogStore")
+    mock_store_cls = mocker.patch("unofficial_cepalstat_mcp.cli.CatalogStore")
     mock_store = MagicMock()
     mock_store.build.return_value = 142
     mock_store_cls.return_value = mock_store
@@ -192,7 +192,7 @@ def test_cli_catalog_build(capsys, mocker):
 
 def test_cli_catalog_build_error(capsys, mocker):
     """Test catalog build handles CepalStatError cleanly."""
-    mock_store_cls = mocker.patch("statscepal.cli.CatalogStore")
+    mock_store_cls = mocker.patch("unofficial_cepalstat_mcp.cli.CatalogStore")
     mock_store = MagicMock()
     mock_store.build.side_effect = CepalStatNetworkError("Connection timed out")
     mock_store_cls.return_value = mock_store

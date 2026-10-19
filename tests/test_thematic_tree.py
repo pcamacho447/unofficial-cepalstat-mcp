@@ -1,8 +1,8 @@
 import pytest
 import respx
 import httpx
-from statscepal.client import CepalStatClient
-from statscepal.thematic_tree import ThematicTree, IndicatorItem
+from unofficial_cepalstat_mcp.client import CepalStatClient
+from unofficial_cepalstat_mcp.thematic_tree import ThematicTree, IndicatorItem
 
 
 MOCK_TREE_PAYLOAD = {

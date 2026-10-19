@@ -1,14 +1,14 @@
 import json
 import pytest
-from statscepal.catalog.store import CatalogStore
-from statscepal.cli import main
-from statscepal.dimensions import Dimension, Member
-from statscepal.semantic.facet_ontology import (
+from unofficial_cepalstat_mcp.catalog.store import CatalogStore
+from unofficial_cepalstat_mcp.cli import main
+from unofficial_cepalstat_mcp.dimensions import Dimension, Member
+from unofficial_cepalstat_mcp.semantic.facet_ontology import (
     DEFAULT_FACET_ONTOLOGY,
     FacetOntology,
     get_default_facet_ontology,
 )
-from statscepal.semantic.matcher import (
+from unofficial_cepalstat_mcp.semantic.matcher import (
     DIMENSION_KEY_PATTERNS,
     MEMBER_VALUE_PATTERNS,
     DynamicMemberMatcher,
@@ -154,7 +154,7 @@ def test_store_and_ontology_facet_audit(tmp_path, capsys, monkeypatch):
     assert report.unmapped_dimensions[0]["dim_id"] == 88888
 
     # Test CLI invocation
-    monkeypatch.setattr("statscepal.cli.CatalogStore", lambda: CatalogStore(db_path=db_path))
+    monkeypatch.setattr("unofficial_cepalstat_mcp.cli.CatalogStore", lambda: CatalogStore(db_path=db_path))
     exit_code = main(["catalog", "facet-audit"])
     assert exit_code == 0
     out = capsys.readouterr().out
@@ -178,7 +178,7 @@ def test_cli_facet_audit_json(tmp_path, capsys, monkeypatch):
         ],
     )
 
-    monkeypatch.setattr("statscepal.cli.CatalogStore", lambda: CatalogStore(db_path=db_path))
+    monkeypatch.setattr("unofficial_cepalstat_mcp.cli.CatalogStore", lambda: CatalogStore(db_path=db_path))
     exit_code = main(["catalog", "facet-audit", "--json"])
     assert exit_code == 0
     out = capsys.readouterr().out

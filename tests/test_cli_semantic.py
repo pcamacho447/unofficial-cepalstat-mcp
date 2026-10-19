@@ -4,8 +4,8 @@ import json
 from unittest.mock import MagicMock
 import pytest
 
-from statscepal.cli import main
-from statscepal.semantic import SemanticDataFetcher
+from unofficial_cepalstat_mcp.cli import main
+from unofficial_cepalstat_mcp.semantic import SemanticDataFetcher
 
 
 def test_cli_semantic_help(capsys):
@@ -129,7 +129,7 @@ def test_cli_semantic_resolve_abstention_table(capsys):
 
 def test_cli_semantic_resolve_polarity_display(capsys):
     """Test semantic resolve table output displays polarity information when detected."""
-    from statscepal.cli import main
+    from unofficial_cepalstat_mcp.cli import main
 
     code = main(["semantic", "resolve", "Cual fue el deficit primario en Chile 2022"])
     assert code == 0
@@ -142,7 +142,7 @@ def test_cli_semantic_resolve_polarity_display(capsys):
 def test_cli_semantic_resolve_multi_year_series_display(capsys):
     """Test semantic resolve with --fetch displays formatted empirical time series table."""
     from unittest.mock import patch
-    from statscepal.cli import main
+    from unofficial_cepalstat_mcp.cli import main
 
     mock_payload = {
         "observation_exists": True,
@@ -159,7 +159,7 @@ def test_cli_semantic_resolve_multi_year_series_display(capsys):
     }
 
     with patch(
-        "statscepal.semantic.fetcher.SemanticDataFetcher.fetch_resolved_data",
+        "unofficial_cepalstat_mcp.semantic.fetcher.SemanticDataFetcher.fetch_resolved_data",
         return_value=mock_payload,
     ):
         code = main(
@@ -176,7 +176,7 @@ def test_cli_semantic_resolve_ethnic_poverty(capsys=None):
     """Test CLI resolution of ethnic poverty query displays indicator 3342 and dimension filters."""
     import io
     from contextlib import redirect_stdout
-    from statscepal.cli import main
+    from unofficial_cepalstat_mcp.cli import main
 
     f = io.StringIO()
     with redirect_stdout(f):
@@ -205,7 +205,7 @@ def test_cli_semantic_resolve_displays_conversational_hint_on_alternative_propos
 
 def test_cli_info_canonical_alias_mapping_to_empirical_table(capsys, monkeypatch):
     """Test CLI info 1242 automatically maps to empirical table 821 with header note."""
-    from statscepal.extractor import DataExtractor
+    from unofficial_cepalstat_mcp.extractor import DataExtractor
 
     mock_meta = {
         "indicator_name": "Ingresos tributarios por tipo de impuestos en porcentajes del PIB",

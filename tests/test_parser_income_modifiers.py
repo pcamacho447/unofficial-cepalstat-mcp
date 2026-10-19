@@ -1,12 +1,12 @@
 """Unit and integration tests for income modifiers, regionalisms, and composite precedence."""
 
 import pytest
-from statscepal.semantic import (
+from unofficial_cepalstat_mcp.semantic import (
     QueryParser,
     ResolutionStatus,
     SemanticResolutionEngine,
 )
-from statscepal.semantic.matcher import DynamicMemberMatcher
+from unofficial_cepalstat_mcp.semantic.matcher import DynamicMemberMatcher
 
 
 @pytest.fixture
@@ -361,7 +361,7 @@ def test_composite_precedence_emissions(parser: QueryParser, engine: SemanticRes
 def test_dynamic_member_matcher_slang_handling():
     """Verify DynamicMemberMatcher supports slang/normalized values properly."""
     matcher = DynamicMemberMatcher()
-    from statscepal.dimensions import Dimension, Member
+    from unofficial_cepalstat_mcp.dimensions import Dimension, Member
 
     dims = [
         Dimension(

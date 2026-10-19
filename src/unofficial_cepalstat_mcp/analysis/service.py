@@ -3,18 +3,18 @@
 import unicodedata
 import pandas as pd
 
-from statscepal.analysis.econometrics import EconometricEstimator
-from statscepal.analysis.metrics import (
+from unofficial_cepalstat_mcp.analysis.econometrics import EconometricEstimator
+from unofficial_cepalstat_mcp.analysis.metrics import (
     classify_quadrant,
     compute_elasticity,
     compute_food_wage_gap,
 )
-from statscepal.analysis.models import (
+from unofficial_cepalstat_mcp.analysis.models import (
     CountryPeriodMetric,
     DecouplingDataset,
     RegressionModelSummary,
 )
-from statscepal.extractor import DataExtractor
+from unofficial_cepalstat_mcp.extractor import DataExtractor
 
 # Mapeo de IDs de países oficiales en series económicas y sociales de CEPALSTAT
 COUNTRY_MEMBER_MAP: dict[str, int] = {

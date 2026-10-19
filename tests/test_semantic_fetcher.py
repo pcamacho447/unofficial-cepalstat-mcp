@@ -4,9 +4,9 @@ from unittest.mock import MagicMock
 import pandas as pd
 import pytest
 
-from statscepal.extractor import DataExtractor
-from statscepal.semantic.fetcher import SemanticDataFetcher
-from statscepal.semantic.models import (
+from unofficial_cepalstat_mcp.extractor import DataExtractor
+from unofficial_cepalstat_mcp.semantic.fetcher import SemanticDataFetcher
+from unofficial_cepalstat_mcp.semantic.models import (
     AppliedDimensionFilter,
     AppliedFilters,
     ResolutionStatus,
@@ -240,8 +240,8 @@ def test_semantic_data_fetcher_uses_fetch_indicator_dataframe_if_present():
 def test_fetcher_collapses_unconstrained_dataframe_dimensions_to_aggregate_members():
     """Verify that unbound DataFrame dimensions (e.g. Sexo__ESTANDAR in 3342 or Sexo jefatura in 3345) filter to aggregate instead of duplicating rows."""
     import pandas as pd
-    from statscepal.semantic.engine import SemanticResolutionEngine
-    from statscepal.semantic.fetcher import SemanticDataFetcher
+    from unofficial_cepalstat_mcp.semantic.engine import SemanticResolutionEngine
+    from unofficial_cepalstat_mcp.semantic.fetcher import SemanticDataFetcher
 
     engine = SemanticResolutionEngine()
     # Query specifies etnia=INDIGENA, area=NACIONAL, severidad=POBREZA_TOTAL, but leaves Sexo__ESTANDAR unspecified
@@ -273,8 +273,8 @@ def test_fetcher_collapses_unconstrained_dataframe_dimensions_to_aggregate_membe
 def test_fetcher_multi_country_without_year_filters_to_latest_year_per_country():
     """Verify multi-country query with no year specified returns only the latest available year per country."""
     import pandas as pd
-    from statscepal.semantic.engine import SemanticResolutionEngine
-    from statscepal.semantic.fetcher import SemanticDataFetcher
+    from unofficial_cepalstat_mcp.semantic.engine import SemanticResolutionEngine
+    from unofficial_cepalstat_mcp.semantic.fetcher import SemanticDataFetcher
 
     engine = SemanticResolutionEngine()
     res = engine.resolve("pobreza en peru y chile")
@@ -304,9 +304,9 @@ def test_fetcher_strips_synthetic_member_ids_to_prevent_api_country_collision():
     """Verify synthetic member_id 79578 in 2929 is NOT passed to API get_dataframe, preventing Chile-only filtering."""
     from unittest.mock import MagicMock
     import pandas as pd
-    from statscepal.extractor import DataExtractor
-    from statscepal.semantic.engine import SemanticResolutionEngine
-    from statscepal.semantic.fetcher import SemanticDataFetcher
+    from unofficial_cepalstat_mcp.extractor import DataExtractor
+    from unofficial_cepalstat_mcp.semantic.engine import SemanticResolutionEngine
+    from unofficial_cepalstat_mcp.semantic.fetcher import SemanticDataFetcher
 
     engine = SemanticResolutionEngine()
     res = engine.resolve(
@@ -334,9 +334,9 @@ def test_fetcher_maps_synthetic_indicator_2928_to_real_cepalstat_2484():
     """Verify synthetic indicator ID 2928 (IPC general in official_25) maps to real CEPALSTAT ID 2484 during fetch."""
     from unittest.mock import MagicMock
     import pandas as pd
-    from statscepal.extractor import DataExtractor
-    from statscepal.semantic.engine import SemanticResolutionEngine
-    from statscepal.semantic.fetcher import SemanticDataFetcher
+    from unofficial_cepalstat_mcp.extractor import DataExtractor
+    from unofficial_cepalstat_mcp.semantic.engine import SemanticResolutionEngine
+    from unofficial_cepalstat_mcp.semantic.fetcher import SemanticDataFetcher
 
     engine = SemanticResolutionEngine()
     res = engine.resolve(
@@ -363,8 +363,8 @@ def test_fetcher_maps_synthetic_indicator_2928_to_real_cepalstat_2484():
 def test_fetcher_matches_un_formal_country_names_and_displays_human_country_column():
     """Verify fetcher matches Bolivia (Estado Plurinacional de) via iso3/prefix and displays human country name over iso3."""
     import pandas as pd
-    from statscepal.semantic.engine import SemanticResolutionEngine
-    from statscepal.semantic.fetcher import SemanticDataFetcher
+    from unofficial_cepalstat_mcp.semantic.engine import SemanticResolutionEngine
+    from unofficial_cepalstat_mcp.semantic.fetcher import SemanticDataFetcher
 
     engine = SemanticResolutionEngine()
     res = engine.resolve("inflacion de alimentos en bolivia y chile del 2021 al 2022")
@@ -391,8 +391,8 @@ def test_fetcher_matches_un_formal_country_names_and_displays_human_country_colu
 def test_fetcher_parses_decada_column_as_temporal_dimension():
     """Verify fetcher recognizes 'Década' column (e.g. 'Década 2010', 'Década 2020') as year_col and extracts numeric year."""
     import pandas as pd
-    from statscepal.semantic.fetcher import SemanticDataFetcher
-    from statscepal.semantic.models import (
+    from unofficial_cepalstat_mcp.semantic.fetcher import SemanticDataFetcher
+    from unofficial_cepalstat_mcp.semantic.models import (
         AppliedFilters,
         ResolutionStatus,
         SelectedCandidate,
@@ -430,9 +430,9 @@ def test_fetcher_parses_decada_column_as_temporal_dimension():
 def test_end_to_end_ethnic_population_peru_fetch_with_decada_and_breakdown():
     """Verify 'necesito datos etnicos de la poblacion peruana' resolves to 4968 and fetches Indigenous vs No Indígena breakdown for latest decade."""
     import pandas as pd
-    from statscepal.semantic.engine import SemanticResolutionEngine
-    from statscepal.semantic.fetcher import SemanticDataFetcher
-    from statscepal.semantic.models import ResolutionStatus
+    from unofficial_cepalstat_mcp.semantic.engine import SemanticResolutionEngine
+    from unofficial_cepalstat_mcp.semantic.fetcher import SemanticDataFetcher
+    from unofficial_cepalstat_mcp.semantic.models import ResolutionStatus
 
     engine = SemanticResolutionEngine()
     res = engine.resolve("necesito datos etnicos de la poblacion peruana")
@@ -460,8 +460,8 @@ def test_end_to_end_ethnic_population_peru_fetch_with_decada_and_breakdown():
 
 def test_cli_displays_empirical_indicator_id_when_mapped(capsys, monkeypatch):
     """Verify CLI displays CEPALSTAT API Table ID when empirical_indicator_id differs from selected candidate ID."""
-    from statscepal.cli import main
-    from statscepal.semantic.fetcher import SemanticDataFetcher
+    from unofficial_cepalstat_mcp.cli import main
+    from unofficial_cepalstat_mcp.semantic.fetcher import SemanticDataFetcher
 
     def mock_fetch(self, response):
         payload = {

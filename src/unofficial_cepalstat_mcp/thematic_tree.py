@@ -2,7 +2,7 @@
 
 from typing import Any
 from pydantic import BaseModel
-from statscepal.client import CepalStatClient
+from unofficial_cepalstat_mcp.client import CepalStatClient
 
 
 class IndicatorItem(BaseModel):

@@ -1,9 +1,9 @@
 import pytest
-from statscepal.dimensions import Dimension, Member
-from statscepal.semantic.matcher import DynamicMemberMatcher
-from statscepal.semantic.engine import SemanticResolutionEngine
-from statscepal.semantic.registry import SemanticRegistry
-from statscepal.semantic.models import ResolutionStatus, TemporalAvailabilityStatus
+from unofficial_cepalstat_mcp.dimensions import Dimension, Member
+from unofficial_cepalstat_mcp.semantic.matcher import DynamicMemberMatcher
+from unofficial_cepalstat_mcp.semantic.engine import SemanticResolutionEngine
+from unofficial_cepalstat_mcp.semantic.registry import SemanticRegistry
+from unofficial_cepalstat_mcp.semantic.models import ResolutionStatus, TemporalAvailabilityStatus
 
 
 def test_dynamic_member_matcher_resolves_members():

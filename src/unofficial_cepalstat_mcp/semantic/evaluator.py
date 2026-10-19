@@ -4,8 +4,8 @@ import json
 from pathlib import Path
 import statistics
 import time
-from statscepal.semantic.engine import SemanticResolutionEngine
-from statscepal.semantic.models import (
+from unofficial_cepalstat_mcp.semantic.engine import SemanticResolutionEngine
+from unofficial_cepalstat_mcp.semantic.models import (
     BenchmarkCase,
     BenchmarkMetricsReport,
     BenchmarkResult,

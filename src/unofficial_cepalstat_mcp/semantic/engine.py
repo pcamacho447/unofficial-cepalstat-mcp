@@ -3,7 +3,7 @@
 import re
 import time
 from typing import Any
-from statscepal.semantic.models import (
+from unofficial_cepalstat_mcp.semantic.models import (
     AlternativeCandidate,
     AppliedFilters,
     CountryTemporalAnchor,
@@ -15,15 +15,15 @@ from statscepal.semantic.models import (
     TemporalAnchorInfo,
     TemporalAvailabilityStatus,
 )
-from statscepal.dimensions import Dimension
-from statscepal.semantic.facet_ontology import (
+from unofficial_cepalstat_mcp.dimensions import Dimension
+from unofficial_cepalstat_mcp.semantic.facet_ontology import (
     DEFAULT_FACET_ONTOLOGY,
     FacetOntology,
     strip_accents,
 )
-from statscepal.semantic.matcher import DynamicMemberMatcher
-from statscepal.semantic.parser import QueryParser
-from statscepal.semantic.registry import SemanticRegistry
+from unofficial_cepalstat_mcp.semantic.matcher import DynamicMemberMatcher
+from unofficial_cepalstat_mcp.semantic.parser import QueryParser
+from unofficial_cepalstat_mcp.semantic.registry import SemanticRegistry
 
 CRITICAL_SPECIFICITY_TOKENS: frozenset[str] = frozenset({
     "manufacturero", "manufactura", "industrial", "industria",

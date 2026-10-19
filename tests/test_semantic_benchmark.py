@@ -2,7 +2,7 @@
 
 from pathlib import Path
 import pytest
-from statscepal.semantic import (
+from unofficial_cepalstat_mcp.semantic import (
     BenchmarkEvaluator,
     QueryParser,
     RelationshipType,

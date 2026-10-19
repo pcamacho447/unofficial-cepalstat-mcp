@@ -5,10 +5,10 @@ import re
 import unicodedata
 import pandas as pd
 
-from statscepal.client import CepalStatClient
-from statscepal.extractor import DataExtractor
-from statscepal.semantic.models import ResolutionStatus, SemanticResolutionResponse
-from statscepal.semantic.registry import (
+from unofficial_cepalstat_mcp.client import CepalStatClient
+from unofficial_cepalstat_mcp.extractor import DataExtractor
+from unofficial_cepalstat_mcp.semantic.models import ResolutionStatus, SemanticResolutionResponse
+from unofficial_cepalstat_mcp.semantic.registry import (
     EMPIRICAL_INDICATOR_ID_MAP,
     SYNTHETIC_DIMENSION_MEMBER_IDS,
 )
