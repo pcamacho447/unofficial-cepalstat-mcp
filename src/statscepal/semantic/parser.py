@@ -212,8 +212,8 @@ SPANISH_STOPWORDS: frozenset[str] = frozenset({
     "a", "ante", "bajo", "cabe", "con", "contra", "de", "desde", "durante",
     "en", "entre", "hacia", "hasta", "mediante", "para", "por", "segun",
     "sin", "so", "sobre", "tras", "versus", "vs", "frente",
-    # Conjunctions and connectives
-    "y", "e", "ni", "o", "u", "pero", "mas", "sino", "aunque", "que", "como", "si",
+    # Conjunctions, negations and connectives
+    "y", "e", "ni", "no", "o", "u", "pero", "mas", "sino", "aunque", "que", "como", "si",
     # Pronouns and inquiry words
     "cual", "cuales", "quien", "quienes", "donde", "cuando", "cuanto", "cuanta",
     "cuantos", "cuantas", "me", "te", "se", "nos", "os", "le", "les",
@@ -224,13 +224,17 @@ SPANISH_STOPWORDS: frozenset[str] = frozenset({
     # Inquiry verbs and conversational terms
     "dame", "dime", "quiero", "ver", "busca", "buscar", "buscame", "mostrar",
     "muestra", "muestrame", "consultar", "consulta", "obtener", "traer", "traeme",
-    "saber", "conocer", "dar", "decir", "revisar", "revisa", "deseo", "quisiera",
+    "saber", "conocer", "dar", "des", "decir", "revisar", "revisa", "deseo", "quisiera",
     "favor", "porfavor", "porfa",
     # Common verbs / copulas
     "es", "son", "fue", "fueron", "era", "eran", "ha", "han", "hay", "hubo",
     "habia", "esta", "estan", "estuvo", "estuvieron", "tener", "tiene", "tienen",
     "tenia", "tuvo", "ando", "anduvo", "entra", "entran", "entrado", "entron",
     "salen", "salieron", "cobra", "cobran", "crecio",
+    # Generic statistical filler nouns, adjectives, and inquiry terms
+    "saldo", "saldos",
+    "comparacion", "comparaciones",
+    "personas", "persona", "gente",
     # Generic statistical filler nouns and adjectives
     "tasa", "tasas",
     "nivel", "niveles",
@@ -854,6 +858,7 @@ class QueryParser:
                     consumed_phrases.append(t)
         elif any(term in clean for term in [
             "terminos de intercambio",
+            "intercambio comercial",
             "relacion de precios del comercio exterior",
             "terminos del comercio exterior",
             "exportaciones versus importaciones",
@@ -861,7 +866,8 @@ class QueryParser:
         ]):
             intent.root_concept = "TERMINOS_INTERCAMBIO"
             for t in [
-                "terminos de intercambio", "relacion de precios del comercio exterior",
+                "terminos de intercambio comercial", "terminos de intercambio",
+                "intercambio comercial", "relacion de precios del comercio exterior",
                 "terminos del comercio exterior", "exportaciones versus importaciones",
                 "lo que vendemos versus lo que compramos", "relacion de intercambio",
                 "bienes", "comercio exterior",

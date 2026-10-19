@@ -71,3 +71,56 @@ def test_unconsumed_tokens_extraction_on_domain_modifiers():
     intent6 = parser.parse("ingresos tributarios del peru en moneda nacional en 2022")
     assert intent6.unconsumed_tokens == [], f"Expected empty, got {intent6.unconsumed_tokens}"
 
+
+def test_guard_prevents_false_substitution_on_manufacturing_gdp():
+    """Verify that unconsumed 'manufacturero' prevents resolving as aggregate GDP per capita (730)."""
+    from statscepal.semantic import ResolutionStatus, SemanticResolutionEngine
+
+    engine = SemanticResolutionEngine()
+    resp = engine.resolve("valor agregado manufacturero por habitante en mexico")
+    assert resp.status in (ResolutionStatus.ABSTAINED, ResolutionStatus.ALTERNATIVE_PROPOSED)
+    assert resp.selected_candidate is None or resp.selected_candidate.relevance_score <= 0.70
+    assert "manufacturero" in (resp.conversational_hint or "") or "manufacturero" in (resp.abstention_reason or "")
+
+
+def test_guard_downgrades_on_agricultural_minimum_wage():
+    """Verify that unconsumed 'agricola' downgrades minimum wage candidate from 1.0 to ALTERNATIVE_PROPOSED."""
+    from statscepal.semantic import ResolutionStatus, SemanticResolutionEngine
+
+    engine = SemanticResolutionEngine()
+    resp = engine.resolve("salario minimo agricola en guatemala")
+    assert resp.status in (ResolutionStatus.ALTERNATIVE_PROPOSED, ResolutionStatus.ABSTAINED)
+    if resp.status == ResolutionStatus.ALTERNATIVE_PROPOSED:
+        assert resp.selected_candidate is not None
+        assert resp.selected_candidate.relevance_score <= 0.70
+        assert "agricola" in (resp.conversational_hint or "").lower()
+
+
+def test_guard_prevents_false_substitution_on_quarterly_gdp_expenditure():
+    """Verify that unconsumed expenditure tokens prevent false 1.0 resolution on quarterly GDP."""
+    from statscepal.semantic import ResolutionStatus, SemanticResolutionEngine
+
+    engine = SemanticResolutionEngine()
+    resp = engine.resolve("pib trimestral por componente del gasto en brasil")
+    assert resp.status in (ResolutionStatus.ABSTAINED, ResolutionStatus.ALTERNATIVE_PROPOSED)
+    assert resp.selected_candidate is None or resp.selected_candidate.indicator_id != 731 or resp.selected_candidate.relevance_score < 1.0
+
+
+def test_guard_preserves_canonical_queries():
+    """Verify that canonical queries with no unconsumed modifiers resolve cleanly with score 1.0."""
+    from statscepal.semantic import ResolutionStatus, SemanticResolutionEngine
+
+    engine = SemanticResolutionEngine()
+
+    resp1 = engine.resolve("pib per capita de bolivia en 2020")
+    assert resp1.status == ResolutionStatus.RESOLVED
+    assert resp1.selected_candidate is not None
+    assert resp1.selected_candidate.indicator_id == 730
+    assert resp1.selected_candidate.relevance_score == 1.0
+
+    resp2 = engine.resolve("tasa de pobreza en colombia")
+    assert resp2.status == ResolutionStatus.RESOLVED
+    assert resp2.selected_candidate is not None
+    assert resp2.selected_candidate.indicator_id == 3328
+    assert resp2.selected_candidate.relevance_score == 1.0
+

@@ -1,6 +1,7 @@
 """The 5-stage Semantic Resolution Engine orchestrator."""
 
 import time
+from typing import Any
 from statscepal.semantic.models import (
     AlternativeCandidate,
     AppliedFilters,
@@ -22,6 +23,68 @@ from statscepal.semantic.facet_ontology import (
 from statscepal.semantic.matcher import DynamicMemberMatcher
 from statscepal.semantic.parser import QueryParser
 from statscepal.semantic.registry import SemanticRegistry
+
+CRITICAL_SPECIFICITY_TOKENS: frozenset[str] = frozenset({
+    "manufacturero", "manufactura", "industrial", "industria",
+    "agricola", "agricolas", "agropecuario", "agropecuaria",
+    "minero", "minera", "mineria", "turismo", "comercial",
+    "componente", "componentes", "gasto", "gastos",
+    "cobre", "petroleo", "soja", "trigo", "cafe", "carne",
+    "multidimensional", "organica", "boscosa", "cientificas",
+    "corrupcion", "emigrar", "captura",
+})
+
+GENERAL_AGGREGATE_FALLBACKS: dict[int, set[str]] = {
+    3337: {
+        "agricola", "agricolas", "agropecuario", "agropecuaria",
+        "industrial", "industria", "manufacturero", "manufactura",
+        "minero", "minera",
+    },
+    128: {
+        "agricola", "agricolas", "agropecuario", "agropecuaria",
+        "industrial", "industria", "manufacturero", "manufactura",
+        "minero", "minera",
+    },
+}
+
+
+def _is_token_covered_by_indicator(
+    token: str,
+    indicator_meta: Any,
+    dims: list[Dimension] | None,
+) -> bool:
+    """Check if token is covered by the indicator's name, concept, unit, or dimensions."""
+    token_norm = strip_accents(token).lower().strip()
+    if not token_norm:
+        return True
+
+    texts: list[str] = [indicator_meta.name, str(indicator_meta.concept)]
+    if hasattr(indicator_meta, "unit") and indicator_meta.unit:
+        texts.append(str(indicator_meta.unit))
+    if hasattr(indicator_meta, "supported_facets") and indicator_meta.supported_facets:
+        texts.extend(str(f) for f in indicator_meta.supported_facets)
+    if dims:
+        for d in dims:
+            texts.append(str(d.name))
+            if hasattr(d, "members") and d.members:
+                for m in d.members:
+                    texts.append(str(m.name))
+
+    combined = strip_accents(" ".join(texts)).lower()
+
+    if token_norm in combined:
+        return True
+
+    # Stem check for Spanish plurals / gender
+    stem = token_norm
+    if stem.endswith("es"):
+        stem = stem[:-2]
+    elif stem.endswith("s"):
+        stem = stem[:-1]
+    if len(stem) >= 4 and stem in combined:
+        return True
+
+    return False
 
 
 class SemanticResolutionEngine:
@@ -472,10 +535,67 @@ class SemanticResolutionEngine:
         )
 
         # ----------------------------------------------------
+        # Stage 3.5: Specificity Guard (Unconsumed Semantic Tokens Audit)
+        # ----------------------------------------------------
+        is_alternative_fallback = False
+        conversational_hint: str | None = None
+
+        if intent.unconsumed_tokens:
+            uncovered_critical: list[str] = [
+                tok
+                for tok in intent.unconsumed_tokens
+                if strip_accents(tok).lower() in CRITICAL_SPECIFICITY_TOKENS
+                and not _is_token_covered_by_indicator(tok, selected_meta, target_dims)
+            ]
+
+            if uncovered_critical:
+                uncovered_norms = {strip_accents(t).lower() for t in uncovered_critical}
+                is_general_fallback = (
+                    target_indicator_id in GENERAL_AGGREGATE_FALLBACKS
+                    and uncovered_norms.issubset(GENERAL_AGGREGATE_FALLBACKS[target_indicator_id])
+                )
+
+                if is_general_fallback:
+                    is_alternative_fallback = True
+                    selected.relevance_score = 0.65
+                    uncovered_str = ", ".join(uncovered_critical)
+                    selected.selection_reason = (
+                        f"El indicador {selected.indicator_id} cubre el concepto general ('{selected.name}'), "
+                        f"pero no desagrega la especificidad solicitada: '{uncovered_str}'."
+                    )
+                    conversational_hint = (
+                        f"Nota: Se propone como alternativa el indicador general {selected.indicator_id} ('{selected.name}'), "
+                        f"pero la consulta solicitaba la especificidad: '{uncovered_str}'. "
+                        f"Para el indicador sectorial consulte el catálogo de CEPALSTAT."
+                    )
+                    trace.append(
+                        f"[Stage 3: Specificity Audit] DOWNGRADED to ALTERNATIVE_PROPOSED (Score: 0.65): Uncovered specificity: {uncovered_critical}."
+                    )
+                else:
+                    latency = (time.perf_counter() - t0) * 1000.0
+                    uncovered_str = ", ".join(uncovered_critical)
+                    trace.append(
+                        f"[Stage 3: Specificity Audit] REJECTED: Candidate ID {target_indicator_id} does not cover specificity: {uncovered_critical}. Status=ABSTAINED"
+                    )
+                    return SemanticResolutionResponse(
+                        status=ResolutionStatus.ABSTAINED,
+                        query=query_str,
+                        applied_filters=applied_filters,
+                        abstention_reason=f"UNRESOLVED_SPECIFICITY: {uncovered_str}",
+                        conversational_hint=(
+                            f"La consulta incluye especificidades temáticas no cubiertas por el indicador seleccionado ('{selected.name}'): "
+                            f"{uncovered_str}. Se requiere un indicador sectorial especializado de CEPALSTAT."
+                        ),
+                        polarity_info=intent.polarity_info,
+                        execution_trace=trace,
+                        latency_ms=latency,
+                    )
+
+        # ----------------------------------------------------
         # Stage 5: Temporal Audit & Anchor Points
         # ----------------------------------------------------
         temporal_info: TemporalAnchorInfo | None = None
-        status = ResolutionStatus.RESOLVED
+        status = ResolutionStatus.ALTERNATIVE_PROPOSED if is_alternative_fallback else ResolutionStatus.RESOLVED
 
         if len(intent.country_codes) > 1 and (intent.year or intent.years):
             target_years = list(intent.years) if intent.years else ([intent.year] if intent.year else [])
@@ -529,7 +649,8 @@ class SemanticResolutionEngine:
 
             if unobserved_countries:
                 overall_temp_status = TemporalAvailabilityStatus.PERIOD_UNOBSERVED
-                status = ResolutionStatus.RESOLVED_WITH_ANCHORS
+                if not is_alternative_fallback:
+                    status = ResolutionStatus.RESOLVED_WITH_ANCHORS
                 anchor_details = [
                     f"{ca.country_name or ca.country_code} sin medición en {ca.unobserved_years} (Puntos ancla oficiales disponibles: {ca.previous_anchor_year} y {ca.next_anchor_year})"
                     for ca in country_anchors.values()
@@ -598,7 +719,8 @@ class SemanticResolutionEngine:
 
             if unobserved_years:
                 overall_temp_status = TemporalAvailabilityStatus.PERIOD_UNOBSERVED
-                status = ResolutionStatus.RESOLVED_WITH_ANCHORS
+                if not is_alternative_fallback:
+                    status = ResolutionStatus.RESOLVED_WITH_ANCHORS
                 trace.append(
                     f"[Stage 5: Temporal Audit] Country={intent.country_code}, Years={intent.years} (Mode: {intent.time_mode}) -> Status={overall_temp_status.value} (Observed: {observed_years}, Unobserved: {unobserved_years})"
                 )
@@ -658,7 +780,8 @@ class SemanticResolutionEngine:
             trace.append(f"[Stage 5: Temporal Audit] Country={intent.country_code}, Year={intent.year} -> Status={temp_status.value} (Anchors: Prev={prev_anchor}, Next={next_anchor})")
 
             if temp_status == TemporalAvailabilityStatus.PERIOD_UNOBSERVED:
-                status = ResolutionStatus.RESOLVED_WITH_ANCHORS
+                if not is_alternative_fallback:
+                    status = ResolutionStatus.RESOLVED_WITH_ANCHORS
                 trace.append(f"  - Sampling notice: Gap in survey schedule for {intent.country_name} in {intent.year}. Interpolation strictly forbidden.")
                 c_anchors = {
                     intent.country_code: CountryTemporalAnchor(
@@ -702,12 +825,13 @@ class SemanticResolutionEngine:
                 )
 
         # Conversational hints for default assumptions & alternatives
-        conversational_hint = None
-        if target_indicator_id == 1242 and not any(t in intent.clean_query for t in ["%", "pib", "porcentaje", "porciento"]):
-            trace.append("  [Decision Audit] Unidad no especificada para ingresos tributarios. Se asume estándar macroeconómico CEPAL: '% del PIB' (ID 1242 / API 821). Medida alternativa disponible: 'Moneda nacional a precios corrientes' (ID 845).")
-            conversational_hint = "Nota: Se resolvió por defecto a Ingresos tributarios en porcentaje del PIB (indicador 1242 / API 821). Si requiere la serie en moneda nacional a precios corrientes, consulte el indicador 845."
+        if conversational_hint is None:
+            if target_indicator_id == 1242 and not any(t in intent.clean_query for t in ["%", "pib", "porcentaje", "porciento"]):
+                trace.append("  [Decision Audit] Unidad no especificada para ingresos tributarios. Se asume estándar macroeconómico CEPAL: '% del PIB' (ID 1242 / API 821). Medida alternativa disponible: 'Moneda nacional a precios corrientes' (ID 845).")
+                conversational_hint = "Nota: Se resolvió por defecto a Ingresos tributarios en porcentaje del PIB (indicador 1242 / API 821). Si requiere la serie en moneda nacional a precios corrientes, consulte el indicador 845."
 
-        trace.append(f"[Resolution Result] SUCCESS: Selected ID {target_indicator_id} ('{selected.name}') with score {selected.relevance_score}. Status={status.value}")
+        result_label = "ALTERNATIVE_PROPOSED" if is_alternative_fallback else "SUCCESS"
+        trace.append(f"[Resolution Result] {result_label}: Selected ID {target_indicator_id} ('{selected.name}') with score {selected.relevance_score}. Status={status.value}")
         latency = (time.perf_counter() - t0) * 1000.0
         return SemanticResolutionResponse(
             status=status,
