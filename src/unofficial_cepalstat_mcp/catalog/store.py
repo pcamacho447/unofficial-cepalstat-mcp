@@ -11,10 +11,11 @@ import unicodedata
 import pandas as pd
 from unofficial_cepalstat_mcp.catalog.models import CatalogIndicator, CatalogStats
 from unofficial_cepalstat_mcp.client import CepalStatClient
+from unofficial_cepalstat_mcp.config import get_cache_db_path
 from unofficial_cepalstat_mcp.dimensions import Dimension, Member
 from unofficial_cepalstat_mcp.thematic_tree import ThematicTree
 
-DEFAULT_DB_PATH = Path(".statscepal_cache.db")
+DEFAULT_DB_PATH = get_cache_db_path()
 
 
 def strip_accents(text: Any) -> str:
@@ -33,10 +34,10 @@ class CatalogStore:
 
     def __init__(
         self,
-        db_path: Path | str = DEFAULT_DB_PATH,
+        db_path: Path | str | None = None,
         client: CepalStatClient | None = None,
     ):
-        self.db_path = Path(db_path)
+        self.db_path = Path(db_path) if db_path is not None else get_cache_db_path()
         self.client = client
         if self.db_path.parent:
             self.db_path.parent.mkdir(parents=True, exist_ok=True)

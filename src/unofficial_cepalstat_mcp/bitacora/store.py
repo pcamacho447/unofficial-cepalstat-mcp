@@ -8,9 +8,10 @@ from typing import Any
 import yaml
 
 from unofficial_cepalstat_mcp.bitacora.models import BitacoraRecipe
+from unofficial_cepalstat_mcp.config import get_cache_db_path
 
 DEFAULT_BITACORAS_DIR = Path("bitacoras")
-DEFAULT_DB_PATH = Path(".statscepal_cache.db")
+DEFAULT_DB_PATH = get_cache_db_path()
 
 
 class BitacoraStore:
@@ -19,10 +20,10 @@ class BitacoraStore:
     def __init__(
         self,
         base_dir: Path | str = DEFAULT_BITACORAS_DIR,
-        db_path: Path | str = DEFAULT_DB_PATH,
+        db_path: Path | str | None = None,
     ):
         self.base_dir = Path(base_dir)
-        self.db_path = Path(db_path)
+        self.db_path = Path(db_path) if db_path is not None else get_cache_db_path()
         self.base_dir.mkdir(parents=True, exist_ok=True)
         if self.db_path.parent:
             self.db_path.parent.mkdir(parents=True, exist_ok=True)
