@@ -391,6 +391,10 @@ class QueryParser:
         if "pobreza total" in clean and "area" not in facets:
             facets["area"] = "NACIONAL"
 
+        if "moneda nacional" in clean and facets.get("area") == "NACIONAL":
+            if not any(term in clean for term in ["area nacional", "nivel nacional", "total nacional", "todo el pais"]):
+                facets.pop("area", None)
+
         # Sexo
         sexo_match = self.thesaurus.match_synset("facet_sexo", clean)
         if sexo_match:
@@ -841,6 +845,10 @@ class QueryParser:
             and any(t in clean for t in ["hombres", "hombre", "masculin"])
         ):
             facets["sexo"] = "SEXO_DESGLOSE"
+
+        if "moneda nacional" in clean and facets.get("area") == "NACIONAL":
+            if not any(term in clean for term in ["area nacional", "nivel nacional", "total nacional", "todo el pais"]):
+                facets.pop("area", None)
 
         intent.facets = facets
         return intent

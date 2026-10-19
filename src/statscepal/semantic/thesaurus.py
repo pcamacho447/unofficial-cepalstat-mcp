@@ -242,7 +242,7 @@ DEFAULT_CANONICAL_SYNSETS: list[Synset] = [
     Synset(
         canonical_id="NACIONAL",
         domain="facet_area",
-        canonical_term="nacional",
+        canonical_term="total nacional",
         synonyms=["todo el pais", "nivel nacional", "area nacional", "total nacional"],
     ),
     # facet_sexo
