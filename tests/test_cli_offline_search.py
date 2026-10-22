@@ -1,6 +1,7 @@
 """Tests for offline search fallback in statscepal search CLI."""
 
 from unittest.mock import MagicMock
+
 import pytest
 
 from unofficial_cepalstat_mcp.catalog.models import CatalogIndicator

@@ -1,5 +1,8 @@
 """Tests for multidimensional breakdowns and facet conmutation."""
 import pytest
+
+from unofficial_cepalstat_mcp.semantic.engine import SemanticResolutionEngine
+from unofficial_cepalstat_mcp.semantic.models import ResolutionStatus
 from unofficial_cepalstat_mcp.semantic.parser import QueryParser
 
 
@@ -81,9 +84,6 @@ def test_member_matcher_resolves_ethnic_dimension():
     assert ethnic_filter4 is not None
     assert ethnic_filter4.is_breakdown is False
     assert ethnic_filter4.member_name == "No indígena ni afrodescendiente"
-
-from unofficial_cepalstat_mcp.semantic.engine import SemanticResolutionEngine
-from unofficial_cepalstat_mcp.semantic.models import ResolutionStatus
 
 
 def test_engine_resolves_ethnic_poverty_to_3342():
@@ -190,9 +190,10 @@ def test_engine_abstains_on_unsupported_facet_without_false_substitution():
 
 
 def test_fetcher_extracts_ethnic_observation():
+    import pandas as pd
+
     from unofficial_cepalstat_mcp.semantic.engine import SemanticResolutionEngine
     from unofficial_cepalstat_mcp.semantic.fetcher import SemanticDataFetcher
-    import pandas as pd
 
     engine = SemanticResolutionEngine()
     response = engine.resolve("cual es la pobreza etnica en el peru del 2020")
@@ -213,9 +214,10 @@ def test_fetcher_extracts_ethnic_observation():
 
 
 def test_fetcher_accent_resilient_dimension_filtering():
+    import pandas as pd
+
     from unofficial_cepalstat_mcp.semantic.engine import SemanticResolutionEngine
     from unofficial_cepalstat_mcp.semantic.fetcher import SemanticDataFetcher
-    import pandas as pd
 
     engine = SemanticResolutionEngine()
     response = engine.resolve("tasa de pobreza indigena en bolivia 2021")

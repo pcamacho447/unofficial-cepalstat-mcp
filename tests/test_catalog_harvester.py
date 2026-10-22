@@ -1,19 +1,19 @@
 """Tests for CatalogHarvester and CatalogStore harvest extensions."""
 
 import json
-from pathlib import Path
 import sqlite3
 from datetime import datetime
+from pathlib import Path
+
+import httpx
 import pytest
 import respx
-import httpx
 
 from unofficial_cepalstat_mcp.catalog.harvester import CatalogHarvester
 from unofficial_cepalstat_mcp.catalog.store import CatalogStore
 from unofficial_cepalstat_mcp.cli import main
 from unofficial_cepalstat_mcp.client import CepalStatClient
 from unofficial_cepalstat_mcp.dimensions import Dimension, Member
-
 
 
 def test_store_harvest_columns_and_status(tmp_path):

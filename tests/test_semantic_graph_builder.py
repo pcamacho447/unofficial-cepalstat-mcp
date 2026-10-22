@@ -1,7 +1,8 @@
 """Tests for semantic graph builder and relationship provenance in CatalogStore."""
 
-from pathlib import Path
 import sqlite3
+from pathlib import Path
+
 from unofficial_cepalstat_mcp.catalog.store import CatalogStore
 
 
@@ -82,6 +83,7 @@ def test_fresh_store_relationship_default_provenance(tmp_path: Path) -> None:
 
 def test_graph_builder_extracts_stems_and_infers_breakdown_from_harvested_dims(tmp_path: Path) -> None:
     import json
+
     from unofficial_cepalstat_mcp.catalog.harvester import CatalogHarvester
     from unofficial_cepalstat_mcp.semantic.graph_builder import GraphBuilder
 
@@ -154,6 +156,7 @@ def test_graph_builder_zero_false_edges_on_45_curated_indicators(tmp_path: Path)
 
 def test_cli_catalog_build_graph_ascii_and_json(tmp_path: Path, capsys, monkeypatch) -> None:
     import json
+
     from unofficial_cepalstat_mcp.cli import main
 
     db_path = tmp_path / "cli_catalog.db"

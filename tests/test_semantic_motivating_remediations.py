@@ -1,5 +1,6 @@
 """Tests for motivating user queries: underlying inflation, gender gap, and tax revenues."""
 import pytest
+
 from unofficial_cepalstat_mcp.semantic.engine import SemanticResolutionEngine
 from unofficial_cepalstat_mcp.semantic.models import ResolutionStatus
 from unofficial_cepalstat_mcp.semantic.parser import QueryParser

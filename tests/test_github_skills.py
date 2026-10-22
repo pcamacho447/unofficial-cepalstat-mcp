@@ -1,7 +1,7 @@
 """Tests for github-repo-search skill and github-scout subagent."""
 
 from pathlib import Path
-import re
+
 import yaml
 
 

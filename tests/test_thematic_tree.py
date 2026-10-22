@@ -1,9 +1,8 @@
-import pytest
-import respx
 import httpx
-from unofficial_cepalstat_mcp.client import CepalStatClient
-from unofficial_cepalstat_mcp.thematic_tree import ThematicTree, IndicatorItem
+import respx
 
+from unofficial_cepalstat_mcp.client import CepalStatClient
+from unofficial_cepalstat_mcp.thematic_tree import ThematicTree
 
 MOCK_TREE_PAYLOAD = {
     "header": {"success": True, "code": 200},

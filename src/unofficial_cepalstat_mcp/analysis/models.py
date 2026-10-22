@@ -1,6 +1,7 @@
 """Data models for growth-wellbeing decoupling analysis."""
 
 from typing import Any
+
 from pydantic import BaseModel, Field
 
 

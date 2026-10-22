@@ -1,6 +1,7 @@
 """Econometric estimation engine for growth-wellbeing decoupling analysis."""
 
 from typing import Any
+
 import numpy as np
 import pandas as pd
 import statsmodels.api as sm

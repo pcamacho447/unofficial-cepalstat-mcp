@@ -1,14 +1,16 @@
 """CatalogStore for indexing and searching master indicators in SQLite."""
 
+import json
+import sqlite3
+import unicodedata
 from collections.abc import Generator
 from contextlib import contextmanager
 from datetime import datetime, timezone
-import json
 from pathlib import Path
-import sqlite3
 from typing import Any
-import unicodedata
+
 import pandas as pd
+
 from unofficial_cepalstat_mcp.catalog.models import CatalogIndicator, CatalogStats
 from unofficial_cepalstat_mcp.client import CepalStatClient
 from unofficial_cepalstat_mcp.config import get_cache_db_path
@@ -46,9 +48,10 @@ class CatalogStore:
     @contextmanager
     def _get_connection(self) -> Generator[sqlite3.Connection, None, None]:
         """Yield an active SQLite connection and ensure it is properly closed."""
-        conn = sqlite3.connect(self.db_path)
+        conn = sqlite3.connect(self.db_path, timeout=10.0)
         conn.row_factory = sqlite3.Row
         conn.create_function("unaccent", 1, strip_accents)
+        conn.execute("PRAGMA busy_timeout = 10000;")
         try:
             with conn:
                 yield conn
@@ -672,7 +675,10 @@ class CatalogStore:
 
     def populate_official_indicators(self) -> None:
         """Seed SQLite semantic tables with the 25 official CEPALSTAT indicators, dimensions, and relationships."""
-        from unofficial_cepalstat_mcp.semantic.registry import DEFAULT_OFFICIAL_DIMENSIONS, VERTICAL_SLICE_INDICATORS
+        from unofficial_cepalstat_mcp.semantic.registry import (
+            DEFAULT_OFFICIAL_DIMENSIONS,
+            VERTICAL_SLICE_INDICATORS,
+        )
 
         self.init_semantic_tables()
         for ind_id, meta in VERTICAL_SLICE_INDICATORS.items():

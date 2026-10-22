@@ -1,8 +1,13 @@
 from pathlib import Path
+
 import pytest
 import yaml
 
-from unofficial_cepalstat_mcp.bitacora.models import AntiBiasChecklist, BitacoraRecipe, DataQualityReport
+from unofficial_cepalstat_mcp.bitacora.models import (
+    AntiBiasChecklist,
+    BitacoraRecipe,
+    DataQualityReport,
+)
 from unofficial_cepalstat_mcp.bitacora.store import BitacoraStore
 
 

@@ -1,10 +1,11 @@
 """Harvesting engine for CEPALSTAT indicator dimension metadata."""
 
-from datetime import datetime, timezone
 import hashlib
 import json
 import time
+from datetime import datetime, timezone
 from typing import Any, Callable
+
 import httpx
 
 from unofficial_cepalstat_mcp.catalog.models import HarvestSummary

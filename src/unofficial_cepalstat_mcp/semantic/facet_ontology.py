@@ -10,6 +10,7 @@ import re
 import unicodedata
 from collections.abc import Mapping, Sequence
 from typing import Any
+
 from pydantic import BaseModel, ConfigDict, Field
 
 

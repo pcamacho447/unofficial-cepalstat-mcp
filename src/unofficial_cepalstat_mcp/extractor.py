@@ -1,6 +1,7 @@
 """Data and records extractor for CEPALSTAT indicators."""
 
 from typing import Any
+
 import pandas as pd
 
 from unofficial_cepalstat_mcp.client import CepalStatClient

@@ -1,7 +1,6 @@
 """Tests for the Semantic Thesaurus architecture, Synsets, Antonyms, and Polarity models."""
 
 import time
-import pytest
 
 from unofficial_cepalstat_mcp.semantic.thesaurus import (
     AntonymRule,
@@ -173,7 +172,11 @@ def test_default_thesaurus_all_canonical_domains():
 
 
 def test_econometric_antonym_polarities():
-    from unofficial_cepalstat_mcp.semantic.thesaurus import get_default_thesaurus, PolarityType, ExpectedSign
+    from unofficial_cepalstat_mcp.semantic.thesaurus import (
+        ExpectedSign,
+        PolarityType,
+        get_default_thesaurus,
+    )
 
     th = get_default_thesaurus()
 
@@ -225,8 +228,11 @@ def test_econometric_antonym_polarities():
 
 
 def test_semantic_resolution_response_polarity_field():
-    from unofficial_cepalstat_mcp.semantic.models import SemanticResolutionResponse, ResolutionStatus
-    from unofficial_cepalstat_mcp.semantic.thesaurus import PolarityResolution, PolarityType
+    from unofficial_cepalstat_mcp.semantic.models import (
+        ResolutionStatus,
+        SemanticResolutionResponse,
+    )
+    from unofficial_cepalstat_mcp.semantic.thesaurus import PolarityType
 
     resp = SemanticResolutionResponse(
         status=ResolutionStatus.RESOLVED,
@@ -265,9 +271,9 @@ def test_default_thesaurus_latency_benchmark():
 
 def test_end_to_end_synonyms_and_antonyms_queries():
     from unofficial_cepalstat_mcp.catalog.store import CatalogStore
-    from unofficial_cepalstat_mcp.semantic.registry import SemanticRegistry
     from unofficial_cepalstat_mcp.semantic.engine import SemanticResolutionEngine
     from unofficial_cepalstat_mcp.semantic.models import ResolutionStatus
+    from unofficial_cepalstat_mcp.semantic.registry import SemanticRegistry
 
     store = CatalogStore()
     registry = SemanticRegistry(store=store)

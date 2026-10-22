@@ -1,8 +1,6 @@
 """Tests for semantic CLI subcommands."""
 
 import json
-from unittest.mock import MagicMock
-import pytest
 
 from unofficial_cepalstat_mcp.cli import main
 from unofficial_cepalstat_mcp.semantic import SemanticDataFetcher
@@ -142,6 +140,7 @@ def test_cli_semantic_resolve_polarity_display(capsys):
 def test_cli_semantic_resolve_multi_year_series_display(capsys):
     """Test semantic resolve with --fetch displays formatted empirical time series table."""
     from unittest.mock import patch
+
     from unofficial_cepalstat_mcp.cli import main
 
     mock_payload = {
@@ -176,6 +175,7 @@ def test_cli_semantic_resolve_ethnic_poverty(capsys=None):
     """Test CLI resolution of ethnic poverty query displays indicator 3342 and dimension filters."""
     import io
     from contextlib import redirect_stdout
+
     from unofficial_cepalstat_mcp.cli import main
 
     f = io.StringIO()

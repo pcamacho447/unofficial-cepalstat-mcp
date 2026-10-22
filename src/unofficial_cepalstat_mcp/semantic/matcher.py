@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import re
-import unicodedata
 from typing import TYPE_CHECKING
+
 from unofficial_cepalstat_mcp.semantic.facet_ontology import (
     DEFAULT_FACET_ONTOLOGY,
     FacetOntology,

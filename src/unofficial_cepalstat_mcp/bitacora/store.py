@@ -1,10 +1,11 @@
 """Dual Markdown and SQLite Storage Manager for Bitácoras."""
 
+import sqlite3
 from collections.abc import Generator
 from contextlib import contextmanager
 from pathlib import Path
-import sqlite3
 from typing import Any
+
 import yaml
 
 from unofficial_cepalstat_mcp.bitacora.models import BitacoraRecipe
@@ -32,8 +33,9 @@ class BitacoraStore:
     @contextmanager
     def _get_connection(self) -> Generator[sqlite3.Connection, None, None]:
         """Yield an active SQLite connection and ensure it is properly closed."""
-        conn = sqlite3.connect(self.db_path)
+        conn = sqlite3.connect(self.db_path, timeout=10.0)
         conn.row_factory = sqlite3.Row
+        conn.execute("PRAGMA busy_timeout = 10000;")
         try:
             with conn:
                 yield conn

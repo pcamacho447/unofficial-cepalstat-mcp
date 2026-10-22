@@ -1,8 +1,9 @@
 """Integrity and structural validation tests for the 200-question empirical benchmark dataset."""
 
 import json
-from pathlib import Path
 import re
+from pathlib import Path
+
 import pytest
 
 BENCHMARK_PATH = Path(__file__).parent / "benchmark" / "semantic_benchmark_cases_200.json"

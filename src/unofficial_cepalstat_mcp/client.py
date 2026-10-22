@@ -1,6 +1,7 @@
 """HTTP client for the CEPALSTAT API."""
 
 from typing import Any
+
 import httpx
 
 from unofficial_cepalstat_mcp.exceptions import CepalStatAPIError, CepalStatNetworkError

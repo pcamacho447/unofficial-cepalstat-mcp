@@ -1,8 +1,9 @@
 """Empirical data fetcher for resolved CEPALSTAT semantic queries."""
 
-from typing import Any
 import re
 import unicodedata
+from typing import Any
+
 import pandas as pd
 
 from unofficial_cepalstat_mcp.client import CepalStatClient
@@ -12,7 +13,6 @@ from unofficial_cepalstat_mcp.semantic.registry import (
     EMPIRICAL_INDICATOR_ID_MAP,
     SYNTHETIC_DIMENSION_MEMBER_IDS,
 )
-
 
 DIM_NAME_ALIASES: dict[str, list[str]] = {
     "estrato de ingreso": [

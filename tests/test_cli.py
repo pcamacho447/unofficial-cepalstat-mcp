@@ -1,6 +1,6 @@
 import subprocess
 import sys
-from unittest.mock import MagicMock
+
 import httpx
 import pandas as pd
 import pytest

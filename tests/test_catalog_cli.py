@@ -2,6 +2,7 @@
 
 from pathlib import Path
 from unittest.mock import MagicMock
+
 import pytest
 
 from unofficial_cepalstat_mcp.catalog.models import CatalogIndicator, CatalogStats

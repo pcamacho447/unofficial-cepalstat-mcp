@@ -1,7 +1,5 @@
 """Live integration smoke tests for CEPALSTAT API and CLI."""
 
-import subprocess
-import sys
 import pandas as pd
 import pytest
 

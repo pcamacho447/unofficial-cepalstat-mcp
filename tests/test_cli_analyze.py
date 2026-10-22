@@ -1,8 +1,6 @@
 """Tests for statscepal analyze CLI subcommand."""
 
 from unittest.mock import MagicMock, patch
-import pandas as pd
-import pytest
 
 from unofficial_cepalstat_mcp.analysis.models import CountryPeriodMetric, DecouplingDataset
 from unofficial_cepalstat_mcp.cli import main

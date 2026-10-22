@@ -1,6 +1,5 @@
 """Unit tests for the EconometricEstimator engine."""
 
-import pytest
 
 from unofficial_cepalstat_mcp.analysis.econometrics import EconometricEstimator
 from unofficial_cepalstat_mcp.analysis.models import (

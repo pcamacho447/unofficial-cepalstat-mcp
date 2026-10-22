@@ -1,9 +1,9 @@
 """Tests for packaging metadata in pyproject.toml and CLI binary entrypoints."""
 
-from pathlib import Path
 import sys
+from pathlib import Path
+
 import tomllib
-import pytest
 
 from unofficial_cepalstat_mcp.cli import _resolve_prog, main
 

@@ -2,7 +2,6 @@
 
 import json
 from pathlib import Path
-import pytest
 
 
 def test_governance_files_exist_and_non_empty():

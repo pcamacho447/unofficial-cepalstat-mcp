@@ -1,11 +1,10 @@
-import pytest
-import respx
 import httpx
 import pandas as pd
+import respx
+
 from unofficial_cepalstat_mcp.client import CepalStatClient
 from unofficial_cepalstat_mcp.dimensions import DimensionManager
 from unofficial_cepalstat_mcp.extractor import DataExtractor
-
 
 MOCK_METADATA_PAYLOAD = {
     "header": {"success": True, "code": 200},

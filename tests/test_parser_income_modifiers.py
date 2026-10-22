@@ -1,6 +1,7 @@
 """Unit and integration tests for income modifiers, regionalisms, and composite precedence."""
 
 import pytest
+
 from unofficial_cepalstat_mcp.semantic import (
     QueryParser,
     ResolutionStatus,

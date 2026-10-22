@@ -1,8 +1,8 @@
 """Tests for DecouplingAnalyzer service orchestrator."""
 
 from unittest.mock import MagicMock
+
 import pandas as pd
-import pytest
 
 from unofficial_cepalstat_mcp.analysis import (
     CountryPeriodMetric,
@@ -12,6 +12,8 @@ from unofficial_cepalstat_mcp.analysis import (
 from unofficial_cepalstat_mcp.analysis.service import (
     COUNTRY_MEMBER_MAP,
     FOOD_INFLATION_MEMBER_MAP,
+)
+from unofficial_cepalstat_mcp.analysis.service import (
     DecouplingAnalyzer as DirectDecouplingAnalyzer,
 )
 
@@ -286,7 +288,6 @@ def test_analyzer_wage_zero_start_and_single_obs_poverty():
         "Años__ESTANDAR": [2018, 2019],
         "value": [0.0, 110.0],
     })
-    df_gini = pd.DataFrame()
 
     def mock_get_df(ind_id, members=None, **kwargs):
         if ind_id == 3894:

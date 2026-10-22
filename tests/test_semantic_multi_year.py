@@ -1,6 +1,7 @@
 from unittest.mock import patch
+
 import pandas as pd
-import pytest
+
 from unofficial_cepalstat_mcp.semantic.fetcher import SemanticDataFetcher
 from unofficial_cepalstat_mcp.semantic.models import (
     AppliedFilters,
@@ -48,8 +49,8 @@ def test_parsed_intent_default_values():
 
 
 def test_parsed_intent_importable_from_models_and_parser():
-    from unofficial_cepalstat_mcp.semantic.parser import ParsedIntent as ParserParsedIntent
     from unofficial_cepalstat_mcp.semantic.models import ParsedIntent as ModelsParsedIntent
+    from unofficial_cepalstat_mcp.semantic.parser import ParsedIntent as ParserParsedIntent
 
     assert ParserParsedIntent is ModelsParsedIntent
 
@@ -437,6 +438,7 @@ def test_badehog_family_indicators_report_chile_2021_anchors_in_stage5():
 def test_fetcher_dynamically_rescues_empirical_anchors_even_when_unindexed_in_stage5():
     """Verify SemanticDataFetcher dynamically computes and rescues anchor years from the DataFrame if a country lacks data in requested year."""
     import pandas as pd
+
     from unofficial_cepalstat_mcp.semantic.engine import SemanticResolutionEngine
     from unofficial_cepalstat_mcp.semantic.fetcher import SemanticDataFetcher
 

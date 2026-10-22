@@ -8,9 +8,9 @@ strict precedence for curated edges and guaranteeing zero false edges on referen
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
 import re
-from typing import Any
+from dataclasses import dataclass, field
+
 from pydantic import BaseModel, Field
 
 from unofficial_cepalstat_mcp.catalog.store import CatalogStore

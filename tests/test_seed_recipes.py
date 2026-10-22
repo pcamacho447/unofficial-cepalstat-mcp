@@ -1,5 +1,3 @@
-from pathlib import Path
-import pytest
 from unofficial_cepalstat_mcp.bitacora.store import BitacoraStore
 
 

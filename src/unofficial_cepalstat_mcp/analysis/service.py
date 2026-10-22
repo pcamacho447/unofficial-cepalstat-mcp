@@ -1,6 +1,7 @@
 """Service orchestrator for growth-wellbeing decoupling analysis."""
 
 import unicodedata
+
 import pandas as pd
 
 from unofficial_cepalstat_mcp.analysis.econometrics import EconometricEstimator

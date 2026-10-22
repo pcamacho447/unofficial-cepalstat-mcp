@@ -1,13 +1,14 @@
 """Tests for the CEPALSTAT Semantic Intent Disambiguation Engine and Benchmark."""
 
 from pathlib import Path
+
 import pytest
+
 from unofficial_cepalstat_mcp.semantic import (
     BenchmarkEvaluator,
     QueryParser,
     RelationshipType,
     ResolutionStatus,
-    SemanticRegistry,
     SemanticResolutionEngine,
     TemporalAvailabilityStatus,
 )

@@ -1,9 +1,14 @@
 from pathlib import Path
 from unittest.mock import MagicMock
+
 import pandas as pd
 import pytest
 
-from unofficial_cepalstat_mcp.bitacora.models import AntiBiasChecklist, BitacoraRecipe, DataQualityReport
+from unofficial_cepalstat_mcp.bitacora.models import (
+    AntiBiasChecklist,
+    BitacoraRecipe,
+    DataQualityReport,
+)
 from unofficial_cepalstat_mcp.cli import main
 
 

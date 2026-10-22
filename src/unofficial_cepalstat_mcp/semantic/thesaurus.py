@@ -1,9 +1,10 @@
 """Declarative thesaurus engine for Latin American socioeconomic vocabulary and econometrics polarities."""
 
-from enum import Enum
-from functools import lru_cache
 import re
 import unicodedata
+from enum import Enum
+from functools import lru_cache
+
 from pydantic import BaseModel, Field
 
 

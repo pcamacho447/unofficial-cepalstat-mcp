@@ -1,6 +1,7 @@
 """Tests for the 4 universal quantitative skills."""
 
 from pathlib import Path
+
 import pytest
 import yaml
 

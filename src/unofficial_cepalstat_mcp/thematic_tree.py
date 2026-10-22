@@ -1,7 +1,9 @@
 """CEPALSTAT Thematic Tree navigation and indicator search."""
 
 from typing import Any
+
 from pydantic import BaseModel
+
 from unofficial_cepalstat_mcp.client import CepalStatClient
 
 

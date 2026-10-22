@@ -2,9 +2,12 @@
 
 import inspect
 from pathlib import Path
+
 from unofficial_cepalstat_mcp.catalog.store import CatalogStore
 from unofficial_cepalstat_mcp.dimensions import Dimension, Member
-from unofficial_cepalstat_mcp.semantic.facet_ontology import DEFAULT_FACET_ONTOLOGY, get_default_facet_ontology
+from unofficial_cepalstat_mcp.semantic.facet_ontology import (
+    get_default_facet_ontology,
+)
 from unofficial_cepalstat_mcp.semantic.models import RelationshipType
 from unofficial_cepalstat_mcp.semantic.parser import QueryParser
 from unofficial_cepalstat_mcp.semantic.registry import SemanticRegistry

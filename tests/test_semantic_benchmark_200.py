@@ -1,10 +1,12 @@
 """Automated empirical benchmark runner and statistical evaluation suite for 200 test cases."""
 
 import json
-from pathlib import Path
 import statistics
 import time
+from pathlib import Path
+
 import pytest
+
 from unofficial_cepalstat_mcp.semantic import (
     RelationshipType,
     ResolutionStatus,

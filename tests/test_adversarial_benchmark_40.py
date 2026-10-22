@@ -8,12 +8,13 @@ Curated by the Anti-Consensus Club to stress-test the SemanticResolutionEngine a
 """
 
 import json
-from pathlib import Path
 import statistics
 import time
+from pathlib import Path
+
 import pytest
+
 from unofficial_cepalstat_mcp.semantic import (
-    ResolutionStatus,
     SemanticResolutionEngine,
 )
 

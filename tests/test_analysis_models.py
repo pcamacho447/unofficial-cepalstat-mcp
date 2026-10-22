@@ -1,4 +1,3 @@
-import pytest
 from unofficial_cepalstat_mcp.analysis import (
     CountryPeriodMetric,
     DecouplingDataset,

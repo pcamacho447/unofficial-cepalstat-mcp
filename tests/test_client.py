@@ -1,10 +1,11 @@
+import httpx
 import pytest
 import respx
-import httpx
+
 from unofficial_cepalstat_mcp.client import CepalStatClient
 from unofficial_cepalstat_mcp.exceptions import (
-    CepalStatError,
     CepalStatAPIError,
+    CepalStatError,
     CepalStatNetworkError,
 )
 

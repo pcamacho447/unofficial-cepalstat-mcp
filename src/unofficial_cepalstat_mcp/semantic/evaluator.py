@@ -1,9 +1,10 @@
 """Benchmark runner and statistical metrics calculator for semantic resolution."""
 
 import json
-from pathlib import Path
 import statistics
 import time
+from pathlib import Path
+
 from unofficial_cepalstat_mcp.semantic.engine import SemanticResolutionEngine
 from unofficial_cepalstat_mcp.semantic.models import (
     BenchmarkCase,

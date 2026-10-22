@@ -1,11 +1,10 @@
 import json
-import pytest
+
 from unofficial_cepalstat_mcp.catalog.store import CatalogStore
 from unofficial_cepalstat_mcp.cli import main
 from unofficial_cepalstat_mcp.dimensions import Dimension, Member
 from unofficial_cepalstat_mcp.semantic.facet_ontology import (
     DEFAULT_FACET_ONTOLOGY,
-    FacetOntology,
     get_default_facet_ontology,
 )
 from unofficial_cepalstat_mcp.semantic.matcher import (

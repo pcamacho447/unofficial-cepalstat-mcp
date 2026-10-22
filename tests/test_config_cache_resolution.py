@@ -1,14 +1,11 @@
 """Tests for multi-platform cache resolution hierarchy and environment path overrides."""
 
-import os
 from pathlib import Path
 from unittest.mock import patch
-import pytest
 
 from unofficial_cepalstat_mcp.bitacora.store import BitacoraStore
 from unofficial_cepalstat_mcp.catalog.store import CatalogStore
 from unofficial_cepalstat_mcp.config import (
-    APP_NAME,
     DEFAULT_DB_FILENAME,
     get_cache_db_path,
 )

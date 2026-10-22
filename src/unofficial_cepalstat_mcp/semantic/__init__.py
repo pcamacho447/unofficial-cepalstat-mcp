@@ -2,6 +2,13 @@
 
 from unofficial_cepalstat_mcp.semantic.engine import SemanticResolutionEngine
 from unofficial_cepalstat_mcp.semantic.evaluator import BenchmarkEvaluator
+from unofficial_cepalstat_mcp.semantic.fetcher import SemanticDataFetcher
+from unofficial_cepalstat_mcp.semantic.graph_builder import (
+    GraphBuilder,
+    GraphBuildReport,
+    InferredEdge,
+)
+from unofficial_cepalstat_mcp.semantic.matcher import DynamicMemberMatcher
 from unofficial_cepalstat_mcp.semantic.models import (
     AlternativeCandidate,
     AppliedFilters,
@@ -18,13 +25,6 @@ from unofficial_cepalstat_mcp.semantic.models import (
     TemporalAnchorInfo,
     TemporalAvailabilityStatus,
 )
-from unofficial_cepalstat_mcp.semantic.fetcher import SemanticDataFetcher
-from unofficial_cepalstat_mcp.semantic.graph_builder import (
-    GraphBuildReport,
-    GraphBuilder,
-    InferredEdge,
-)
-from unofficial_cepalstat_mcp.semantic.matcher import DynamicMemberMatcher
 from unofficial_cepalstat_mcp.semantic.parser import QueryParser
 from unofficial_cepalstat_mcp.semantic.registry import SemanticRegistry
 from unofficial_cepalstat_mcp.semantic.thesaurus import (

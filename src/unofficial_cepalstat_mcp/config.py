@@ -2,6 +2,7 @@
 
 import os
 from pathlib import Path
+
 import platformdirs
 
 APP_NAME = "unofficial_cepalstat_mcp"

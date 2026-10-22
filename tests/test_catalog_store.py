@@ -1,8 +1,9 @@
 from pathlib import Path
+
 import httpx
 import pandas as pd
-import pytest
 import respx
+
 from unofficial_cepalstat_mcp.catalog.store import CatalogStore
 from unofficial_cepalstat_mcp.client import CepalStatClient
 

@@ -1,7 +1,7 @@
 """Dimension and Member resolution for CEPALSTAT indicators."""
 
-from typing import Any
 from pydantic import BaseModel
+
 from unofficial_cepalstat_mcp.client import CepalStatClient
 
 

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import sqlite3
 from typing import TYPE_CHECKING, Any
+
 from unofficial_cepalstat_mcp.dimensions import Dimension, Member
 from unofficial_cepalstat_mcp.semantic.facet_ontology import DEFAULT_FACET_ONTOLOGY, FacetOntology
 from unofficial_cepalstat_mcp.semantic.models import (

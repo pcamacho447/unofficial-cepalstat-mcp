@@ -2,6 +2,7 @@
 
 import re
 import unicodedata
+
 from pydantic import BaseModel, Field
 
 from unofficial_cepalstat_mcp.semantic.facet_ontology import (

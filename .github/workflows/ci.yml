@@ -1,0 +1,44 @@
+name: CI
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+    branches: [master, main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: test (${{ matrix.os }} / py${{ matrix.python-version }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python-version: ["3.10", "3.11", "3.12"]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          version: "latest"
+          enable-cache: true
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install all dependencies
+        run: uv sync --all-extras --dev
+
+      - name: Lint and format check (Ruff)
+        run: uv run ruff check .
+
+      - name: Run test suite & benchmarks (0.00% FSR Policy)
+        run: uv run pytest -m "not integration" -v
+
+      - name: Verify package build (PEP 621 wheel & sdist)
+        run: uv build
