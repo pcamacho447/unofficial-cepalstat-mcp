@@ -2,7 +2,11 @@
 
 from __future__ import annotations
 
+import heapq
+import math
 import sqlite3
+from collections import defaultdict
+from collections.abc import Mapping, Sequence
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING, Any
 
@@ -14,6 +18,66 @@ from unofficial_cepalstat_mcp.semantic.models import (
     RelationshipType,
     TemporalAvailabilityStatus,
 )
+from unofficial_cepalstat_mcp.semantic.parser import SPANISH_STOPWORDS
+from unofficial_cepalstat_mcp.semantic.thesaurus import Thesaurus, get_default_thesaurus
+
+_ACCENT_TRANS = str.maketrans('áéíóúüñÁÉÍÓÚÜÑ,.:;()[]{}"\'/\\-_', 'aeiouunAEIOUUN                ')
+_SUFFIX_TUPLES = (
+    ("ciones", "cion"),
+    ("siones", "sion"),
+    ("idades", "idad"),
+    ("ales", "al"),
+    ("ores", "or"),
+    ("ados", "ad"),
+    ("idos", "id"),
+    ("icas", "ic"),
+    ("icos", "ic"),
+    ("ica", "ic"),
+    ("ico", "ic"),
+    ("ivas", "iv"),
+    ("ivos", "iv"),
+    ("iva", "iv"),
+    ("ivo", "iv"),
+    ("ada", "ad"),
+    ("ida", "id"),
+    ("ado", "ad"),
+    ("ido", "id"),
+    ("es", ""),
+    ("os", ""),
+    ("as", ""),
+    ("s", ""),
+)
+
+_STEM_CACHE: dict[str, str] = {}
+
+_COUNTRY_PREFIX_MAP: dict[str, str] = {
+    "CHILE": "CHL", "BRASIL": "BRA", "BRAZIL": "BRA", "COLOMBIA": "COL",
+    "MEXICO": "MEX", "ARGENTINA": "ARG", "URUGUAY": "URY", "PERU": "PER",
+    "ECUADOR": "ECU", "BOLIVIA": "BOL", "PARAGUAY": "PRY", "PANAMA": "PAN",
+    "GUATEMALA": "GTM", "HONDURAS": "HND", "CUBA": "CUB", "VENEZUELA": "VEN",
+    "HAITI": "HTI", "JAMAICA": "JAM", "BELICE": "BLZ", "GUYANA": "GUY",
+    "SURINAM": "SUR", "BAHAMAS": "BHS", "BARBADOS": "BRB",
+    "COSTA RICA": "CRI", "EL SALVADOR": "SLV", "REPUBLICA DOMINICANA": "DOM",
+    "TRINIDAD Y TOBAGO": "TTO",
+}
+
+
+def _stem_spanish(token: str) -> str:
+    """Fast, deterministic Spanish suffix trimmer with memoization."""
+    res = _STEM_CACHE.get(token)
+    if res is not None:
+        return res
+    w = token
+    if len(w) <= 3:
+        _STEM_CACHE[token] = w
+        return w
+    for suf, rep in _SUFFIX_TUPLES:
+        if w.endswith(suf) and len(w) - len(suf) + len(rep) >= 3:
+            r = w[: -len(suf)] + rep
+            _STEM_CACHE[token] = r
+            return r
+    _STEM_CACHE[token] = w
+    return w
 
 if TYPE_CHECKING:
     from unofficial_cepalstat_mcp.catalog.store import CatalogStore
@@ -1359,10 +1423,12 @@ class SemanticRegistry:
         temporal_availability: dict[tuple[int, str, int], tuple[Any, int | None, int | None]] | None = None,
         catalog_profile: str = "official_25",
         ontology: FacetOntology | None = None,
+        thesaurus: Thesaurus | None = None,
     ) -> None:
         self.store = store
         self.catalog_profile = catalog_profile
         self.ontology = ontology or DEFAULT_FACET_ONTOLOGY
+        self.thesaurus = thesaurus or get_default_thesaurus()
         self._dimensions = dimensions or {}
         self._relationships = relationships or {}
         self._temporal_availability = temporal_availability or {}
@@ -1371,6 +1437,9 @@ class SemanticRegistry:
         self._dimensions_cache: dict[int, list[Dimension]] = {}
         self._relationships_cache: dict[int, dict[int, RelationshipType]] = {}
         self._relationship_provenance: dict[tuple[int, int], str] = {}
+        self._inverted_index: dict[str, list[tuple[int, float]]] = {}
+        self._restricted_country_scope: dict[int, set[str]] = {}
+        self._synonym_stem_map: dict[str, list[str]] = {}
 
         self._build_in_memory_index(explicit_dimensions=dimensions, explicit_relationships=relationships)
 
@@ -1407,9 +1476,10 @@ class SemanticRegistry:
                     self._relationship_provenance[(k, target)] = "curated"
 
         # 2. SQLite CatalogStore Overlay (if self.store is not None)
+        master_indicators: list[dict[str, Any]] = []
         if self.store is not None:
             # Dimensions overlay: overriding fallback seeds for indicators present in SQLite
-            store_dims = self.store.get_all_indicator_dimensions()
+            store_dims = self.store.get_all_indicator_dimensions(include_structural=False)
             for ind_id, dims in store_dims.items():
                 self._dimensions_cache[ind_id] = dims
 
@@ -1519,6 +1589,190 @@ class SemanticRegistry:
                     self._relationships_cache.setdefault(ind_a, {})[target] = r_enum
                     if ind_a in self._indicators_cache:
                         self._indicators_cache[ind_a].relationships[target] = r_enum
+
+        # 4. Build In-Memory Inverted Index & Restricted Country Scope
+        subarea_by_ind = (
+            {int(row["indicator_id"]): str(row.get("subarea") or "") for row in master_indicators}
+            if master_indicators
+            else {}
+        )
+        area_by_ind = (
+            {int(row["indicator_id"]): str(row.get("area") or "") for row in master_indicators}
+            if master_indicators
+            else {}
+        )
+        area_is_cam = {
+            ar: ("centroamerica" in ar.lower().translate(_ACCENT_TRANS))
+            for ar in set(area_by_ind.values())
+            if ar
+        }
+
+        self._restricted_country_scope = {}
+        for ind_id, meta in self._indicators_cache.items():
+            name_clean = meta.name.upper().translate(_ACCENT_TRANS)
+            parts = name_clean.split(None, 2)
+            c_code = None
+            if parts:
+                fw = parts[0].rstrip(":( ")
+                c_code = _COUNTRY_PREFIX_MAP.get(fw)
+                if not c_code and len(parts) >= 2 and fw in {"COSTA", "EL", "REPUBLICA", "TRINIDAD"}:
+                    c_code = _COUNTRY_PREFIX_MAP.get(f"{parts[0]} {parts[1]}".rstrip(":( "))
+            if c_code:
+                self._restricted_country_scope[ind_id] = {c_code}
+                continue
+
+            ar = area_by_ind.get(ind_id, "")
+            if area_is_cam.get(ar, False):
+                self._restricted_country_scope[ind_id] = {
+                    "BLZ", "CRI", "SLV", "GTM", "HND", "NIC", "PAN", "MEX", "CAM"
+                }
+
+        sub_stems = {
+            sub: [
+                _stem_spanish(t)
+                for t in sub.lower().translate(_ACCENT_TRANS).split()
+                if t not in SPANISH_STOPWORDS and not t.isdigit() and len(t) >= 2
+            ]
+            for sub in set(subarea_by_ind.values())
+            if sub
+        }
+        ar_stems = {
+            ar: [
+                _stem_spanish(t)
+                for t in ar.lower().translate(_ACCENT_TRANS).split()
+                if t not in SPANISH_STOPWORDS and not t.isdigit() and len(t) >= 2
+            ]
+            for ar in set(area_by_ind.values())
+            if ar
+        }
+        mem_stems = {
+            m.name: [
+                _stem_spanish(t)
+                for t in m.name.lower().translate(_ACCENT_TRANS).split()
+                if t not in SPANISH_STOPWORDS and not t.isdigit() and len(t) >= 2
+            ]
+            for dims in self._dimensions_cache.values()
+            for d in dims
+            for m in d.members
+            if m.name
+        }
+
+        ind_term_weights: dict[int, dict[str, float]] = defaultdict(lambda: defaultdict(float))
+
+        for ind_id, meta in self._indicators_cache.items():
+            # 1. Name stems (weight: 3.0)
+            seen_name = set()
+            for tok in meta.name.lower().translate(_ACCENT_TRANS).split():
+                if tok in SPANISH_STOPWORDS or tok.isdigit() or len(tok) < 2:
+                    continue
+                seen_name.add(_stem_spanish(tok))
+            for st in seen_name:
+                ind_term_weights[ind_id][st] += 3.0
+
+            # 2. Subarea stems (weight: 1.8)
+            sub = subarea_by_ind.get(ind_id, "")
+            for st in sub_stems.get(sub, ()):
+                ind_term_weights[ind_id][st] += 1.8
+
+            # 3. Area stems (weight: 1.2)
+            ar = area_by_ind.get(ind_id, "")
+            for st in ar_stems.get(ar, ()):
+                ind_term_weights[ind_id][st] += 1.2
+
+            # 4. Dimension members stems (weight: 1.5)
+            dims = self._dimensions_cache.get(ind_id, [])
+            for d in dims:
+                for m in d.members:
+                    for st in mem_stems.get(m.name, ()):
+                        ind_term_weights[ind_id][st] += 1.5
+
+        num_docs = len(self._indicators_cache) or 1
+        doc_freq: dict[str, int] = defaultdict(int)
+        for tws in ind_term_weights.values():
+            for st in tws:
+                doc_freq[st] += 1
+
+        idf_by_stem = {
+            st: math.log((num_docs - df + 0.5) / (df + 0.5) + 1.0) + 1.0
+            for st, df in doc_freq.items()
+        }
+        inv_index: dict[str, list[tuple[int, float]]] = defaultdict(list)
+        for ind_id, tws in ind_term_weights.items():
+            for st, tw in tws.items():
+                inv_index[st].append((ind_id, tw * idf_by_stem[st]))
+
+        self._inverted_index = inv_index
+
+        # Pre-index Thesaurus synonym stems for fast query expansion
+        synonym_stems: dict[str, list[str]] = {}
+        for synsets in self.thesaurus.synsets.values():
+            for s in synsets:
+                all_terms = list(s.synonyms) + ([s.canonical_term] if s.canonical_term else [])
+                token_stems = set()
+                for term in all_terms:
+                    for w in term.lower().translate(_ACCENT_TRANS).split():
+                        token_stems.add(_stem_spanish(w))
+                stem_list = list(token_stems)
+                for term in all_terms:
+                    for w in term.lower().translate(_ACCENT_TRANS).split():
+                        synonym_stems[w] = stem_list
+                        synonym_stems[_stem_spanish(w)] = stem_list
+        self._synonym_stem_map = synonym_stems
+
+    def search_candidates(
+        self,
+        concept_tokens: Sequence[str],
+        facets: Mapping[str, str] | None = None,
+        country_code: str | None = None,
+        top_k: int = 10,
+    ) -> list[tuple[int, float]]:
+        """Search top candidate indicators using IDF-weighted stem coverage + Thesaurus expansion."""
+        if not concept_tokens:
+            return []
+
+        # 1. Expand query tokens with pre-indexed Thesaurus synonym stems
+        query_stems: dict[str, float] = {}
+        for tok in concept_tokens:
+            norm_tok = tok.lower().translate(_ACCENT_TRANS).strip()
+            if not norm_tok:
+                continue
+            st = _stem_spanish(norm_tok)
+            query_stems[st] = max(query_stems.get(st, 0.0), 1.0)
+            for exp_st in self._synonym_stem_map.get(norm_tok, ()):
+                if exp_st not in query_stems:
+                    query_stems[exp_st] = 0.7
+            for exp_st in self._synonym_stem_map.get(st, ()):
+                if exp_st not in query_stems:
+                    query_stems[exp_st] = 0.7
+
+        # 2. Score candidates by accumulating inverted index weights
+        candidate_scores: dict[int, float] = defaultdict(float)
+
+        for st, q_weight in query_stems.items():
+            postings = self._inverted_index.get(st)
+            if not postings:
+                continue
+            for ind_id, idf_weight in postings:
+                # Check restricted country scope (Review Focus #3)
+                if country_code is not None and ind_id in self._restricted_country_scope:
+                    if country_code not in self._restricted_country_scope[ind_id]:
+                        continue
+                candidate_scores[ind_id] += idf_weight * q_weight
+
+        if not candidate_scores:
+            return []
+
+        # 3. Facet bonus (boost indicators supporting requested facets)
+        if facets:
+            for ind_id in list(candidate_scores.keys()):
+                meta = self._indicators_cache.get(ind_id)
+                if meta:
+                    for f_key in facets:
+                        if f_key in meta.supported_facets:
+                            candidate_scores[ind_id] += 2.0
+
+        # 4. Return top_k sorted descending
+        return heapq.nlargest(top_k, candidate_scores.items(), key=lambda item: item[1])
 
     def reload_from_store(self) -> None:
         """Rebuild in-memory index from store."""

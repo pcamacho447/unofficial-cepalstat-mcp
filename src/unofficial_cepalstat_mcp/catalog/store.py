@@ -759,16 +759,38 @@ class CatalogStore:
                 )
             return dimensions
 
-    def get_all_indicator_dimensions(self) -> dict[int, list[Dimension]]:
+    def get_all_indicator_dimensions(
+        self, *, include_structural: bool = True
+    ) -> dict[int, list[Dimension]]:
         """Retrieve all indicator dimensions and members from SQLite in bulk."""
+        from unofficial_cepalstat_mcp.semantic.facet_ontology import DEFAULT_FACET_ONTOLOGY
+
         with self._get_connection() as conn:
             try:
                 dim_rows = conn.execute(
                     "SELECT indicator_id, dim_id, dim_name FROM indicator_dimensions ORDER BY indicator_id, dim_id"
                 ).fetchall()
-                member_rows = conn.execute(
-                    "SELECT indicator_id, dim_id, member_id, member_name FROM dimension_members ORDER BY indicator_id, dim_id, member_id"
-                ).fetchall()
+                if not include_structural:
+                    structural_dims = {
+                        (int(d["indicator_id"]), int(d["dim_id"]))
+                        for d in dim_rows
+                        if DEFAULT_FACET_ONTOLOGY.is_structural_dimension(
+                            int(d["dim_id"]), str(d["dim_name"])
+                        )
+                    }
+                    member_rows = conn.execute(
+                        "SELECT indicator_id, dim_id, member_id, member_name FROM dimension_members ORDER BY indicator_id, dim_id, member_id"
+                    ).fetchall()
+                    member_rows = [
+                        m
+                        for m in member_rows
+                        if (int(m["indicator_id"]), int(m["dim_id"])) not in structural_dims
+                    ]
+                else:
+                    structural_dims = set()
+                    member_rows = conn.execute(
+                        "SELECT indicator_id, dim_id, member_id, member_name FROM dimension_members ORDER BY indicator_id, dim_id, member_id"
+                    ).fetchall()
             except sqlite3.OperationalError:
                 return {}
 
@@ -783,7 +805,10 @@ class CatalogStore:
             for d in dim_rows:
                 ind_id = int(d["indicator_id"])
                 dim_id = int(d["dim_id"])
-                members = members_by_ind_dim.get((ind_id, dim_id), [])
+                if not include_structural and (ind_id, dim_id) in structural_dims:
+                    members = []
+                else:
+                    members = members_by_ind_dim.get((ind_id, dim_id), [])
                 dims_by_ind.setdefault(ind_id, []).append(
                     Dimension(id=dim_id, name=str(d["dim_name"]), members=members)
                 )

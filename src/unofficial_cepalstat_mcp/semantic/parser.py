@@ -26,6 +26,13 @@ def strip_accents(text: str) -> str:
 
 
 COUNTRY_LEXICON: dict[str, str] = {
+    # Regional aggregates
+    "america latina y el caribe": "ALC",
+    "america latina": "ALC",
+    "alc": "ALC",
+    "america del sur": "SUD",
+    "centroamerica": "CAM",
+    "el caribe": "CAR",
     "brasil": "BRA",
     "brazil": "BRA",
     "colombia": "COL",
@@ -134,6 +141,10 @@ COUNTRY_LEXICON: dict[str, str] = {
 }
 
 COUNTRY_NAMES: dict[str, str] = {
+    "ALC": "América Latina y el Caribe",
+    "SUD": "América del Sur",
+    "CAM": "Centroamérica",
+    "CAR": "El Caribe",
     "BRA": "Brasil",
     "COL": "Colombia",
     "CHL": "Chile",
@@ -188,6 +199,7 @@ class ParsedIntent(BaseModel):
     unsupported_frequency: bool = False
     frequency: str = "ANUAL"
     unconsumed_tokens: list[str] = Field(default_factory=list)
+    concept_tokens: list[str] = Field(default_factory=list)
 
 
 _RE_REL_YEARS = re.compile(r"\bultimos?\s+(\d+)\s+anos?\b")
@@ -398,6 +410,7 @@ class QueryParser:
         # ----------------------------------------------------
         # 2. Extract Year & Range Check (Temporal Extraction)
         # ----------------------------------------------------
+        temporal_start_idx = len(consumed_phrases)
         rel_match = _RE_REL_YEARS.search(clean)
         if rel_match:
             consumed_phrases.append(rel_match.group(0))
@@ -474,20 +487,23 @@ class QueryParser:
         # ----------------------------------------------------
         # 3. Extract Country (Single or Multi-Country in Query Order)
         # ----------------------------------------------------
-        matched_countries: list[tuple[int, str]] = []
-        for name, code in COUNTRY_LEXICON.items():
+        geo_start_idx = len(consumed_phrases)
+        matched_spans: list[tuple[int, int, str, str]] = []
+        for name, code in sorted(COUNTRY_LEXICON.items(), key=lambda x: len(x[0]), reverse=True):
             if name not in clean:
                 continue
-            m = re.search(r"\b" + re.escape(name) + r"\b", clean)
-            if m:
-                matched_countries.append((m.start(), code))
+            for m in re.finditer(r"\b" + re.escape(name) + r"\b", clean):
+                s, e = m.start(), m.end()
+                if any(not (e <= span_s or s >= span_e) for span_s, span_e, _, _ in matched_spans):
+                    continue
+                matched_spans.append((s, e, code, name))
                 consumed_phrases.append(name)
 
-        if matched_countries:
-            matched_countries.sort(key=lambda item: item[0])
+        if matched_spans:
+            matched_spans.sort(key=lambda item: item[0])
             seen_codes: set[str] = set()
             ordered_codes: list[str] = []
-            for _, code in matched_countries:
+            for _, _, code, _ in matched_spans:
                 if code not in seen_codes:
                     seen_codes.add(code)
                     ordered_codes.append(code)
@@ -499,6 +515,7 @@ class QueryParser:
         # ----------------------------------------------------
         # 4. Extract Facets (with Regionalisms)
         # ----------------------------------------------------
+        facet_start_idx = len(consumed_phrases)
         # Area
         if any(term in clean for term in ["urbano y rural", "urbana y rural"]):
             facets["area"] = "AREA_DESGLOSE"
@@ -696,6 +713,7 @@ class QueryParser:
         # ----------------------------------------------------
         # 5. Extract Root Concept & Controlled Ambiguities
         # ----------------------------------------------------
+        facet_end_idx = len(consumed_phrases)
         has_pib = bool(re.search(r"\bpib\b", clean) or "producto interno bruto" in clean)
         if has_pib:
             if re.search(r"\bpib\b", clean):
@@ -1265,7 +1283,7 @@ class QueryParser:
                 facets.pop("area", None)
 
         # ----------------------------------------------------
-        # 6. Extract Unconsumed Semantic Tokens
+        # 6. Extract Unconsumed Semantic Tokens & Concept Tokens
         # ----------------------------------------------------
         raw_tokens = re.findall(r"\b[a-z0-9_]+\b", clean)
         consumed_words: set[str] = set()
@@ -1282,7 +1300,33 @@ class QueryParser:
                 seen_unconsumed.add(tok)
                 unconsumed.append(tok)
 
+        # Informative concept tokens remaining after stripping geography, years, stopwords, and matched facet triggers
+        temporal_phrases = consumed_phrases[temporal_start_idx:geo_start_idx]
+        geo_phrases = consumed_phrases[geo_start_idx:facet_start_idx]
+        facet_phrases = consumed_phrases[facet_start_idx:facet_end_idx]
+
+        geo_words = {w for phrase in geo_phrases for w in re.findall(r"\b[a-z0-9_]+\b", phrase)}
+        facet_words = {w for phrase in facet_phrases for w in re.findall(r"\b[a-z0-9_]+\b", phrase)}
+        temporal_words = {w for phrase in temporal_phrases for w in re.findall(r"\b[a-z0-9_]+\b", phrase)}
+
+        concept_tokens: list[str] = []
+        seen_concepts: set[str] = set()
+        for tok in raw_tokens:
+            if (
+                tok in SPANISH_STOPWORDS
+                or tok.isdigit()
+                or tok in geo_words
+                or tok in facet_words
+                or tok in temporal_words
+                or len(tok) < 2
+            ):
+                continue
+            if tok not in seen_concepts:
+                seen_concepts.add(tok)
+                concept_tokens.append(tok)
+
         intent.unconsumed_tokens = unconsumed
+        intent.concept_tokens = concept_tokens
         intent.facets = facets
         return intent
 
