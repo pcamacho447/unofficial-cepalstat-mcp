@@ -463,6 +463,17 @@ def test_fetcher_dynamically_rescues_empirical_anchors_even_when_unindexed_in_st
     assert all(r["anchor_for_years"] == [2021] for r in series)
 
 
+def test_macro_cpi_range_2020_2025_does_not_emit_false_survey_gap() -> None:
+    from unofficial_cepalstat_mcp.semantic.engine import SemanticResolutionEngine
+
+    engine = SemanticResolutionEngine()
+    resp = engine.resolve("inflación anual en Chile 2020-2025")
+    assert resp.status == ResolutionStatus.RESOLVED
+    assert resp.temporal_info is not None
+    assert resp.temporal_info.unobserved_years == []
+
+
+
 
 
 

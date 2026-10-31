@@ -24,7 +24,10 @@ from unofficial_cepalstat_mcp.semantic.models import (
     TemporalAvailabilityStatus,
 )
 from unofficial_cepalstat_mcp.semantic.parser import QueryParser
-from unofficial_cepalstat_mcp.semantic.registry import SemanticRegistry
+from unofficial_cepalstat_mcp.semantic.registry import (
+    BADEHOG_SURVEY_INDICATORS,
+    SemanticRegistry,
+)
 
 CRITICAL_SPECIFICITY_TOKENS: frozenset[str] = frozenset({
     "manufacturero", "manufactura", "industrial", "industria",
@@ -778,9 +781,22 @@ class SemanticResolutionEngine:
                 trace.append(
                     f"[Stage 5: Temporal Audit] Countries={intent.country_codes}, Years={target_years} -> Status={overall_temp_status.value} (Observed Countries: {observed_countries}, Unobserved Countries: {unobserved_countries}) (Anchors: Prev={prev_anchor_first}, Next={next_anchor_last})"
                 )
-                trace.append(
-                    f"  - Sampling notice: Gaps in survey schedule for countries {unobserved_countries} in years {unobs_years_sorted}. {'; '.join(anchor_details)}. Interpolation strictly forbidden."
-                )
+                if target_indicator_id in BADEHOG_SURVEY_INDICATORS:
+                    trace.append(
+                        f"  - Sampling notice: Gaps in survey schedule for countries {unobserved_countries} in years {unobs_years_sorted}. {'; '.join(anchor_details)}. Interpolation strictly forbidden."
+                    )
+                    multi_disclaimer = (
+                        f"Entre los países solicitados ({', '.join(intent.country_names)}), presentan brechas de medición muestral: {'; '.join(anchor_details)}. "
+                        f"Países con cobertura completa en el período: {observed_countries}. Se prohíbe la interpolación."
+                    )
+                else:
+                    trace.append(
+                        f"  - Observation notice: Gaps in records for countries {unobserved_countries} in years {unobs_years_sorted}. {'; '.join(anchor_details)}. Interpolation strictly forbidden."
+                    )
+                    multi_disclaimer = (
+                        f"Entre los países solicitados ({', '.join(intent.country_names)}), presentan período sin observación registrada: {'; '.join(anchor_details)}. "
+                        f"Países con cobertura completa en el período: {observed_countries}. Se prohíbe la interpolación."
+                    )
                 temporal_info = TemporalAnchorInfo(
                     requested_year=intent.year or target_years[-1],
                     requested_years=target_years,
@@ -794,10 +810,7 @@ class SemanticResolutionEngine:
                     previous_anchor_year=prev_anchor_first,
                     next_anchor_year=next_anchor_last,
                     forbid_interpolation=True,
-                    disclaimer=(
-                        f"Entre los países solicitados ({', '.join(intent.country_names)}), presentan brechas de medición muestral: {'; '.join(anchor_details)}. "
-                        f"Países con cobertura completa en el período: {observed_countries}. Se prohíbe la interpolación."
-                    ),
+                    disclaimer=multi_disclaimer,
                 )
             else:
                 overall_temp_status = TemporalAvailabilityStatus.OBSERVATION_EXISTING
@@ -844,9 +857,22 @@ class SemanticResolutionEngine:
                 trace.append(
                     f"[Stage 5: Temporal Audit] Country={intent.country_code}, Years={intent.years} (Mode: {intent.time_mode}) -> Status={overall_temp_status.value} (Observed: {observed_years}, Unobserved: {unobserved_years})"
                 )
-                trace.append(
-                    f"  - Sampling notice: Gaps in survey schedule for {intent.country_name} in years {unobserved_years}. Observed years in range: {observed_years}. Interpolation strictly forbidden."
-                )
+                if target_indicator_id in BADEHOG_SURVEY_INDICATORS:
+                    trace.append(
+                        f"  - Sampling notice: Gaps in survey schedule for {intent.country_name} in years {unobserved_years}. Observed years in range: {observed_years}. Interpolation strictly forbidden."
+                    )
+                    range_disclaimer = (
+                        f"En {intent.country_name} la serie solicitada ({intent.years[0]}-{intent.years[-1]}) presenta años sin medición muestral: {unobserved_years}. "
+                        f"Años con observación oficial en el rango: {observed_years}. Se prohíbe la interpolación."
+                    )
+                else:
+                    trace.append(
+                        f"  - Observation notice: Gaps in records for {intent.country_name} in years {unobserved_years}. Observed years in range: {observed_years}. Interpolation strictly forbidden."
+                    )
+                    range_disclaimer = (
+                        f"En {intent.country_name} la serie solicitada ({intent.years[0]}-{intent.years[-1]}) presenta período sin observación registrada: {unobserved_years}. "
+                        f"Años con observación oficial en el rango: {observed_years}. Se prohíbe la interpolación."
+                    )
                 c_anchors = {
                     intent.country_code: CountryTemporalAnchor(
                         country_code=intent.country_code,
@@ -869,10 +895,7 @@ class SemanticResolutionEngine:
                     previous_anchor_year=prev_anchor_first,
                     next_anchor_year=next_anchor_last,
                     forbid_interpolation=True,
-                    disclaimer=(
-                        f"En {intent.country_name} la serie solicitada ({intent.years[0]}-{intent.years[-1]}) presenta años sin medición muestral: {unobserved_years}. "
-                        f"Años con observación oficial en el rango: {observed_years}. Se prohíbe la interpolación."
-                    ),
+                    disclaimer=range_disclaimer,
                 )
             else:
                 overall_temp_status = TemporalAvailabilityStatus.OBSERVATION_EXISTING
@@ -902,7 +925,18 @@ class SemanticResolutionEngine:
             if temp_status == TemporalAvailabilityStatus.PERIOD_UNOBSERVED:
                 if not is_alternative_fallback:
                     status = ResolutionStatus.RESOLVED_WITH_ANCHORS
-                trace.append(f"  - Sampling notice: Gap in survey schedule for {intent.country_name} in {intent.year}. Interpolation strictly forbidden.")
+                if target_indicator_id in BADEHOG_SURVEY_INDICATORS:
+                    trace.append(f"  - Sampling notice: Gap in survey schedule for {intent.country_name} in {intent.year}. Interpolation strictly forbidden.")
+                    single_disclaimer = (
+                        f"En {intent.country_name} la medición no se realizó en {intent.year} debido a la periodicidad del diseño muestral. "
+                        f"Puntos ancla oficiales disponibles: {prev_anchor} y {next_anchor}. Se prohíbe la interpolación."
+                    )
+                else:
+                    trace.append(f"  - Observation notice: Gap in records for {intent.country_name} in {intent.year}. Interpolation strictly forbidden.")
+                    single_disclaimer = (
+                        f"En {intent.country_name} la medición presenta período sin observación registrada en {intent.year}. "
+                        f"Puntos ancla oficiales disponibles: {prev_anchor} y {next_anchor}. Se prohíbe la interpolación."
+                    )
                 c_anchors = {
                     intent.country_code: CountryTemporalAnchor(
                         country_code=intent.country_code,
@@ -925,10 +959,7 @@ class SemanticResolutionEngine:
                     previous_anchor_year=prev_anchor,
                     next_anchor_year=next_anchor,
                     forbid_interpolation=True,
-                    disclaimer=(
-                        f"En {intent.country_name} la medición no se realizó en {intent.year} debido a la periodicidad del diseño muestral. "
-                        f"Puntos ancla oficiales disponibles: {prev_anchor} y {next_anchor}. Se prohíbe la interpolación."
-                    ),
+                    disclaimer=single_disclaimer,
                 )
             else:
                 temporal_info = TemporalAnchorInfo(

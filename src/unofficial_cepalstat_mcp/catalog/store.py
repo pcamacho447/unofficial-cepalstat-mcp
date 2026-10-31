@@ -144,9 +144,17 @@ class CatalogStore:
                     concept TEXT,
                     measure_type TEXT,
                     unit TEXT,
-                    supported_facets TEXT
+                    supported_facets TEXT,
+                    definition TEXT DEFAULT '',
+                    periodicity TEXT DEFAULT ''
                 )
             """)
+            cur_meta = conn.execute("PRAGMA table_info(indicator_metadata)")
+            existing_meta_cols = {row["name"] for row in cur_meta.fetchall()}
+            if "definition" not in existing_meta_cols:
+                conn.execute("ALTER TABLE indicator_metadata ADD COLUMN definition TEXT DEFAULT ''")
+            if "periodicity" not in existing_meta_cols:
+                conn.execute("ALTER TABLE indicator_metadata ADD COLUMN periodicity TEXT DEFAULT ''")
 
     def is_built(self) -> bool:
         """Check if the catalog has been populated."""
@@ -582,24 +590,26 @@ class CatalogStore:
         measure_type: str,
         unit: str,
         supported_facets: set[str] | list[str] | None = None,
+        definition: str = "",
+        periodicity: str = "",
     ) -> None:
-        """Store indicator metadata including measure type, unit and facets."""
+        """Store indicator metadata including measure type, unit, facets, definition and periodicity."""
         facets_str = ",".join(sorted(supported_facets)) if supported_facets else ""
         with self._get_connection() as conn:
             conn.execute(
                 """
                 INSERT OR REPLACE INTO indicator_metadata
-                (indicator_id, name, concept, measure_type, unit, supported_facets)
-                VALUES (?, ?, ?, ?, ?, ?)
+                (indicator_id, name, concept, measure_type, unit, supported_facets, definition, periodicity)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                 """,
-                (indicator_id, name, concept, measure_type, unit, facets_str),
+                (indicator_id, name, concept, measure_type, unit, facets_str, definition, periodicity),
             )
 
     def get_indicator_metadata(self, indicator_id: int) -> dict[str, Any] | None:
         """Retrieve indicator metadata from SQLite."""
         with self._get_connection() as conn:
             row = conn.execute(
-                "SELECT indicator_id, name, concept, measure_type, unit, supported_facets FROM indicator_metadata WHERE indicator_id = ?",
+                "SELECT indicator_id, name, concept, measure_type, unit, supported_facets, definition, periodicity FROM indicator_metadata WHERE indicator_id = ?",
                 (indicator_id,),
             ).fetchone()
             if not row:
@@ -612,6 +622,8 @@ class CatalogStore:
                 "measure_type": row["measure_type"],
                 "unit": row["unit"],
                 "supported_facets": facets,
+                "definition": row["definition"] or "",
+                "periodicity": row["periodicity"] or "",
             }
 
     def get_all_indicator_metadata(self) -> dict[int, dict[str, Any]]:
@@ -619,7 +631,7 @@ class CatalogStore:
         with self._get_connection() as conn:
             try:
                 rows = conn.execute(
-                    "SELECT indicator_id, name, concept, measure_type, unit, supported_facets FROM indicator_metadata"
+                    "SELECT indicator_id, name, concept, measure_type, unit, supported_facets, definition, periodicity FROM indicator_metadata"
                 ).fetchall()
             except sqlite3.OperationalError:
                 return {}
@@ -647,8 +659,22 @@ class CatalogStore:
                     "measure_type": row["measure_type"],
                     "unit": row["unit"],
                     "supported_facets": facets,
+                    "definition": row["definition"] or "",
+                    "periodicity": row["periodicity"] or "",
                 }
             return results
+
+    def get_master_indicator(self, indicator_id: int) -> dict[str, Any] | None:
+        """Retrieve a single master indicator row by indicator_id."""
+        with self._get_connection() as conn:
+            try:
+                row = conn.execute(
+                    "SELECT indicator_id, name, order_num, theme, area, subarea, full_path, updated_at FROM master_indicators WHERE indicator_id = ?",
+                    (indicator_id,),
+                ).fetchone()
+                return dict(row) if row else None
+            except sqlite3.OperationalError:
+                return None
 
     def get_all_master_indicators(self) -> list[dict[str, Any]]:
         """Retrieve all master indicators from SQLite."""

@@ -447,6 +447,26 @@ def test_live_harvest_smoke_indicator_dimensions(tmp_path):
     assert stats["total_members"] >= 15
 
 
+def test_harvester_persists_unit_and_periodicity_from_metadata_endpoint(tmp_path, mocker) -> None:
+    store = CatalogStore(db_path=tmp_path / "h.db")
+    with store._get_connection() as conn:
+        conn.execute(
+            "INSERT INTO master_indicators VALUES (2484, 'IPC anual', 10, 'Económicos', 'Precios', '', 'Económicos > Precios', '2026-10-30')"
+        )
+    client = mocker.Mock()
+    client.get.side_effect = [
+        {"body": {"dimensions": [{"id": 208, "name": "País__ESTANDAR", "members": [{"id": 1, "name": "Chile"}]}, {"id": 29117, "name": "Años__ESTANDAR", "members": [{"id": 2, "name": "2024"}, {"id": 3, "name": "2025"}]}]}},
+        {"body": {"metadata": {"unit": "Variación anual (%)", "periodicity": "Anual", "definition": "Variación dic-dic"}}},
+    ]
+    summary = CatalogHarvester(client=client, store=store, rate_limit_delay=0.0).harvest(indicator_ids=[2484])
+    assert summary.newly_harvested == 1
+    meta = store.get_indicator_metadata(2484)
+    assert meta is not None
+    assert meta["unit"] == "Variación anual (%)"
+    assert meta["periodicity"] == "Anual"
+
+
+
 
 
 

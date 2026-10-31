@@ -2,6 +2,7 @@
 
 import hashlib
 import json
+import logging
 import time
 from datetime import datetime, timezone
 from typing import Any, Callable
@@ -13,6 +14,8 @@ from unofficial_cepalstat_mcp.catalog.store import CatalogStore
 from unofficial_cepalstat_mcp.client import CepalStatClient
 from unofficial_cepalstat_mcp.dimensions import Dimension, Member
 from unofficial_cepalstat_mcp.exceptions import CepalStatAPIError, CepalStatNetworkError
+
+logger = logging.getLogger(__name__)
 
 
 class CatalogHarvester:
@@ -86,12 +89,28 @@ class CatalogHarvester:
         except TypeError:
             on_progress(current_idx, total_count, indicator_id)
 
+    @staticmethod
+    def _parse_metadata(raw: Any) -> dict[str, str]:
+        """Parse indicator metadata response into clean dict."""
+        if not isinstance(raw, dict):
+            return {"unit": "", "definition": "", "periodicity": ""}
+        body = raw.get("body", raw)
+        meta = body.get("metadata", body) if isinstance(body, dict) else {}
+        if not isinstance(meta, dict):
+            return {"unit": "", "definition": "", "periodicity": ""}
+        return {
+            "unit": str(meta.get("unit") or "").strip(),
+            "definition": str(meta.get("definition") or "").strip(),
+            "periodicity": str(meta.get("periodicity") or "").strip(),
+        }
+
     def harvest(
         self,
         indicator_ids: list[int] | None = None,
         resume: bool = True,
         force: bool = False,
         on_progress: Callable[[int, int, int, str], None] | Callable[[int, int, int], None] | None = None,
+        include_metadata: bool = True,
     ) -> HarvestSummary:
         """Harvest dimension metadata for indicators.
 
@@ -100,6 +119,7 @@ class CatalogHarvester:
             resume: If True and not force, skips already harvested indicators.
             force: If True, re-harvests indicators even if already harvested.
             on_progress: Optional callback invoked as (idx, total, indicator_id, status).
+            include_metadata: If True, fetches and stores indicator metadata (unit, definition, periodicity).
 
         Returns:
             HarvestSummary with run statistics.
@@ -144,6 +164,42 @@ class CatalogHarvester:
                         content_hash=content_hash,
                         harvested_at=harvested_at,
                     )
+
+                    if include_metadata:
+                        try:
+                            if self.rate_limit_delay > 0:
+                                time.sleep(self.rate_limit_delay)
+                            raw_meta = self.client.get(f"/cepalstat/api/v1/indicator/{ind_id}/metadata")
+                            parsed_meta = self._parse_metadata(raw_meta)
+                            existing_meta = self.store.get_indicator_metadata(ind_id)
+                            name = ""
+                            concept = ""
+                            measure_type = ""
+                            facets: set[str] = set()
+                            if existing_meta:
+                                name = existing_meta.get("name") or ""
+                                concept = existing_meta.get("concept") or ""
+                                measure_type = existing_meta.get("measure_type") or ""
+                                facets = existing_meta.get("supported_facets") or set()
+                            if not name:
+                                master = self.store.get_master_indicator(ind_id)
+                                if master and master.get("name"):
+                                    name = str(master["name"])
+                                else:
+                                    name = f"Indicator {ind_id}"
+                            self.store.store_indicator_metadata(
+                                indicator_id=ind_id,
+                                name=name,
+                                concept=concept,
+                                measure_type=measure_type,
+                                unit=parsed_meta["unit"] or (existing_meta.get("unit", "") if existing_meta else ""),
+                                supported_facets=facets,
+                                definition=parsed_meta["definition"] or (existing_meta.get("definition", "") if existing_meta else ""),
+                                periodicity=parsed_meta["periodicity"] or (existing_meta.get("periodicity", "") if existing_meta else ""),
+                            )
+                        except Exception as meta_exc:
+                            logger.warning("Could not harvest metadata for indicator %s: %s", ind_id, meta_exc)
+
                     newly_harvested += 1
                     self._notify_progress(on_progress, idx, total_pending, ind_id, "success")
                     break

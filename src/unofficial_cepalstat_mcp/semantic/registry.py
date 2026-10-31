@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import sqlite3
+from datetime import datetime, timezone
 from typing import TYPE_CHECKING, Any
 
 from unofficial_cepalstat_mcp.dimensions import Dimension, Member
@@ -1684,7 +1685,8 @@ class SemanticRegistry:
         if key in TEMPORAL_AVAILABILITY_MATRIX:
             return TEMPORAL_AVAILABILITY_MATRIX[key]
 
-        # Default: if between 2000 and 2023, assume existing
-        if 2000 <= year <= 2023:
+        # Default: if between 1950 and current UTC year, assume existing
+        current_year = datetime.now(timezone.utc).year
+        if 1950 <= year <= current_year:
             return (TemporalAvailabilityStatus.OBSERVATION_EXISTING, None, None)
         return (TemporalAvailabilityStatus.OBSERVATION_MISSING, None, None)
