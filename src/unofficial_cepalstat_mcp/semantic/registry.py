@@ -1731,24 +1731,26 @@ class SemanticRegistry:
             return []
 
         # 1. Expand query tokens with pre-indexed Thesaurus synonym stems
-        query_stems: dict[str, float] = {}
+        query_stems: dict[str, tuple[float, str]] = {}
         for tok in concept_tokens:
             norm_tok = tok.lower().translate(_ACCENT_TRANS).strip()
             if not norm_tok:
                 continue
             st = _stem_spanish(norm_tok)
-            query_stems[st] = max(query_stems.get(st, 0.0), 1.0)
+            prev_weight = query_stems.get(st, (0.0, ""))[0]
+            query_stems[st] = (max(prev_weight, 1.0), tok)
             for exp_st in self._synonym_stem_map.get(norm_tok, ()):
                 if exp_st not in query_stems:
-                    query_stems[exp_st] = 0.7
+                    query_stems[exp_st] = (0.7, tok)
             for exp_st in self._synonym_stem_map.get(st, ()):
                 if exp_st not in query_stems:
-                    query_stems[exp_st] = 0.7
+                    query_stems[exp_st] = (0.7, tok)
 
-        # 2. Score candidates by accumulating inverted index weights
+        # 2. Score candidates by accumulating inverted index weights and token coverage
         candidate_scores: dict[int, float] = defaultdict(float)
+        matched_concept_tokens: dict[int, set[str]] = defaultdict(set)
 
-        for st, q_weight in query_stems.items():
+        for st, (q_weight, orig_tok) in query_stems.items():
             postings = self._inverted_index.get(st)
             if not postings:
                 continue
@@ -1758,9 +1760,16 @@ class SemanticRegistry:
                     if country_code not in self._restricted_country_scope[ind_id]:
                         continue
                 candidate_scores[ind_id] += idf_weight * q_weight
+                matched_concept_tokens[ind_id].add(orig_tok)
 
         if not candidate_scores:
             return []
+
+        # Coordination matching: boost candidates covering multiple distinct concept tokens
+        if len(concept_tokens) > 1:
+            for ind_id, covered in matched_concept_tokens.items():
+                ratio = len(covered) / len(concept_tokens)
+                candidate_scores[ind_id] *= (1.0 + 3.0 * ratio)
 
         # 3. Facet bonus (boost indicators supporting requested facets)
         if facets:

@@ -332,6 +332,30 @@ class QueryParser:
         # ----------------------------------------------------
         # 1. Detection of Out-of-Scope / Unsupported cases
         # ----------------------------------------------------
+        NON_LAC_COUNTRIES: dict[str, str] = {
+            "francia": "FRA",
+            "espana": "ESP",
+            "alemania": "DEU",
+            "italia": "ITA",
+            "reino unido": "GBR",
+            "estados unidos": "USA",
+            "eeuu": "USA",
+            "china": "CHN",
+            "japon": "JPN",
+            "canada": "CAN",
+            "portugal": "PRT",
+            "australia": "AUS",
+            "rusia": "RUS",
+            "india": "IND",
+        }
+        has_lac_country = any(re.search(r"\b" + re.escape(c) + r"\b", clean) for c in COUNTRY_LEXICON)
+        if not has_lac_country:
+            for non_lac_name, non_lac_code in NON_LAC_COUNTRIES.items():
+                if re.search(r"\b" + re.escape(non_lac_name) + r"\b", clean):
+                    intent.unsupported_facet = f"UNSUPPORTED_COUNTRY_NON_LAC_{non_lac_code}"
+                    intent.unknown_concept = True
+                    break
+
         if "lunar" in clean or "en la luna" in clean or "la luna" in clean:
             intent.unsupported_facet = "UNSUPPORTED_GEOGRAPHY_MOON"
             intent.unknown_concept = True

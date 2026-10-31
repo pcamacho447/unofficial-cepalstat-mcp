@@ -4,6 +4,7 @@ import re
 import time
 from typing import Any
 
+from unofficial_cepalstat_mcp.catalog.store import CatalogStore
 from unofficial_cepalstat_mcp.dimensions import Dimension
 from unofficial_cepalstat_mcp.semantic.facet_ontology import (
     DEFAULT_FACET_ONTOLOGY,
@@ -23,9 +24,14 @@ from unofficial_cepalstat_mcp.semantic.models import (
     TemporalAnchorInfo,
     TemporalAvailabilityStatus,
 )
-from unofficial_cepalstat_mcp.semantic.parser import QueryParser
+from unofficial_cepalstat_mcp.semantic.parser import (
+    SPANISH_STOPWORDS,
+    ParsedIntent,
+    QueryParser,
+)
 from unofficial_cepalstat_mcp.semantic.registry import (
     BADEHOG_SURVEY_INDICATORS,
+    IndicatorMetadata,
     SemanticRegistry,
 )
 
@@ -83,6 +89,7 @@ def _is_token_covered_by_indicator(
     token: str,
     indicator_meta: Any,
     dims: list[Dimension] | None,
+    synonym_stem_map: dict[str, list[str]] | None = None,
 ) -> bool:
     """Check if token is covered by the indicator's name, concept, unit, or dimensions."""
     token_norm = strip_accents(token).lower().strip()
@@ -124,6 +131,16 @@ def _is_token_covered_by_indicator(
             if _spanish_stem(w) == token_stem:
                 return True
 
+    if synonym_stem_map:
+        from unofficial_cepalstat_mcp.semantic.registry import _stem_spanish
+
+        raw_syn_stems = set(synonym_stem_map.get(token_norm, ())) | set(synonym_stem_map.get(token_stem, ()))
+        syn_stems = {s for s in raw_syn_stems if len(s) > 2 and s not in SPANISH_STOPWORDS}
+        if syn_stems:
+            word_stems = {_stem_spanish(w) for w in words if w not in SPANISH_STOPWORDS and len(w) > 2}
+            if syn_stems.intersection(word_stems):
+                return True
+
     return False
 
 
@@ -137,12 +154,23 @@ class SemanticResolutionEngine:
         matcher: DynamicMemberMatcher | None = None,
         catalog_profile: str = "official_25",
         ontology: FacetOntology | None = None,
+        store: CatalogStore | None = None,
+        enable_tier2_catalog: bool | None = None,
     ):
         self.catalog_profile = catalog_profile
         self.ontology = ontology or DEFAULT_FACET_ONTOLOGY
         self.parser = parser or QueryParser(catalog_profile=catalog_profile, ontology=self.ontology)
-        self.registry = registry or SemanticRegistry(catalog_profile=catalog_profile, ontology=self.ontology)
+        self.registry = registry or SemanticRegistry(store=store, catalog_profile=catalog_profile, ontology=self.ontology)
         self.matcher = matcher or DynamicMemberMatcher(ontology=self.ontology)
+        self.store = store or getattr(self.registry, "store", None)
+        if enable_tier2_catalog is not None:
+            self.enable_tier2_catalog = enable_tier2_catalog
+        else:
+            self.enable_tier2_catalog = bool(
+                store is not None
+                or catalog_profile == "full_catalog"
+                or (registry is not None and getattr(registry, "store", None) is not None)
+            )
 
     @staticmethod
     def _route_population_indicator(facets: dict[str, str]) -> int:
@@ -292,6 +320,17 @@ class SemanticResolutionEngine:
             )
 
         if not intent.root_concept:
+            if (
+                self.enable_tier2_catalog
+                and not intent.unknown_concept
+                and not intent.unsupported_facet
+                and not intent.period_out_of_range
+                and not intent.unsupported_frequency
+            ):
+                tier2_resp = self._resolve_via_tier2_catalog(query_str, intent, applied_filters, trace, t0)
+                if tier2_resp is not None:
+                    return tier2_resp
+
             latency = (time.perf_counter() - t0) * 1000.0
             trace.append("[Stage 2: Hard Abstention] REJECTED: No root concept recognized.")
             return SemanticResolutionResponse(
@@ -309,6 +348,17 @@ class SemanticResolutionEngine:
         # ----------------------------------------------------
         canonical_id = self.registry.get_canonical_default(intent.root_concept)
         if not canonical_id:
+            if (
+                self.enable_tier2_catalog
+                and not intent.unknown_concept
+                and not intent.unsupported_facet
+                and not intent.period_out_of_range
+                and not intent.unsupported_frequency
+            ):
+                tier2_resp = self._resolve_via_tier2_catalog(query_str, intent, applied_filters, trace, t0)
+                if tier2_resp is not None:
+                    return tier2_resp
+
             latency = (time.perf_counter() - t0) * 1000.0
             trace.append("[Stage 3: Candidate Selection] REJECTED: No canonical indicator for root concept.")
             return SemanticResolutionResponse(
@@ -345,6 +395,17 @@ class SemanticResolutionEngine:
                     and uncovered_norms_early.issubset(GENERAL_AGGREGATE_FALLBACKS[canonical_id])
                 )
                 if not is_general_fallback_early:
+                    if (
+                        self.enable_tier2_catalog
+                        and not intent.unknown_concept
+                        and not intent.unsupported_facet
+                        and not intent.period_out_of_range
+                        and not intent.unsupported_frequency
+                    ):
+                        tier2_resp = self._resolve_via_tier2_catalog(query_str, intent, applied_filters, trace, t0)
+                        if tier2_resp is not None:
+                            return tier2_resp
+
                     latency = (time.perf_counter() - t0) * 1000.0
                     uncovered_str = ", ".join(uncovered_critical_early)
                     cand_name_str = cand_meta_early.name if cand_meta_early else str(canonical_id)
@@ -505,6 +566,7 @@ class SemanticResolutionEngine:
             trace.append(f"[Stage 4: Dimensional Gate] Canonical ID {canonical_id} lacks facets: {sorted(unhandled_facets)}. Traversing knowledge graph for 'breakdown_of' swap...")
             found_swap = False
             candidate_rels = self.registry.get_relationships(canonical_id)
+            valid_swaps: list[tuple[int, RelationshipType, IndicatorMetadata]] = []
             for cand_id, rel in candidate_rels.items():
                 if rel == RelationshipType.BREAKDOWN_OF:
                     cand_meta = self.registry.get_indicator(cand_id)
@@ -529,19 +591,20 @@ class SemanticResolutionEngine:
                             and self.ontology.is_critical_unhandled_facet(f, intent.facets.get(f, ""))
                         ]
                         if not crit_cand_unhandled:
-                            target_indicator_id = cand_id
-                            swapped_from = canonical_id
-                            swap_relationship = rel
-                            found_swap = True
-                            trace.append(f"  - Swapped to ID {cand_id} ('{cand_meta.name}') via 'breakdown_of' (supports required facets)")
-                            break
+                            valid_swaps.append((cand_id, rel, cand_meta))
                     elif requested_facet_keys.issubset(cand_supported):
-                        target_indicator_id = cand_id
-                        swapped_from = canonical_id
-                        swap_relationship = rel
-                        found_swap = True
-                        trace.append(f"  - Swapped to ID {cand_id} ('{cand_meta.name}') via 'breakdown_of' (supports required facets)")
-                        break
+                        valid_swaps.append((cand_id, rel, cand_meta))
+
+            if valid_swaps:
+                best_cand_id, best_rel, best_meta = min(
+                    valid_swaps,
+                    key=lambda item: (len(self.registry.get_dimensions(item[0])), item[0]),
+                )
+                target_indicator_id = best_cand_id
+                swapped_from = canonical_id
+                swap_relationship = best_rel
+                found_swap = True
+                trace.append(f"  - Swapped to ID {best_cand_id} ('{best_meta.name}') via 'breakdown_of' (supports required facets)")
 
             if not found_swap:
                 latency = (time.perf_counter() - t0) * 1000.0
@@ -667,6 +730,17 @@ class SemanticResolutionEngine:
                         f"[Stage 3: Specificity Audit] DOWNGRADED to ALTERNATIVE_PROPOSED (Score: 0.65): Uncovered specificity: {uncovered_critical}."
                     )
                 else:
+                    if (
+                        self.enable_tier2_catalog
+                        and not intent.unknown_concept
+                        and not intent.unsupported_facet
+                        and not intent.period_out_of_range
+                        and not intent.unsupported_frequency
+                    ):
+                        tier2_resp = self._resolve_via_tier2_catalog(query_str, intent, applied_filters, trace, t0)
+                        if tier2_resp is not None:
+                            return tier2_resp
+
                     latency = (time.perf_counter() - t0) * 1000.0
                     uncovered_str = ", ".join(uncovered_critical)
                     trace.append(
@@ -717,6 +791,41 @@ class SemanticResolutionEngine:
         # ----------------------------------------------------
         # Stage 5: Temporal Audit & Anchor Points
         # ----------------------------------------------------
+        temporal_info, status = self._audit_temporal_availability(
+            target_indicator_id,
+            intent,
+            trace,
+            is_alternative_fallback=is_alternative_fallback,
+        )
+
+        # Conversational hints for default assumptions & alternatives
+        if conversational_hint is None:
+            if target_indicator_id == 821 and not any(t in intent.clean_query for t in ["%", "pib", "porcentaje", "porciento"]):
+                trace.append("  [Decision Audit] Unidad no especificada para ingresos tributarios. Se asume estándar macroeconómico CEPAL: '% del PIB' (ID 821). Medida alternativa disponible: 'Moneda nacional a precios corrientes' (ID 845).")
+                conversational_hint = "Nota: Se resolvió por defecto a Ingresos tributarios en porcentaje del PIB (indicador 821). Si requiere la serie en moneda nacional a precios corrientes, consulte el indicador 845."
+
+        result_label = "ALTERNATIVE_PROPOSED" if is_alternative_fallback else "SUCCESS"
+        trace.append(f"[Resolution Result] {result_label}: Selected ID {target_indicator_id} ('{selected.name}') with score {selected.relevance_score}. Status={status.value}")
+        latency = (time.perf_counter() - t0) * 1000.0
+        return SemanticResolutionResponse(
+            status=status,
+            query=query_str,
+            selected_candidate=selected,
+            applied_filters=applied_filters,
+            temporal_info=temporal_info,
+            polarity_info=intent.polarity_info,
+            conversational_hint=conversational_hint,
+            execution_trace=trace,
+            latency_ms=latency,
+        )
+
+    def _audit_temporal_availability(
+        self,
+        target_indicator_id: int,
+        intent: ParsedIntent,
+        trace: list[str],
+        is_alternative_fallback: bool = False,
+    ) -> tuple[TemporalAnchorInfo | None, ResolutionStatus]:
         temporal_info: TemporalAnchorInfo | None = None
         status = ResolutionStatus.ALTERNATIVE_PROPOSED if is_alternative_fallback else ResolutionStatus.RESOLVED
 
@@ -975,23 +1084,166 @@ class SemanticResolutionEngine:
                     forbid_interpolation=True,
                 )
 
-        # Conversational hints for default assumptions & alternatives
-        if conversational_hint is None:
-            if target_indicator_id == 821 and not any(t in intent.clean_query for t in ["%", "pib", "porcentaje", "porciento"]):
-                trace.append("  [Decision Audit] Unidad no especificada para ingresos tributarios. Se asume estándar macroeconómico CEPAL: '% del PIB' (ID 821). Medida alternativa disponible: 'Moneda nacional a precios corrientes' (ID 845).")
-                conversational_hint = "Nota: Se resolvió por defecto a Ingresos tributarios en porcentaje del PIB (indicador 821). Si requiere la serie en moneda nacional a precios corrientes, consulte el indicador 845."
+        return temporal_info, status
 
-        result_label = "ALTERNATIVE_PROPOSED" if is_alternative_fallback else "SUCCESS"
-        trace.append(f"[Resolution Result] {result_label}: Selected ID {target_indicator_id} ('{selected.name}') with score {selected.relevance_score}. Status={status.value}")
+    def _resolve_via_tier2_catalog(
+        self,
+        query_str: str,
+        intent: ParsedIntent,
+        applied_filters: AppliedFilters,
+        trace: list[str],
+        t0: float,
+    ) -> SemanticResolutionResponse | None:
+        """Resolve query deterministically via Tier-2 full-catalog inverted index."""
+        if not intent.concept_tokens:
+            return None
+
+        trace.append(f"[Stage 3: Tier-2 Search] Querying catalog inverted index with tokens={intent.concept_tokens}, facets={intent.facets}, country={intent.country_code}")
+        candidates = self.registry.search_candidates(
+            intent.concept_tokens,
+            facets=intent.facets,
+            country_code=intent.country_code,
+            top_k=10,
+        )
+        if not candidates:
+            trace.append("[Stage 3: Tier-2 Search] No candidate indicators retrieved.")
+            return None
+
+        surviving: list[tuple[int, float, IndicatorMetadata, list[Dimension]]] = []
+        syn_map = getattr(self.registry, "_synonym_stem_map", None)
+
+        for cand_id, score in candidates:
+            meta = self.registry.get_indicator(cand_id)
+            if not meta:
+                continue
+            dims = self.registry.get_dimensions(cand_id)
+
+            # Strict Filter 1: Every concept token must be covered
+            all_tokens_covered = True
+            for tok in intent.concept_tokens:
+                if not _is_token_covered_by_indicator(tok, meta, dims, synonym_stem_map=syn_map):
+                    all_tokens_covered = False
+                    break
+            if not all_tokens_covered:
+                continue
+
+            # Strict Filter 2: Zero Facet Loss - all critical requested facets must be supported & bound
+            if intent.facets:
+                critical_facets = {
+                    fk: fv for fk, fv in intent.facets.items()
+                    if self.ontology.is_critical_unhandled_facet(fk, fv)
+                }
+                if critical_facets:
+                    if dims:
+                        cand_ok, matched_dims, unhandled = self.matcher.match_facets_to_dimensions(
+                            cand_id, dims, critical_facets
+                        )
+                        crit_unhandled = [
+                            f for f in unhandled
+                            if self.ontology.is_critical_unhandled_facet(f, critical_facets.get(f, ""))
+                        ]
+                        if crit_unhandled:
+                            continue
+                    else:
+                        supported = meta.supported_facets or self.registry.get_supported_facets(cand_id)
+                        if not set(critical_facets.keys()).issubset(supported):
+                            continue
+
+            surviving.append((cand_id, score, meta, dims))
+
+        if not surviving:
+            trace.append("[Stage 3: Tier-2 Search] All candidates filtered out by token coverage or Zero Facet Loss.")
+            return None
+
+        top_id, top_score, top_meta, top_dims = surviving[0]
+        second_score = surviving[1][1] if len(surviving) > 1 else 0.0
+
+        normalized_margin = (top_score - second_score) / top_score if top_score > 0 else 0.0
+        is_competing = len(surviving) >= 2 and normalized_margin < 0.15
+
+        # Build applied filters for top candidate
+        top_applied_filters = applied_filters.model_copy(deep=True)
+        if top_dims and intent.facets:
+            _, matched_dims, _ = self.matcher.match_facets_to_dimensions(
+                top_id, top_dims, intent.facets
+            )
+            top_applied_filters.dimensions = matched_dims
+
+        if top_meta.mandatory_filters:
+            bound_names = {d.dim_name.lower() for d in top_applied_filters.dimensions}
+            for mf in top_meta.mandatory_filters:
+                if mf.dim_name.lower() not in bound_names:
+                    top_applied_filters.dimensions.insert(0, mf)
+                    bound_names.add(mf.dim_name.lower())
+
+        if is_competing:
+            alternatives: list[AlternativeCandidate] = []
+            for alt_id, _, alt_meta, _ in surviving[1:4]:
+                alternatives.append(
+                    AlternativeCandidate(
+                        indicator_id=alt_id,
+                        name=alt_meta.name,
+                        relationship=RelationshipType.ALTERNATIVE_MEASURE,
+                        note=f"Serie competidora en catálogo ({alt_meta.unit or 'unidad no especificada'}).",
+                    )
+                )
+
+            alt_summaries = [f"ID {a.indicator_id} ('{a.name[:50]}')" for a in alternatives]
+            hint = (
+                f"Se seleccionó como candidato primario el indicador {top_id} ('{top_meta.name[:60]}'). "
+                f"Existen series alternativas compatibles en el catálogo: {', '.join(alt_summaries)}."
+            )
+            if len(hint) > 550:
+                hint = hint[:547] + "..."
+
+            selected = SelectedCandidate(
+                indicator_id=top_id,
+                name=top_meta.name,
+                measure_type=top_meta.measure_type,
+                unit=top_meta.unit,
+                relevance_score=0.82,
+                selection_reason="Candidato primario seleccionado de series competidoras compatibles en el catálogo completo.",
+            )
+
+            temporal_info, _ = self._audit_temporal_availability(top_id, intent, trace, is_alternative_fallback=True)
+            latency = (time.perf_counter() - t0) * 1000.0
+            trace.append(
+                f"[Stage 3: Tier-2 Search] ALTERNATIVE_PROPOSED: Selected ID {top_id} with {len(alternatives)} alternatives (Margin: {normalized_margin:.3f})."
+            )
+            return SemanticResolutionResponse(
+                status=ResolutionStatus.ALTERNATIVE_PROPOSED,
+                query=query_str,
+                selected_candidate=selected,
+                applied_filters=top_applied_filters,
+                alternatives=alternatives,
+                temporal_info=temporal_info,
+                polarity_info=intent.polarity_info,
+                conversational_hint=hint,
+                execution_trace=trace,
+                latency_ms=latency,
+            )
+
+        selected = SelectedCandidate(
+            indicator_id=top_id,
+            name=top_meta.name,
+            measure_type=top_meta.measure_type,
+            unit=top_meta.unit,
+            relevance_score=0.90,
+            selection_reason="Resolución determinista de catálogo completo (Tier-2) por correspondencia léxica y dimensional estricta.",
+        )
+
+        temporal_info, status = self._audit_temporal_availability(top_id, intent, trace, is_alternative_fallback=False)
         latency = (time.perf_counter() - t0) * 1000.0
+        trace.append(
+            f"[Stage 3: Tier-2 Search] RESOLVED: Selected ID {top_id} ('{top_meta.name}') with score {selected.relevance_score} (Status: {status.value})."
+        )
         return SemanticResolutionResponse(
             status=status,
             query=query_str,
             selected_candidate=selected,
-            applied_filters=applied_filters,
+            applied_filters=top_applied_filters,
             temporal_info=temporal_info,
             polarity_info=intent.polarity_info,
-            conversational_hint=conversational_hint,
             execution_trace=trace,
             latency_ms=latency,
         )
