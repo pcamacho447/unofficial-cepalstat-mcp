@@ -22,12 +22,12 @@ def test_inflacion_subyacente_parser_extracts_subyacente_concept(parser):
     assert intent.country_name == "Chile"
 
 
-def test_inflacion_subyacente_routes_to_4145_and_never_2928(engine):
+def test_inflacion_subyacente_routes_to_4145_and_never_2484(engine):
     res = engine.resolve("inflacion subyacente en chile")
     assert res.status == ResolutionStatus.RESOLVED
     assert res.selected_candidate is not None
     assert res.selected_candidate.indicator_id == 4145
-    assert res.selected_candidate.indicator_id != 2928
+    assert res.selected_candidate.indicator_id != 2484
     assert "subyacente" in res.selected_candidate.name.lower()
 
 
@@ -37,17 +37,17 @@ def test_inflacion_core_routes_to_4145(engine):
     assert res.selected_candidate.indicator_id == 4145
 
 
-def test_inflacion_general_still_routes_to_2928(engine):
+def test_inflacion_general_still_routes_to_2484(engine):
     res = engine.resolve("inflacion anual en chile")
     assert res.status == ResolutionStatus.RESOLVED
-    assert res.selected_candidate.indicator_id == 2928
+    assert res.selected_candidate.indicator_id == 2484
 
 
-def test_brecha_ingresos_laborales_mujeres_y_hombres_routes_to_3333_without_unilateral_filter(engine, parser):
+def test_brecha_ingresos_laborales_mujeres_y_hombres_routes_to_2288_without_unilateral_filter(engine, parser):
     res = engine.resolve("brecha de ingresos laborales entre mujeres y hombres en argentina")
     assert res.status == ResolutionStatus.RESOLVED
     assert res.selected_candidate is not None
-    assert res.selected_candidate.indicator_id == 3333
+    assert res.selected_candidate.indicator_id == 2288
     # Crucial: Must NOT unilaterally filter to just Mujeres or just Hombres
     assert res.applied_filters.facets.get("sexo") is None or res.applied_filters.facets.get("sexo") in ("AMBOS", "RELACION", "BRECHA")
     # Facets from parser must not contain single-sex filter
@@ -55,29 +55,29 @@ def test_brecha_ingresos_laborales_mujeres_y_hombres_routes_to_3333_without_unil
     assert intent.facets.get("sexo") is None or intent.facets.get("sexo") not in ("MUJERES", "HOMBRES")
 
 
-def test_relacion_ingreso_medio_mujeres_y_hombres_routes_to_3333(engine):
+def test_relacion_ingreso_medio_mujeres_y_hombres_routes_to_2288(engine):
     res = engine.resolve("relacion de ingreso medio entre mujeres y hombres en chile")
     assert res.status == ResolutionStatus.RESOLVED
-    assert res.selected_candidate.indicator_id == 3333
+    assert res.selected_candidate.indicator_id == 2288
 
 
-def test_brecha_salarial_de_genero_routes_to_3333(engine):
+def test_brecha_salarial_de_genero_routes_to_2288(engine):
     res = engine.resolve("brecha salarial de genero en uruguay")
     assert res.status == ResolutionStatus.RESOLVED
-    assert res.selected_candidate.indicator_id == 3333
+    assert res.selected_candidate.indicator_id == 2288
 
 
-def test_ingreso_laboral_solo_mujeres_still_routes_to_3339_with_mujeres_facet(engine):
+def test_ingreso_laboral_solo_mujeres_still_routes_to_2287_with_mujeres_facet(engine):
     res = engine.resolve("ingreso laboral de las mujeres en argentina")
     assert res.status == ResolutionStatus.RESOLVED
-    assert res.selected_candidate.indicator_id == 3339
+    assert res.selected_candidate.indicator_id == 2287
     assert res.applied_filters.facets.get("sexo") in ("FEMENINO", "MUJERES")
 
 
 def test_ingresos_tributarios_underspecified_generates_conversational_hint_and_alternative(engine):
     res = engine.resolve("quiero que me des los ingresos tributarios del peru en 2022")
     assert res.status == ResolutionStatus.RESOLVED
-    assert res.selected_candidate.indicator_id == 1242
+    assert res.selected_candidate.indicator_id == 821
     # Conversational hint must not be None and must mention alternative 845
     assert res.conversational_hint is not None
     assert "845" in res.conversational_hint
@@ -91,9 +91,9 @@ def test_ingresos_tributarios_moneda_nacional_routes_to_845(engine):
     assert res.selected_candidate.indicator_id == 845
 
 
-def test_ingresos_tributarios_porcentaje_pib_routes_to_1242(engine):
+def test_ingresos_tributarios_porcentaje_pib_routes_to_821(engine):
     res = engine.resolve("ingresos tributarios en porcentaje del pib en peru 2022")
     assert res.status == ResolutionStatus.RESOLVED
-    assert res.selected_candidate.indicator_id == 1242
+    assert res.selected_candidate.indicator_id == 821
 
 

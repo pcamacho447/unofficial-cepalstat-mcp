@@ -103,7 +103,7 @@ def test_guard_prevents_false_substitution_on_quarterly_gdp_expenditure():
     engine = SemanticResolutionEngine()
     resp = engine.resolve("pib trimestral por componente del gasto en brasil")
     assert resp.status in (ResolutionStatus.ABSTAINED, ResolutionStatus.ALTERNATIVE_PROPOSED)
-    assert resp.selected_candidate is None or resp.selected_candidate.indicator_id != 731 or resp.selected_candidate.relevance_score < 1.0
+    assert resp.selected_candidate is None or resp.selected_candidate.indicator_id != 286 or resp.selected_candidate.relevance_score < 1.0
 
 
 def test_guard_preserves_canonical_queries():
@@ -115,7 +115,7 @@ def test_guard_preserves_canonical_queries():
     resp1 = engine.resolve("pib per capita de bolivia en 2020")
     assert resp1.status == ResolutionStatus.RESOLVED
     assert resp1.selected_candidate is not None
-    assert resp1.selected_candidate.indicator_id == 730
+    assert resp1.selected_candidate.indicator_id == 2206
     assert resp1.selected_candidate.relevance_score == 1.0
 
     resp2 = engine.resolve("tasa de pobreza en colombia")
@@ -161,7 +161,7 @@ def test_token_coverage_matches_spanish_gender_inflections():
 
 
 def test_government_consumption_triggers_unresolved_specificity():
-    """Verify that ADV_B09 (consumo final del gobierno) resolves to UNRESOLVED_SPECIFICITY and forbids 729."""
+    """Verify that ADV_B09 (consumo final del gobierno) resolves to UNRESOLVED_SPECIFICITY and forbids 2204."""
     from unofficial_cepalstat_mcp.semantic import ResolutionStatus, SemanticResolutionEngine
 
     engine = SemanticResolutionEngine()
@@ -171,16 +171,48 @@ def test_government_consumption_triggers_unresolved_specificity():
     assert "UNRESOLVED_SPECIFICITY" in str(resp.abstention_reason)
 
 
-def test_medication_and_health_expenditure_proposes_alternative_4405():
-    """Verify that ADV_A09 proposes aggregate social expenditure 4405 with score 0.65."""
+def test_medication_and_health_expenditure_proposes_alternative_4410():
+    """Verify that ADV_A09 proposes aggregate social expenditure 4410 with score 0.65."""
     from unofficial_cepalstat_mcp.semantic import ResolutionStatus, SemanticResolutionEngine
 
     engine = SemanticResolutionEngine()
     resp = engine.resolve("gasto publico en medicamentos y salud en argentina")
     assert resp.status == ResolutionStatus.ALTERNATIVE_PROPOSED
     assert resp.selected_candidate is not None
-    assert resp.selected_candidate.indicator_id == 4405
+    assert resp.selected_candidate.indicator_id == 4410
     assert resp.selected_candidate.relevance_score == 0.65
     assert "medicamentos" in str(resp.conversational_hint)
+
+
+def test_ambiguous_income_does_not_hijack_gender_own_income_query() -> None:
+    from unofficial_cepalstat_mcp.semantic import ResolutionStatus, SemanticResolutionEngine
+
+    engine = SemanticResolutionEngine()
+    resp = engine.resolve("población sin ingresos propios en Chile 2022")
+    # Must NOT propose Salario medio real (341) with score 0.92
+    assert resp.status == ResolutionStatus.ABSTAINED
+    assert "UNRESOLVED_SPECIFICITY" in (resp.abstention_reason or "") or resp.selected_candidate is None
+
+
+def test_public_health_spending_routes_to_cofog_function_not_aggregate_socx() -> None:
+    from unofficial_cepalstat_mcp.semantic import ResolutionStatus, SemanticResolutionEngine
+
+    engine = SemanticResolutionEngine()
+    resp = engine.resolve("gasto público en salud como porcentaje del PIB en Argentina 2022")
+    assert resp.status == ResolutionStatus.RESOLVED
+    assert resp.selected_candidate is not None
+    assert resp.selected_candidate.indicator_id == 4410
+    assert resp.applied_filters.facets.get("funcion") == "SALUD"
+
+
+def test_primary_fiscal_balance_injects_mandatory_rubric_filter() -> None:
+    from unofficial_cepalstat_mcp.semantic import ResolutionStatus, SemanticResolutionEngine
+
+    engine = SemanticResolutionEngine()
+    resp = engine.resolve("balance primario del gobierno central en Chile 2022")
+    assert resp.status == ResolutionStatus.RESOLVED
+    assert resp.selected_candidate is not None
+    assert resp.selected_candidate.indicator_id == 1246
+    assert any("primario" in d.member_name.lower() for d in resp.applied_filters.dimensions)
 
 

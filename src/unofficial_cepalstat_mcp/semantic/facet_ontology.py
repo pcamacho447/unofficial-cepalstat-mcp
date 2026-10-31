@@ -802,6 +802,35 @@ DEFAULT_FACETS: list[FacetDefinition] = [
             ),
         ),
     ),
+    FacetDefinition(
+        facet_key="funcion",
+        description="Clasificación funcional del gasto público (COFOG)",
+        synset_domain="facet_funcion",
+        known_dimension_ids=frozenset({44101}),
+        dimension_name_patterns=("funcion", "clasificacion funcional", "finalidad del gasto"),
+        member_value_patterns={
+            "SALUD": ("salud", "sanitario", "atencion medica"),
+            "EDUCACION": ("educacion", "educativo", "ensenanza"),
+            "PROTECCION_SOCIAL": ("proteccion social", "seguridad social", "gasto social"),
+            "TOTAL": ("total", "gasto total", "total gasto social"),
+        },
+        implicit_aggregate_values=frozenset({"TOTAL"}),
+        total_member_patterns=("total", "gasto total", "total gasto social"),
+        query_triggers=(
+            QueryTriggerRule(
+                canonical_value="SALUD",
+                phrases=("en salud", "de salud", "sanitario", "sector salud"),
+            ),
+            QueryTriggerRule(
+                canonical_value="EDUCACION",
+                phrases=("en educacion", "de educacion", "educativo", "sector educacion"),
+            ),
+            QueryTriggerRule(
+                canonical_value="PROTECCION_SOCIAL",
+                phrases=("proteccion social", "seguridad social"),
+            ),
+        ),
+    ),
 ]
 
 DEFAULT_FACET_ONTOLOGY = FacetOntology(DEFAULT_FACETS)

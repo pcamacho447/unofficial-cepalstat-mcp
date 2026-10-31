@@ -38,16 +38,16 @@ CRITICAL_SPECIFICITY_TOKENS: frozenset[str] = frozenset({
     "nominal", "nominales", "iva", "laboral", "laborales",
     "renta", "aranceles", "arancel", "subyacente", "medicamentos",
     "remesas", "remesa", "desestacionalizado", "desestacionalizada", "estacional",
-    "potencial", "brecha",
+    "potencial", "brecha", "propios", "propio", "hipotecario", "hipotecaria",
 })
 
 GENERAL_AGGREGATE_FALLBACKS: dict[int, set[str]] = {
-    3337: {
+    340: {
         "agricola", "agricolas", "agropecuario", "agropecuaria",
         "industrial", "industria", "manufacturero", "manufactura",
         "minero", "minera", "nominal", "nominales",
     },
-    128: {
+    341: {
         "agricola", "agricolas", "agropecuario", "agropecuaria",
         "industrial", "industria", "manufacturero", "manufactura",
         "nominal", "nominales",
@@ -58,19 +58,19 @@ GENERAL_AGGREGATE_FALLBACKS: dict[int, set[str]] = {
     1240: {
         "general", "generales",
     },
-    1241: {
+    1246: {
         "global", "financiero",
     },
-    1242: {
+    821: {
         "iva", "renta", "aranceles", "arancel",
     },
-    4405: {
-        "medicamentos", "salud", "farmaceutico", "farmaceutica",
+    4410: {
+        "medicamentos", "farmaceutico", "farmaceutica",
     },
     3289: {
         "laboral", "laborales",
     },
-    731: {
+    286: {
         "desestacionalizado", "desestacionalizada", "estacional",
     },
 }
@@ -157,9 +157,9 @@ class SemanticResolutionEngine:
             return 4969
         if has_etnia:
             return 4968
-        # 3. Area breakdown without ethnicity -> 4992
+        # 3. Area breakdown without ethnicity -> 28 (Población según área geográfica y sexo)
         if has_area:
-            return 4992
+            return 28
         # 4. Canonical total population -> 4788
         return 4788
 
@@ -323,6 +323,45 @@ class SemanticResolutionEngine:
         trace.append(f"[Stage 2: Hard Abstention] PASSED: Root concept '{intent.root_concept}' recognized, facets valid.")
         trace.append(f"[Stage 3: Candidate Selection] Canonical indicator candidate: ID {canonical_id}")
 
+        # ----------------------------------------------------
+        # Stage 3.5 Specificity Guard (Early verification on unconsumed critical modifiers)
+        # ----------------------------------------------------
+        if intent.unconsumed_tokens:
+            cand_meta_early = self.registry.get_indicator(canonical_id)
+            cand_dims_early = self.registry.get_dimensions(canonical_id) if cand_meta_early else None
+            uncovered_critical_early = [
+                tok
+                for tok in intent.unconsumed_tokens
+                if strip_accents(tok).lower() in CRITICAL_SPECIFICITY_TOKENS
+                and not _is_token_covered_by_indicator(tok, cand_meta_early, cand_dims_early)
+            ]
+            if uncovered_critical_early:
+                uncovered_norms_early = {strip_accents(t).lower() for t in uncovered_critical_early}
+                is_general_fallback_early = (
+                    canonical_id in GENERAL_AGGREGATE_FALLBACKS
+                    and uncovered_norms_early.issubset(GENERAL_AGGREGATE_FALLBACKS[canonical_id])
+                )
+                if not is_general_fallback_early:
+                    latency = (time.perf_counter() - t0) * 1000.0
+                    uncovered_str = ", ".join(uncovered_critical_early)
+                    cand_name_str = cand_meta_early.name if cand_meta_early else str(canonical_id)
+                    trace.append(
+                        f"[Stage 3: Specificity Audit] REJECTED: Candidate ID {canonical_id} does not cover specificity: {uncovered_critical_early}. Status=ABSTAINED"
+                    )
+                    return SemanticResolutionResponse(
+                        status=ResolutionStatus.ABSTAINED,
+                        query=query_str,
+                        applied_filters=applied_filters,
+                        abstention_reason=f"UNRESOLVED_SPECIFICITY: {uncovered_str}",
+                        conversational_hint=(
+                            f"La consulta incluye especificidades temáticas no cubiertas por el indicador seleccionado ('{cand_name_str}'): "
+                            f"{uncovered_str}. Se requiere un indicador sectorial especializado de CEPALSTAT."
+                        ),
+                        polarity_info=intent.polarity_info,
+                        execution_trace=trace,
+                        latency_ms=latency,
+                    )
+
         # Handle Ambiguous Measure Proposal upfront
         if intent.is_ambiguous_measure:
             primary_id = canonical_id
@@ -331,24 +370,24 @@ class SemanticResolutionEngine:
             AMBIGUOUS_CONFIGS: dict[str, tuple[int, list[int], str]] = {
                 "FEMININITY_INDEX": (3341, [3330], "Mide el ratio de mujeres por cada 100 hombres pobres (Índice de feminidad) en lugar del porcentaje."),
                 "URBAN_UNEMPLOYMENT": (127, [119], "Tasa de desocupación restringida exclusivamente al área urbana."),
-                "INCOME_MEASURES": (128, [3337, 3345], "Medida metodológica alternativa de ingreso o salario en CEPALSTAT."),
+                "INCOME_MEASURES": (341, [340, 2198], "Medida metodológica alternativa de ingreso o salario en CEPALSTAT."),
                 "PRIVATION_GAP": (3328, [3329], "Brecha de pobreza y pobreza extrema en lugar de tasa de incidencia."),
-                "INEQUALITY_INCOME": (3340, [3345], "Ingreso medio per cápita de los hogares como medida complementaria de bienestar."),
-                "DISTRIBUTIVE_GAP": (3340, [3339], "Ingreso laboral medio de la población ocupada por sexo y área."),
-                "LABOR_SITUATION": (127, [3331, 128], "Desempleo juvenil de 15 a 24 años e índice del salario medio real."),
-                "UNEMPLOYMENT_AND_WAGES": (127, [128, 3337], "Índice del salario medio real y salario mínimo real."),
-                "MACRO_ECONOMY": (729, [730, 731], "PIB per cápita y PIB trimestral a precios constantes."),
-                "ECONOMIC_ACTIVITY": (729, [730, 731], "PIB per cápita y PIB trimestral a precios constantes."),
-                "SECTORAL_INFLATION": (2928, [2929, 2930], "IPC de alimentos y bebidas e IPC de transporte y energía."),
-                "GENERAL_PRICES": (2928, [2929, 2930], "IPC de alimentos y bebidas e IPC de transporte y energía."),
-                "FISCAL_ACCOUNTS": (1240, [1241, 1242], "Balance primario e ingresos tributarios del gobierno central sobre el PIB."),
-                "FISCAL_HEALTH": (1240, [1241, 1242], "Balance primario e ingresos tributarios del gobierno central sobre el PIB."),
-                "EXTERNAL_SECTOR": (1243, [1244], "Términos de intercambio de bienes FOB/CIF."),
-                "INTERNATIONAL_TRADE_PAYMENTS": (1243, [1244], "Términos de intercambio de bienes FOB/CIF."),
+                "INEQUALITY_INCOME": (3324, [2198], "Ingreso medio per cápita de los hogares como medida complementaria de bienestar."),
+                "DISTRIBUTIVE_GAP": (3324, [2287], "Ingreso laboral medio de la población ocupada por sexo y área."),
+                "LABOR_SITUATION": (127, [5097, 341], "Desempleo juvenil de 15 a 24 años e índice del salario medio real."),
+                "UNEMPLOYMENT_AND_WAGES": (127, [341, 340], "Índice del salario medio real y salario mínimo real."),
+                "MACRO_ECONOMY": (2204, [2206, 286], "PIB per cápita y PIB trimestral a precios constantes."),
+                "ECONOMIC_ACTIVITY": (2204, [2206, 286], "PIB per cápita y PIB trimestral a precios constantes."),
+                "SECTORAL_INFLATION": (2484, [2929, 365], "IPC de alimentos y bebidas e IPC general por división."),
+                "GENERAL_PRICES": (2484, [2929, 365], "IPC de alimentos y bebidas e IPC general por división."),
+                "FISCAL_ACCOUNTS": (1240, [1246, 821], "Balance primario e ingresos tributarios del gobierno central sobre el PIB."),
+                "FISCAL_HEALTH": (1240, [1246, 821], "Balance primario e ingresos tributarios del gobierno central sobre el PIB."),
+                "EXTERNAL_SECTOR": (740, [883], "Términos de intercambio de bienes FOB/CIF."),
+                "INTERNATIONAL_TRADE_PAYMENTS": (740, [883], "Términos de intercambio de bienes FOB/CIF."),
                 "EMISSIONS_LULUCF_CHOICE": (5681, [5682], "Emisiones totales de GEI excluyendo sector UTCUTS / sin LULUCF."),
-                "ENERGY_POLLUTION": (5681, [5683], "Participación de energías renovables en la generación eléctrica."),
-                "SOCIOECONOMIC_WELLBEING": (3328, [3340, 128], "Distribución del ingreso por quintiles y salario medio real."),
-                "MACRO_FISCAL_PANORAMA": (729, [1240, 1243], "Saldo de la deuda pública y saldo en cuenta corriente sobre el PIB."),
+                "ENERGY_POLLUTION": (5681, [3154], "Participación de energías renovables en la generación eléctrica."),
+                "SOCIOECONOMIC_WELLBEING": (3328, [3324, 341], "Distribución del ingreso por quintiles y salario medio real."),
+                "MACRO_FISCAL_PANORAMA": (2204, [1240, 740], "Saldo de la deuda pública y saldo en cuenta corriente sobre el PIB."),
             }
 
             if intent.ambiguous_candidate in AMBIGUOUS_CONFIGS:
@@ -383,6 +422,13 @@ class SemanticResolutionEngine:
                 )
                 applied_filters.dimensions = matched_dims
 
+            if prim_meta.mandatory_filters:
+                bound_dim_names = {d.dim_name.lower() for d in applied_filters.dimensions}
+                for mf in prim_meta.mandatory_filters:
+                    if mf.dim_name.lower() not in bound_dim_names:
+                        applied_filters.dimensions.insert(0, mf)
+                        bound_dim_names.add(mf.dim_name.lower())
+
             trace.append(f"[Stage 3: Ambiguity Check] Ambiguous measure proposed: Primary ID {primary_id}, Alternatives={[a.indicator_id for a in alternatives]}")
             latency = (time.perf_counter() - t0) * 1000.0
 
@@ -394,8 +440,8 @@ class SemanticResolutionEngine:
             elif intent.ambiguous_candidate == "INCOME_MEASURES":
                 conv_hint = (
                     "Consulta general sobre ingreso o salario sin especificación metodológica. "
-                    "Se seleccionó el índice del salario medio real (ID 128). "
-                    "Alternativas disponibles: Salario mínimo real (ID 3337) e Ingreso medio per cápita de los hogares (ID 3345)."
+                    "Se seleccionó el salario medio real anual (ID 341). "
+                    "Alternativas disponibles: Salario mínimo real (ID 340) e Ingresos y gastos de los hogares (ID 2198)."
                 )
             elif intent.ambiguous_candidate == "URBAN_UNEMPLOYMENT":
                 conv_hint = (
@@ -571,6 +617,15 @@ class SemanticResolutionEngine:
             ),
         )
 
+        # Merge mandatory_filters into applied_filters.dimensions
+        if selected_meta.mandatory_filters:
+            bound_dim_names = {d.dim_name.lower() for d in applied_filters.dimensions}
+            for mf in selected_meta.mandatory_filters:
+                if mf.dim_name.lower() not in bound_dim_names:
+                    applied_filters.dimensions.insert(0, mf)
+                    bound_dim_names.add(mf.dim_name.lower())
+                    trace.append(f"[Mandatory Filter] Injected rubric constraint: '{mf.dim_name}' = '{mf.member_name}'")
+
         # ----------------------------------------------------
         # Stage 3.5: Specificity Guard (Unconsumed Semantic Tokens Audit)
         # ----------------------------------------------------
@@ -630,7 +685,7 @@ class SemanticResolutionEngine:
 
         # Frequency specificity check (Quarterly/Monthly vs Annual series)
         if intent.frequency in ("TRIMESTRAL", "MENSUAL"):
-            is_supported_freq = (intent.frequency == "TRIMESTRAL" and target_indicator_id in (731, 2447))
+            is_supported_freq = (intent.frequency == "TRIMESTRAL" and target_indicator_id in (286,))
             if not is_supported_freq:
                 is_alternative_fallback = True
                 selected.relevance_score = 0.65
@@ -891,9 +946,9 @@ class SemanticResolutionEngine:
 
         # Conversational hints for default assumptions & alternatives
         if conversational_hint is None:
-            if target_indicator_id == 1242 and not any(t in intent.clean_query for t in ["%", "pib", "porcentaje", "porciento"]):
-                trace.append("  [Decision Audit] Unidad no especificada para ingresos tributarios. Se asume estándar macroeconómico CEPAL: '% del PIB' (ID 1242 / API 821). Medida alternativa disponible: 'Moneda nacional a precios corrientes' (ID 845).")
-                conversational_hint = "Nota: Se resolvió por defecto a Ingresos tributarios en porcentaje del PIB (indicador 1242 / API 821). Si requiere la serie en moneda nacional a precios corrientes, consulte el indicador 845."
+            if target_indicator_id == 821 and not any(t in intent.clean_query for t in ["%", "pib", "porcentaje", "porciento"]):
+                trace.append("  [Decision Audit] Unidad no especificada para ingresos tributarios. Se asume estándar macroeconómico CEPAL: '% del PIB' (ID 821). Medida alternativa disponible: 'Moneda nacional a precios corrientes' (ID 845).")
+                conversational_hint = "Nota: Se resolvió por defecto a Ingresos tributarios en porcentaje del PIB (indicador 821). Si requiere la serie en moneda nacional a precios corrientes, consulte el indicador 845."
 
         result_label = "ALTERNATIVE_PROPOSED" if is_alternative_fallback else "SUCCESS"
         trace.append(f"[Resolution Result] {result_label}: Selected ID {target_indicator_id} ('{selected.name}') with score {selected.relevance_score}. Status={status.value}")
