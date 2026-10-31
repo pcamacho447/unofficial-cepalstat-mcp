@@ -1,11 +1,13 @@
 """CatalogStore for indexing and searching master indicators in SQLite."""
 
 import json
+import re
 import sqlite3
 import unicodedata
 from collections.abc import Generator
 from contextlib import contextmanager
 from datetime import datetime, timezone
+from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
@@ -18,6 +20,120 @@ from unofficial_cepalstat_mcp.dimensions import Dimension, Member
 from unofficial_cepalstat_mcp.thematic_tree import ThematicTree
 
 DEFAULT_DB_PATH = get_cache_db_path()
+
+SPANISH_STOPWORDS: frozenset[str] = frozenset({
+    "de", "del", "la", "el", "los", "las", "en", "por", "segun", "para", "con", "sin", "a", "y", "o",
+    "un", "una", "unos", "unas", "al", "lo", "su", "sus", "sobre", "entre", "tras", "durante", "mediante",
+    "contra", "hacia", "hasta", "desde", "e", "u", "ni", "que", "cual", "cuales", "como", "donde", "cuando",
+    "quien", "quienes", "and", "or", "not", "near",
+})
+
+
+def _spanish_stems(token: str) -> list[str]:
+    """Extract base stems for Spanish plural and gender inflections."""
+    stems: list[str] = []
+    t = token.lower()
+    if t.endswith("ces") and len(t) > 4:
+        stems.append(t[:-3] + "z")
+    elif t.endswith("es") and len(t) > 4:
+        stems.append(t[:-2])
+    elif t.endswith("s") and len(t) > 3:
+        stems.append(t[:-1])
+
+    for s in list(stems) + [t]:
+        if (s.endswith("a") or s.endswith("o")) and len(s) > 4:
+            stems.append(s[:-1])
+
+    if t.startswith("desocup") and len(t) > 7:
+        stems.append("desocup")
+
+    return list(dict.fromkeys(stems))
+
+
+@lru_cache(maxsize=1)
+def _get_thesaurus_synonym_lookup() -> dict[str, list[str]]:
+    """Build bidirectional synonym lookup from Thesaurus and domain equivalences."""
+    from unofficial_cepalstat_mcp.semantic.thesaurus import get_default_thesaurus
+
+    thesaurus = get_default_thesaurus()
+    lookup: dict[str, set[str]] = {}
+
+    def add_syn(k: str, v: str) -> None:
+        k_clean = strip_accents(k).strip()
+        v_clean = strip_accents(v).strip()
+        if k_clean and v_clean and k_clean != v_clean:
+            lookup.setdefault(k_clean, set()).add(v_clean)
+
+    for domain, synset_list in thesaurus.synsets.items():
+        for synset in synset_list:
+            if synset.canonical_id == "EMPLEO_GENERAL":
+                unemp = {"desempleo", "desocupacion", "paro"}
+                for t1 in unemp:
+                    for t2 in unemp:
+                        add_syn(t1, t2)
+                emp = {"empleo", "trabajo", "ocupacion", "chamba", "pega", "laburo", "camello"}
+                for t1 in emp:
+                    for t2 in emp:
+                        add_syn(t1, t2)
+                continue
+
+            all_terms: set[str] = set()
+            if synset.canonical_term:
+                all_terms.add(synset.canonical_term)
+            all_terms.update(synset.synonyms)
+            for tags in synset.regional_tags.values():
+                all_terms.update(tags)
+
+            terms_list = [strip_accents(t) for t in all_terms if t.strip()]
+            for t1 in terms_list:
+                for t2 in terms_list:
+                    add_syn(t1, t2)
+
+    # Curated domain associations
+    for inf_term in ["inflacion", "tasa de inflacion"]:
+        add_syn(inf_term, "ipc")
+        add_syn(inf_term, "precios consumidor")
+        add_syn(inf_term, "indice de precios al consumidor")
+    add_syn("ipc", "inflacion")
+    add_syn("ipc", "precios al consumidor")
+    add_syn("pib", "producto interno bruto")
+    add_syn("pib", "actividad economica")
+    add_syn("producto interno bruto", "pib")
+
+    return {k: sorted(v) for k, v in lookup.items()}
+
+
+def _build_fts_match_query(query: str, operator: str = "AND") -> str:
+    """Construct an FTS5 MATCH query with stems and Thesaurus synonym expansions."""
+    clean = strip_accents(query)
+    raw_tokens = re.findall(r"[a-z0-9]+", clean)
+    tokens = [
+        tok for tok in raw_tokens
+        if len(tok) >= 2 and not re.match(r"^\d{4}$", tok) and tok not in SPANISH_STOPWORDS
+    ]
+    if not tokens:
+        return ""
+
+    syn_map = _get_thesaurus_synonym_lookup()
+    clauses: list[str] = []
+    for tok in tokens:
+        variants: set[str] = {f"{tok}*"}
+        for stem in _spanish_stems(tok):
+            variants.add(f"{stem}*")
+        for syn in syn_map.get(tok, []):
+            syn_words = syn.split()
+            if len(syn_words) == 1:
+                variants.add(f"{syn}*")
+                for stem in _spanish_stems(syn):
+                    variants.add(f"{stem}*")
+            else:
+                clean_syn = " ".join(re.findall(r"[a-z0-9]+", syn))
+                if clean_syn:
+                    variants.add(f'"{clean_syn}"')
+        clauses.append("(" + " OR ".join(sorted(variants)) + ")")
+
+    join_str = f" {operator} "
+    return join_str.join(clauses)
 
 
 def strip_accents(text: Any) -> str:
@@ -76,6 +192,18 @@ class CatalogStore:
             conn.execute("CREATE INDEX IF NOT EXISTS idx_indicators_name ON master_indicators(name)")
             conn.execute("CREATE INDEX IF NOT EXISTS idx_indicators_theme ON master_indicators(theme)")
             conn.execute("CREATE INDEX IF NOT EXISTS idx_indicators_area ON master_indicators(area)")
+            conn.execute("""
+                CREATE VIRTUAL TABLE IF NOT EXISTS indicators_fts USING fts5(
+                    indicator_id UNINDEXED,
+                    name,
+                    subarea,
+                    area,
+                    theme,
+                    unit,
+                    member_labels,
+                    tokenize='unicode61 remove_diacritics 2'
+                )
+            """)
         self.init_semantic_tables()
 
     def init_tables(self) -> None:
@@ -223,37 +351,173 @@ class CatalogStore:
                     item,
                 )
 
+        self.rebuild_fts_index()
         return len(indicators_to_insert)
+
+    def _update_indicator_fts(self, conn: sqlite3.Connection, indicator_id: int) -> None:
+        """Update or insert a single indicator in indicators_fts."""
+        from unofficial_cepalstat_mcp.semantic.facet_ontology import DEFAULT_FACET_ONTOLOGY
+
+        row = conn.execute(
+            "SELECT indicator_id, name, subarea, area, theme FROM master_indicators WHERE indicator_id = ?",
+            (indicator_id,),
+        ).fetchone()
+        if not row:
+            return
+
+        meta_row = conn.execute(
+            "SELECT unit FROM indicator_metadata WHERE indicator_id = ?",
+            (indicator_id,),
+        ).fetchone()
+        unit = meta_row["unit"] if meta_row and meta_row["unit"] else ""
+
+        dim_rows = conn.execute(
+            """
+            SELECT d.dim_id, d.dim_name, m.member_name
+            FROM indicator_dimensions d
+            JOIN dimension_members m ON d.indicator_id = m.indicator_id AND d.dim_id = m.dim_id
+            WHERE d.indicator_id = ?
+            """,
+            (indicator_id,),
+        ).fetchall()
+
+        member_names: set[str] = set()
+        for d in dim_rows:
+            if not DEFAULT_FACET_ONTOLOGY.is_structural_dimension(d["dim_id"], d["dim_name"]):
+                member_names.add(str(d["member_name"]))
+
+        member_labels = " ".join(sorted(member_names))
+
+        conn.execute("DELETE FROM indicators_fts WHERE indicator_id = ?", (indicator_id,))
+        conn.execute(
+            """
+            INSERT INTO indicators_fts (indicator_id, name, subarea, area, theme, unit, member_labels)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                indicator_id,
+                row["name"],
+                row["subarea"] or "",
+                row["area"] or "",
+                row["theme"] or "",
+                unit,
+                member_labels,
+            ),
+        )
+
+    def rebuild_fts_index(self) -> int:
+        """Rebuild the indicators_fts virtual table from master_indicators and dimensions."""
+        from unofficial_cepalstat_mcp.semantic.facet_ontology import DEFAULT_FACET_ONTOLOGY
+
+        with self._get_connection() as conn:
+            conn.execute("DELETE FROM indicators_fts")
+
+            dim_rows = conn.execute(
+                """
+                SELECT d.indicator_id, d.dim_id, d.dim_name, m.member_name
+                FROM indicator_dimensions d
+                JOIN dimension_members m ON d.indicator_id = m.indicator_id AND d.dim_id = m.dim_id
+                """
+            ).fetchall()
+            members_by_ind: dict[int, set[str]] = {}
+            for r in dim_rows:
+                if not DEFAULT_FACET_ONTOLOGY.is_structural_dimension(r["dim_id"], r["dim_name"]):
+                    members_by_ind.setdefault(int(r["indicator_id"]), set()).add(str(r["member_name"]))
+
+            ind_rows = conn.execute(
+                """
+                SELECT m.indicator_id, m.name, m.subarea, m.area, m.theme, COALESCE(md.unit, '') AS unit
+                FROM master_indicators m
+                LEFT JOIN indicator_metadata md ON m.indicator_id = md.indicator_id
+                """
+            ).fetchall()
+
+            count = 0
+            for r in ind_rows:
+                ind_id = int(r["indicator_id"])
+                mem_labels = " ".join(sorted(members_by_ind.get(ind_id, set())))
+                conn.execute(
+                    """
+                    INSERT INTO indicators_fts (indicator_id, name, subarea, area, theme, unit, member_labels)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        ind_id,
+                        r["name"],
+                        r["subarea"] or "",
+                        r["area"] or "",
+                        r["theme"] or "",
+                        r["unit"] or "",
+                        mem_labels,
+                    ),
+                )
+                count += 1
+            return count
+
+    def _build_fts_match_query(self, query: str, operator: str = "AND") -> str:
+        """Construct an FTS5 MATCH query with stems and Thesaurus synonym expansions."""
+        return _build_fts_match_query(query, operator=operator)
 
     def search(
         self,
         query: str = "",
         theme: str | None = None,
+        area: str | None = None,
         limit: int = 20,
     ) -> list[CatalogIndicator]:
-        """Search master indicators with case-insensitive substring matching."""
-        sql = "SELECT * FROM master_indicators WHERE 1=1"
-        params: list[Any] = []
+        """Search master indicators with FTS5 BM25 ranking, synonym expansion, and fallback matching."""
+        if not query or not query.strip():
+            sql = "SELECT * FROM master_indicators WHERE 1=1"
+            params: list[Any] = []
+            if theme:
+                sql += " AND unaccent(theme) LIKE ?"
+                params.append(f"%{strip_accents(theme)}%")
+            if area:
+                sql += " AND unaccent(area) LIKE ?"
+                params.append(f"%{strip_accents(area)}%")
+            sql += " ORDER BY order_num ASC, indicator_id ASC LIMIT ?"
+            params.append(limit)
 
-        if query:
-            clean_q = strip_accents(query)
-            sql += " AND (unaccent(name) LIKE ? OR unaccent(full_path) LIKE ? OR unaccent(area) LIKE ?)"
-            wildcard = f"%{clean_q}%"
-            params.extend([wildcard, wildcard, wildcard])
+            results: list[CatalogIndicator] = []
+            with self._get_connection() as conn:
+                cursor = conn.execute(sql, params)
+                for row in cursor.fetchall():
+                    results.append(
+                        CatalogIndicator(
+                            indicator_id=row["indicator_id"],
+                            name=row["name"],
+                            order_num=row["order_num"],
+                            theme=row["theme"],
+                            area=row["area"],
+                            subarea=row["subarea"] or "",
+                            full_path=row["full_path"],
+                            updated_at=row["updated_at"] or "",
+                        )
+                    )
+            return results
 
-        if theme:
-            clean_t = strip_accents(theme)
-            sql += " AND unaccent(theme) LIKE ?"
-            params.append(f"%{clean_t}%")
+        def _execute_fts(conn: sqlite3.Connection, match_clause: str) -> list[CatalogIndicator]:
+            sql = """
+                SELECT m.indicator_id, m.name, m.order_num, m.theme, m.area, m.subarea, m.full_path, m.updated_at,
+                       bm25(indicators_fts, 0.0, 10.0, 4.0, 3.0, 1.5, 2.0, 2.5) AS bm25_score
+                FROM master_indicators m
+                JOIN indicators_fts ON m.indicator_id = indicators_fts.indicator_id
+                WHERE indicators_fts MATCH ?
+            """
+            params: list[Any] = [match_clause]
+            if theme:
+                sql += " AND unaccent(m.theme) LIKE ?"
+                params.append(f"%{strip_accents(theme)}%")
+            if area:
+                sql += " AND unaccent(m.area) LIKE ?"
+                params.append(f"%{strip_accents(area)}%")
+            sql += " ORDER BY bm25_score ASC, m.indicator_id ASC LIMIT ?"
+            params.append(limit)
 
-        sql += " ORDER BY order_num ASC LIMIT ?"
-        params.append(limit)
-
-        results: list[CatalogIndicator] = []
-        with self._get_connection() as conn:
             cursor = conn.execute(sql, params)
+            fts_results: list[CatalogIndicator] = []
             for row in cursor.fetchall():
-                results.append(
+                fts_results.append(
                     CatalogIndicator(
                         indicator_id=row["indicator_id"],
                         name=row["name"],
@@ -265,8 +529,68 @@ class CatalogStore:
                         updated_at=row["updated_at"] or "",
                     )
                 )
+            return fts_results
 
-        return results
+        with self._get_connection() as conn:
+            fts_count_row = conn.execute("SELECT 1 FROM indicators_fts LIMIT 1").fetchone()
+            if not fts_count_row:
+                has_master = conn.execute("SELECT 1 FROM master_indicators LIMIT 1").fetchone()
+                if has_master:
+                    self.rebuild_fts_index()
+
+            and_query = self._build_fts_match_query(query, operator="AND")
+            if and_query:
+                try:
+                    and_res = _execute_fts(conn, and_query)
+                    if and_res:
+                        return and_res
+                except sqlite3.OperationalError:
+                    pass
+
+            or_query = self._build_fts_match_query(query, operator="OR")
+            if or_query and or_query != and_query:
+                try:
+                    or_res = _execute_fts(conn, or_query)
+                    if or_res:
+                        return or_res
+                except sqlite3.OperationalError:
+                    pass
+
+            # Safe fallback to substring LIKE query
+            clean_q = strip_accents(query)
+            fallback_sql = "SELECT * FROM master_indicators WHERE 1=1"
+            fallback_params: list[Any] = []
+            if clean_q:
+                fallback_sql += (
+                    " AND (unaccent(name) LIKE ? OR unaccent(full_path) LIKE ? OR unaccent(area) LIKE ?)"
+                )
+                wildcard = f"%{clean_q}%"
+                fallback_params.extend([wildcard, wildcard, wildcard])
+            if theme:
+                fallback_sql += " AND unaccent(theme) LIKE ?"
+                fallback_params.append(f"%{strip_accents(theme)}%")
+            if area:
+                fallback_sql += " AND unaccent(area) LIKE ?"
+                fallback_params.append(f"%{strip_accents(area)}%")
+            fallback_sql += " ORDER BY order_num ASC, indicator_id ASC LIMIT ?"
+            fallback_params.append(limit)
+
+            cursor = conn.execute(fallback_sql, fallback_params)
+            fallback_results: list[CatalogIndicator] = []
+            for row in cursor.fetchall():
+                fallback_results.append(
+                    CatalogIndicator(
+                        indicator_id=row["indicator_id"],
+                        name=row["name"],
+                        order_num=row["order_num"],
+                        theme=row["theme"],
+                        area=row["area"],
+                        subarea=row["subarea"] or "",
+                        full_path=row["full_path"],
+                        updated_at=row["updated_at"] or "",
+                    )
+                )
+            return fallback_results
 
     def get_stats(self) -> CatalogStats:
         """Compute aggregated statistics of the master catalog."""
@@ -344,6 +668,7 @@ class CatalogStore:
                         """,
                         (indicator_id, dim.id, member.id, member.name),
                     )
+            self._update_indicator_fts(conn, indicator_id)
 
     def get_harvested_indicator_ids(self) -> set[int]:
         """Return a set of all indicator IDs present in indicator_dimensions."""
@@ -604,6 +929,7 @@ class CatalogStore:
                 """,
                 (indicator_id, name, concept, measure_type, unit, facets_str, definition, periodicity),
             )
+            self._update_indicator_fts(conn, indicator_id)
 
     def get_indicator_metadata(self, indicator_id: int) -> dict[str, Any] | None:
         """Retrieve indicator metadata from SQLite."""

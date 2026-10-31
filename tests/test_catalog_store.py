@@ -105,6 +105,15 @@ def test_catalog_store_build_and_search(tmp_path: Path):
     assert len(area_results) == 1
     assert area_results[0].indicator_id == 415
 
+    # Search with explicit area filter parameter
+    area_param_results = store.search("PIB", area="PIB y Cuentas Nacionales")
+    assert len(area_param_results) == 1
+    assert area_param_results[0].indicator_id == 415
+
+    # Rebuild FTS index directly
+    rebuilt_count = store.rebuild_fts_index()
+    assert rebuilt_count == 3
+
     # Get stats
     stats = store.get_stats()
     assert stats.total_indicators == 3
