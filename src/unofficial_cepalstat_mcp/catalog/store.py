@@ -154,9 +154,15 @@ class CatalogStore:
         self,
         db_path: Path | str | None = None,
         client: CepalStatClient | None = None,
+        auto_seed: bool | None = None,
     ):
         self.db_path = Path(db_path) if db_path is not None else get_cache_db_path()
         self.client = client
+        should_seed = auto_seed if auto_seed is not None else (db_path is None)
+        if should_seed:
+            from unofficial_cepalstat_mcp.catalog.seed import ensure_seed_hydrated
+
+            ensure_seed_hydrated(self.db_path, force=bool(auto_seed and db_path is not None))
         if self.db_path.parent:
             self.db_path.parent.mkdir(parents=True, exist_ok=True)
         self._init_db()

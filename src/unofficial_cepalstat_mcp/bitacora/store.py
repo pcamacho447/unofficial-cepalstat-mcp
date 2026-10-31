@@ -25,7 +25,10 @@ class BitacoraStore:
     ):
         self.base_dir = Path(base_dir)
         self.db_path = Path(db_path) if db_path is not None else get_cache_db_path()
-        self.base_dir.mkdir(parents=True, exist_ok=True)
+        if db_path is None:
+            from unofficial_cepalstat_mcp.catalog.seed import ensure_seed_hydrated
+
+            ensure_seed_hydrated(self.db_path)
         if self.db_path.parent:
             self.db_path.parent.mkdir(parents=True, exist_ok=True)
         self._init_db()
@@ -169,8 +172,14 @@ class BitacoraStore:
         """List all certified recipes currently stored."""
         return self.lookup(query="")
 
+    def list_all(self) -> list[BitacoraRecipe]:
+        """List all certified recipes currently stored (alias for list_recipes)."""
+        return self.list_recipes()
+
     def sync(self) -> int:
         """Scan all markdown files in base_dir and rebuild the SQLite index."""
+        if not self.base_dir.exists():
+            return 0
         count = 0
         with self._get_connection() as conn:
             conn.execute("DELETE FROM recipes")

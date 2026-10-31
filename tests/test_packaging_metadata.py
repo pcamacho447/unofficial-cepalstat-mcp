@@ -119,3 +119,31 @@ def test_cli_main_help_uses_resolved_prog(monkeypatch, capsys):
     assert ret == 0
     captured = capsys.readouterr()
     assert "usage: statscepal" in captured.out
+
+
+def test_packaged_seed_catalog_included():
+    """Verify that package data contains seed_catalog.db.gz and wheel packaging includes it."""
+    import importlib.resources
+    import subprocess
+    import zipfile
+
+    # Verify package resource
+    data_res = importlib.resources.files("unofficial_cepalstat_mcp.data").joinpath("seed_catalog.db.gz")
+    assert data_res.is_file(), "seed_catalog.db.gz not found in unofficial_cepalstat_mcp.data"
+    assert data_res.stat().st_size > 100_000, "seed_catalog.db.gz is suspiciously small"
+
+    # Verify wheel archive
+    dist_dir = Path("dist")
+    wheels = list(dist_dir.glob("*.whl"))
+    if not wheels:
+        subprocess.run(["uv", "build", "--wheel"], check=True)
+        wheels = list(dist_dir.glob("*.whl"))
+
+    assert len(wheels) > 0, "No wheel built"
+    latest_wheel = max(wheels, key=lambda p: p.stat().st_mtime)
+    with zipfile.ZipFile(latest_wheel) as zf:
+        names = zf.namelist()
+        assert any(
+            n.endswith("unofficial_cepalstat_mcp/data/seed_catalog.db.gz") for n in names
+        ), f"seed_catalog.db.gz missing in wheel {latest_wheel.name}"
+

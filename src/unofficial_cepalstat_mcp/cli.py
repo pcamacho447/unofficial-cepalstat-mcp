@@ -251,6 +251,31 @@ def main(args: Sequence[str] | None = None, prog: str | None = None) -> int:
         help="Emit report as JSON to stdout",
     )
 
+    # catalog export-seed
+    export_seed_parser = catalog_subparsers.add_parser(
+        "export-seed",
+        help="Export bundled cold-start SQLite seed snapshot (.db.gz)",
+        description="Generates a deterministic compressed SQLite seed snapshot containing indicators, curated metadata, breakdowns, and recipes.",
+    )
+    export_seed_parser.add_argument(
+        "--source-db",
+        type=Path,
+        default=None,
+        help="Source SQLite cache database (default: active cache)",
+    )
+    export_seed_parser.add_argument(
+        "--output",
+        type=Path,
+        default=None,
+        help="Output .db.gz path (default: package data/seed_catalog.db.gz)",
+    )
+    export_seed_parser.add_argument(
+        "--recipes-dir",
+        type=Path,
+        default=None,
+        help="Directory with certified recipes (default: bitacoras)",
+    )
+
     # analyze
     analyze_parser = subparsers.add_parser("analyze", help="Analytical workflows")
     analyze_subparsers = analyze_parser.add_subparsers(
@@ -621,6 +646,17 @@ def main(args: Sequence[str] | None = None, prog: str | None = None) -> int:
 
         if parsed.catalog_command == "build-graph":
             return _handle_catalog_build_graph(parsed)
+
+        if parsed.catalog_command == "export-seed":
+            from unofficial_cepalstat_mcp.catalog.seed import export_seed_snapshot
+
+            out_path = export_seed_snapshot(
+                source_db=parsed.source_db,
+                output_gz=parsed.output,
+                recipes_dir=parsed.recipes_dir,
+            )
+            print(f"Exported seed snapshot: {out_path} ({out_path.stat().st_size / 1024:.1f} KB)")
+            return 0
 
     if parsed.command == "semantic":
         if not parsed.semantic_command:

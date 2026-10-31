@@ -68,6 +68,7 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/unofficial_cepalstat_mcp"]
+artifacts = ["src/unofficial_cepalstat_mcp/data/seed_catalog.db.gz"]
 
 [tool.pytest.ini_options]
 pythonpath = ["src"]
