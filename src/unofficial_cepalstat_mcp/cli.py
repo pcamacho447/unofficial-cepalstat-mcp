@@ -329,10 +329,10 @@ def main(args: Sequence[str] | None = None, prog: str | None = None) -> int:
             bitacora_parser.print_help()
             return 0
 
-        store = BitacoraStore()
+        bitacora_store = BitacoraStore()
 
         if parsed.bitacora_command == "list":
-            recipes = store.list_recipes()
+            recipes = bitacora_store.list_recipes()
             if not recipes:
                 print("No certified recipes found in Bitácora.")
                 return 0
@@ -343,7 +343,7 @@ def main(args: Sequence[str] | None = None, prog: str | None = None) -> int:
             return 0
 
         if parsed.bitacora_command == "lookup":
-            recipes = store.lookup(
+            recipes = bitacora_store.lookup(
                 query=parsed.query,
                 country=parsed.country,
                 tag=parsed.tag,
@@ -358,15 +358,15 @@ def main(args: Sequence[str] | None = None, prog: str | None = None) -> int:
             return 0
 
         if parsed.bitacora_command == "sync":
-            count = store.sync()
+            count = bitacora_store.sync()
             print(f"Bitácora index synchronized. {count} recipes indexed.")
             return 0
 
         if parsed.bitacora_command == "add":
-            member_ids: list[int] | None = None
+            b_member_ids: list[int] | None = None
             if parsed.members:
                 try:
-                    member_ids = [
+                    b_member_ids = [
                         int(m.strip()) for m in parsed.members.split(",") if m.strip()
                     ]
                 except ValueError:
@@ -391,7 +391,7 @@ def main(args: Sequence[str] | None = None, prog: str | None = None) -> int:
                         return 1
 
                     df = extractor.get_dataframe(
-                        parsed.indicator_id, members=member_ids, decode_labels=True
+                        parsed.indicator_id, members=b_member_ids, decode_labels=True
                     )
 
                     quality, antibias = AntiBiasValidator.audit(df, metadata=meta)
@@ -401,7 +401,7 @@ def main(args: Sequence[str] | None = None, prog: str | None = None) -> int:
                     ).strip("-")
                     recipe_id = parsed.id or f"recipe-{country_slug}-{parsed.indicator_id}"
 
-                    members_code = f", members={member_ids}" if member_ids else ""
+                    members_code = f", members={b_member_ids}" if b_member_ids else ""
                     python_code = (
                         f"from unofficial_cepalstat_mcp import CepalStatClient, DataExtractor\n\n"
                         f"with CepalStatClient() as client:\n"
@@ -419,7 +419,7 @@ def main(args: Sequence[str] | None = None, prog: str | None = None) -> int:
                         country_iso3=parsed.country.upper() if len(parsed.country) == 3 else "",
                         theme=meta.get("area", ""),
                         unit=meta.get("unit", ""),
-                        member_ids=member_ids or [],
+                        member_ids=b_member_ids or [],
                         python_code=python_code,
                         status="certified",
                         date_certified=date.today().isoformat(),
@@ -428,7 +428,7 @@ def main(args: Sequence[str] | None = None, prog: str | None = None) -> int:
                         antibias=antibias,
                     )
 
-                    saved_path = store.save_recipe(recipe)
+                    saved_path = bitacora_store.save_recipe(recipe)
                     print(f"Certified recipe saved to {saved_path} (ID: {recipe.id})")
                     if antibias.warnings:
                         print(f"Warnings ({len(antibias.warnings)}):")
@@ -530,7 +530,10 @@ def main(args: Sequence[str] | None = None, prog: str | None = None) -> int:
                 target_ids = target_ids[:parsed.limit]
 
             if parsed.ids:
-                target_desc = f"{len(target_ids)} indicator(s) [{parsed.ids}]"
+                if target_ids is not None:
+                    target_desc = f"{len(target_ids)} indicator(s) [{parsed.ids}]"
+                else:
+                    target_desc = f"Indicators [{parsed.ids}]"
             elif target_ids is not None and parsed.limit is not None:
                 target_desc = f"{len(target_ids)} indicator(s) (limit: {parsed.limit})"
             else:
@@ -609,9 +612,9 @@ def main(args: Sequence[str] | None = None, prog: str | None = None) -> int:
             if not report.unmapped_dimensions:
                 print("  (None)")
             else:
-                for d in report.unmapped_dimensions:
+                for unmapped_dim in report.unmapped_dimensions:
                     print(
-                        f"  - [{d['dim_id']}] {d.get('dim_name', '')} (occurs in {d.get('indicator_count', 0)} indicators)"
+                        f"  - [{unmapped_dim['dim_id']}] {unmapped_dim.get('dim_name', '')} (occurs in {unmapped_dim.get('indicator_count', 0)} indicators)"
                     )
             print("=" * 70)
             return 0
@@ -738,18 +741,18 @@ def main(args: Sequence[str] | None = None, prog: str | None = None) -> int:
 
                 if res.applied_filters.dimensions:
                     dim_parts = []
-                    for d in res.applied_filters.dimensions:
-                        if getattr(d, "is_breakdown", False) and getattr(d, "member_names", None):
+                    for dim_filter in res.applied_filters.dimensions:
+                        if getattr(dim_filter, "is_breakdown", False) and getattr(dim_filter, "member_names", None):
                             members_fmt = ", ".join(
-                                f"{n} (ID: {i})" for n, i in zip(d.member_names, d.member_ids)
+                                f"{n} (ID: {i})" for n, i in zip(dim_filter.member_names, dim_filter.member_ids)
                             )
-                            dim_parts.append(f"{d.dim_name}=[{members_fmt}] (Desglose)")
-                        elif d.member_id is not None:
+                            dim_parts.append(f"{dim_filter.dim_name}=[{members_fmt}] (Desglose)")
+                        elif dim_filter.member_id is not None:
                             dim_parts.append(
-                                f"{d.dim_name}={d.member_name} (ID: {d.member_id})"
+                                f"{dim_filter.dim_name}={dim_filter.member_name} (ID: {dim_filter.member_id})"
                             )
                         else:
-                            dim_parts.append(f"{d.dim_name}={d.member_name}")
+                            dim_parts.append(f"{dim_filter.dim_name}={dim_filter.member_name}")
                     filters_str = ", ".join(dim_parts)
                 else:
                     filters_str = "None"
@@ -907,17 +910,17 @@ def main(args: Sequence[str] | None = None, prog: str | None = None) -> int:
                     file=sys.stderr,
                 )
                 tree = ThematicTree(client)
-                results = tree.search(parsed.query)
-                if not results:
+                tree_results = tree.search(parsed.query)
+                if not tree_results:
                     print(f"No indicators found matching '{parsed.query}'.")
                     return 0
-                count = len(results)
+                count = len(tree_results)
                 limit = min(count, parsed.limit)
                 print(f"Found {count} indicators (showing top {limit}):")
-                for item in results[:limit]:
-                    print(f"  [{item.indicator_id}] {item.name}")
-                    if item.path:
-                        print(f"      Path: {item.path}")
+                for ind_item in tree_results[:limit]:
+                    print(f"  [{ind_item.indicator_id}] {ind_item.name}")
+                    if ind_item.path:
+                        print(f"      Path: {ind_item.path}")
                 return 0
 
             if parsed.command == "info":
@@ -951,10 +954,10 @@ def main(args: Sequence[str] | None = None, prog: str | None = None) -> int:
 
             if parsed.command == "fetch":
                 extractor = DataExtractor(client)
-                member_ids: list[int] | None = None
+                fetch_member_ids: list[int] | None = None
                 if parsed.members:
                     try:
-                        member_ids = [
+                        fetch_member_ids = [
                             int(m.strip()) for m in parsed.members.split(",") if m.strip()
                         ]
                     except ValueError:
@@ -965,7 +968,7 @@ def main(args: Sequence[str] | None = None, prog: str | None = None) -> int:
                         return 1
 
                 df = extractor.get_dataframe(
-                    parsed.indicator_id, members=member_ids, decode_labels=True
+                    parsed.indicator_id, members=fetch_member_ids, decode_labels=True
                 )
                 if df.empty:
                     print("No data records returned.")
@@ -994,20 +997,20 @@ def main(args: Sequence[str] | None = None, prog: str | None = None) -> int:
                     )
 
                     rows = []
-                    for r in dataset.records:
+                    for metric_record in dataset.records:
                         rows.append(
                             {
-                                "País": r.country,
-                                "Periodo": r.period_label,
-                                "Δ PIB pc (%)": r.gdp_pc_growth_mean,
-                                "Δ Pob. Tot (pp)": r.poverty_total_change_pp,
-                                "Δ Pob. Ext (pp)": r.poverty_extreme_change_pp,
-                                "Δ Sal. Real (%)": r.real_min_wage_change_pct,
-                                "Infl. Alim (%)": r.food_inflation_mean_pct,
-                                "Brecha Sal/Alim (%)": r.food_wage_gap_pct,
-                                "Δ Gini": r.gini_change,
-                                "Elasticidad": r.social_elasticity,
-                                "Cuadrante": r.quadrant,
+                                "País": metric_record.country,
+                                "Periodo": metric_record.period_label,
+                                "Δ PIB pc (%)": metric_record.gdp_pc_growth_mean,
+                                "Δ Pob. Tot (pp)": metric_record.poverty_total_change_pp,
+                                "Δ Pob. Ext (pp)": metric_record.poverty_extreme_change_pp,
+                                "Δ Sal. Real (%)": metric_record.real_min_wage_change_pct,
+                                "Infl. Alim (%)": metric_record.food_inflation_mean_pct,
+                                "Brecha Sal/Alim (%)": metric_record.food_wage_gap_pct,
+                                "Δ Gini": metric_record.gini_change,
+                                "Elasticidad": metric_record.social_elasticity,
+                                "Cuadrante": metric_record.quadrant,
                             }
                         )
                     df_table = pd.DataFrame(rows)
@@ -1017,21 +1020,21 @@ def main(args: Sequence[str] | None = None, prog: str | None = None) -> int:
                         print("No records found.")
 
                     if parsed.econometrics:
-                        summary = analyzer.run_econometric_regression(dataset)
+                        reg_summary = analyzer.run_econometric_regression(dataset)
                         print("=" * 70)
                         print("CEPALSTAT ECONOMETRIC REGRESSION SUMMARY (OLS)")
                         print(
-                            f"Dep. Variable: Δ Pobreza Total (pp) | N = {summary.n_obs} | "
-                            f"R² = {summary.r_squared} (Adj. R² = {summary.r_squared_adj})"
+                            f"Dep. Variable: Δ Pobreza Total (pp) | N = {reg_summary.n_obs} | "
+                            f"R² = {reg_summary.r_squared} (Adj. R² = {reg_summary.r_squared_adj})"
                         )
-                        print(f"F-statistic p-value: {summary.f_pvalue}")
+                        print(f"F-statistic p-value: {reg_summary.f_pvalue}")
                         print("-" * 70)
                         print("Variable              Coef.      Std.Err.   p-value    [95% Conf. Interval]")
                         print("-" * 70)
-                        for var_name, coef in summary.coefficients.items():
-                            std_err = summary.std_errors.get(var_name, 0.0)
-                            pval = summary.p_values.get(var_name, 1.0)
-                            ci = summary.confidence_intervals.get(var_name, (0.0, 0.0))
+                        for var_name, coef in reg_summary.coefficients.items():
+                            std_err = reg_summary.std_errors.get(var_name, 0.0)
+                            pval = reg_summary.p_values.get(var_name, 1.0)
+                            ci = reg_summary.confidence_intervals.get(var_name, (0.0, 0.0))
                             print(
                                 f"{var_name:<21} {coef:>10.4f} {std_err:>10.4f} {pval:>10.4f}    [{ci[0]:.4f}, {ci[1]:.4f}]"
                             )

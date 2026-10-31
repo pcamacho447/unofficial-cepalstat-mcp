@@ -407,8 +407,13 @@ class GraphBuilder:
         for edge in report.inferred_edges:
             if edge.parent_id in VERTICAL_SLICE_INDICATORS and edge.child_id in VERTICAL_SLICE_INDICATORS:
                 curated_rels = VERTICAL_SLICE_INDICATORS[edge.parent_id].relationships
-                rel = curated_rels.get(edge.child_id)
-                rel_str = rel.value if hasattr(rel, "value") else str(rel) if rel else ""
+                rel_val = curated_rels.get(edge.child_id)
+                if rel_val is None:
+                    # Check reverse relationship
+                    rel_val = VERTICAL_SLICE_INDICATORS[edge.child_id].relationships.get(edge.parent_id)
+                rel_str = ""
+                if rel_val is not None:
+                    rel_str = rel_val.value if hasattr(rel_val, "value") else str(rel_val)
                 if rel_str != "breakdown_of":
                     report.false_curated_edges += 1
 

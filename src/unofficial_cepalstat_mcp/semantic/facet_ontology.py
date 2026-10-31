@@ -157,12 +157,13 @@ class FacetOntology:
             return m_norm in norm_set
         return m_norm in {"total", "nacional", "ambos sexos"}
 
-    def is_structural_dimension(self, dim_id: int, dim_name: str) -> bool:
+    def is_structural_dimension(self, dim_id: int | None, dim_name: str) -> bool:
         """Return True if dimension is Country or Time structural dimension."""
-        if dim_id in {208, 29117}:
+        if dim_id is not None and dim_id in {208, 29117}:
             return True
         norm = strip_accents(dim_name).replace("_", " ")
         base = re.sub(r"__.*$", "", norm).strip()
+        base = re.sub(r"_\([^)]*\)$", "", base).strip()
 
         structural_exact = {
             "pais",
@@ -188,12 +189,13 @@ class FacetOntology:
 
         return False
 
-    def classify_dimension(self, dim_id: int, dim_name: str) -> str | None:
+    def classify_dimension(self, dim_id: int | None, dim_name: str) -> str | None:
         """Classify a dimension ID and name into a facet key, '__structural__', or None."""
         # 1. Known dimension IDs in ontology
-        for fdef in self._facets.values():
-            if dim_id in fdef.known_dimension_ids:
-                return fdef.facet_key
+        if dim_id is not None:
+            for fdef in self._facets.values():
+                if dim_id in fdef.known_dimension_ids:
+                    return fdef.facet_key
 
         # 2. Structural dimension check
         if self.is_structural_dimension(dim_id, dim_name):
@@ -202,6 +204,7 @@ class FacetOntology:
         # 3. Match dimension name patterns across facets
         norm = strip_accents(dim_name).replace("_", " ")
         base = re.sub(r"__.*$", "", norm).strip()
+        base = re.sub(r"_\([^)]*\)$", "", base).strip()
 
         for fdef in self._facets.values():
             for pat in fdef.dimension_name_patterns:

@@ -64,7 +64,15 @@ class CepalStatClient:
             )
 
         try:
-            return response.json()
+            data = response.json()
+            if not isinstance(data, dict):
+                raise CepalStatAPIError(
+                    f"Expected JSON object response, got: {type(data).__name__}",
+                    status_code=response.status_code,
+                )
+            return data
+        except CepalStatAPIError:
+            raise
         except Exception as exc:
             raise CepalStatAPIError(
                 f"Invalid JSON returned: {response.text}",

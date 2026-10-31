@@ -557,8 +557,8 @@ class QueryParser:
             facets["edad"] = "INFANCIA"
         elif edad_matches:
             facets["edad"] = edad_matches[0].canonical_id
-        for m in edad_matches:
-            consumed_phrases.append(m.matched_term)
+        for edad_m in edad_matches:
+            consumed_phrases.append(edad_m.matched_term)
 
         if any(term in clean for term in ["ninos", "ninas", "infancia", "0 a 14", "infantil"]):
             if "edad" not in facets:

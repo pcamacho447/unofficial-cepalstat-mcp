@@ -194,6 +194,7 @@ class Thesaurus:
                 term_detected = rule.positive_term if is_positive else rule.negative_term
                 opposite = rule.negative_term if is_positive else rule.positive_term
                 sign = rule.positive_sign if is_positive else rule.negative_sign
+                target_id: int | None = None
                 if is_positive and rule.target_indicator_positive is not None:
                     target_id = rule.target_indicator_positive
                 elif not is_positive and rule.target_indicator_negative is not None:

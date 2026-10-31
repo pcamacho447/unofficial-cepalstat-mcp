@@ -852,6 +852,9 @@ class SemanticDataFetcher:
         """Format series items and observation metadata into structured empirical payload."""
         filtered_df = df
         dim_cols = filtered_dim_cols or set()
+        cand_name = response.selected_candidate.name if response.selected_candidate else ""
+        cand_unit = response.selected_candidate.unit if response.selected_candidate else ""
+        payload: dict[str, Any]
         target_country_names = list(
             getattr(response.applied_filters, "country_names", [])
             or ([response.applied_filters.country_name] if response.applied_filters.country_name else [])
@@ -933,7 +936,7 @@ class SemanticDataFetcher:
                     item_dict: dict[str, Any] = {
                         "year": row_year,
                         "value": val,
-                        "unit": response.selected_candidate.unit,
+                        "unit": cand_unit,
                         "notes": row_notes,
                     }
                     if is_multi_country and country_col is not None and country_col in row and not pd.isna(row[country_col]):
@@ -983,8 +986,8 @@ class SemanticDataFetcher:
                     payload = {
                         "observation_exists": False,
                         "indicator_id": empirical_id,
-                        "indicator_name": response.selected_candidate.name,
-                        "unit": response.selected_candidate.unit,
+                        "indicator_name": cand_name,
+                        "unit": cand_unit,
                         "country": response.applied_filters.country_name
                         or response.applied_filters.country_code,
                         "year": response.applied_filters.year,
@@ -996,9 +999,9 @@ class SemanticDataFetcher:
                     payload = {
                         "observation_exists": True,
                         "indicator_id": empirical_id,
-                        "indicator_name": response.selected_candidate.name,
+                        "indicator_name": cand_name,
                         "value": latest_item["value"],
-                        "unit": response.selected_candidate.unit,
+                        "unit": cand_unit,
                         "country": latest_item.get(
                             "country",
                             response.applied_filters.country_name
@@ -1039,8 +1042,8 @@ class SemanticDataFetcher:
                     payload = {
                         "observation_exists": False,
                         "indicator_id": empirical_id,
-                        "indicator_name": response.selected_candidate.name,
-                        "unit": response.selected_candidate.unit,
+                        "indicator_name": cand_name,
+                        "unit": cand_unit,
                         "country": response.applied_filters.country_name
                         or response.applied_filters.country_code,
                         "year": response.applied_filters.year,
@@ -1069,7 +1072,7 @@ class SemanticDataFetcher:
                     single_item: dict[str, Any] = {
                         "year": row_year,
                         "value": val,
-                        "unit": response.selected_candidate.unit,
+                        "unit": cand_unit,
                         "notes": notes_val,
                     }
                     if dim_cols:
@@ -1084,9 +1087,9 @@ class SemanticDataFetcher:
                     payload = {
                         "observation_exists": True,
                         "indicator_id": empirical_id,
-                        "indicator_name": response.selected_candidate.name,
+                        "indicator_name": cand_name,
                         "value": val,
-                        "unit": response.selected_candidate.unit,
+                        "unit": cand_unit,
                         "country": response.applied_filters.country_name
                         or response.applied_filters.country_code,
                         "year": row_year,
@@ -1100,8 +1103,8 @@ class SemanticDataFetcher:
             payload = {
                 "observation_exists": False,
                 "indicator_id": empirical_id,
-                "indicator_name": response.selected_candidate.name,
-                "unit": response.selected_candidate.unit,
+                "indicator_name": cand_name,
+                "unit": cand_unit,
                 "country": response.applied_filters.country_name
                 or response.applied_filters.country_code,
                 "year": response.applied_filters.year,
