@@ -34,7 +34,7 @@ class ThematicTree:
             The body dictionary of the thematic tree API response.
         """
         if self._raw_tree is None or force_refresh:
-            data = self.client.get("/cepalstat/api/v1/thematic-tree")
+            data = self.client.get("/cepalstat/api/v1/thematic-tree", force_refresh=force_refresh)
             self._raw_tree = data.get("body", {})
         return self._raw_tree
 

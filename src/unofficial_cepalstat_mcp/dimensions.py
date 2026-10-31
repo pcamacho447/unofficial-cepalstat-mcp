@@ -51,7 +51,10 @@ class DimensionManager:
         if indicator_id in self._cache and not force_refresh:
             return self._cache[indicator_id]
 
-        response = self.client.get(f"/cepalstat/api/v1/indicator/{indicator_id}/dimensions")
+        response = self.client.get(
+            f"/cepalstat/api/v1/indicator/{indicator_id}/dimensions",
+            force_refresh=force_refresh,
+        )
         body = response.get("body") or {}
         raw_dims = body.get("dimensions", []) if isinstance(body, dict) else []
 

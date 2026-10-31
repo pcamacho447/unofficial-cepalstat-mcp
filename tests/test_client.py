@@ -104,7 +104,8 @@ def test_client_api_error_on_invalid_json():
 
 
 @respx.mock
-def test_client_network_error():
+def test_client_network_error(monkeypatch):
+    monkeypatch.setattr("time.sleep", lambda _: None)
     respx.get("https://api-cepalstat.cepal.org/cepalstat/api/v1/timeout").mock(
         side_effect=httpx.ConnectTimeout("Connection timed out")
     )
@@ -126,6 +127,7 @@ def test_package_exports():
     import unofficial_cepalstat_mcp
 
     assert hasattr(unofficial_cepalstat_mcp, "CepalStatClient")
+    assert hasattr(unofficial_cepalstat_mcp, "AsyncCepalStatClient")
     assert hasattr(unofficial_cepalstat_mcp, "CepalStatError")
     assert hasattr(unofficial_cepalstat_mcp, "CepalStatNetworkError")
     assert hasattr(unofficial_cepalstat_mcp, "CepalStatAPIError")
