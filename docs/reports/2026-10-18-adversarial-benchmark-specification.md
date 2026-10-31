@@ -4,7 +4,7 @@
 **Autoría:** Anti-Consensus Club (🪵 Splinter, 📏 Level, 🛑 Killjoy, 🃏 Wildcard)  
 **Estado:** Propuesta Técnica y Matriz Documentada para Revisión del Usuario  
 **Commit Base:** [`488bd8d`](https://github.com/cepal/statscepal/commit/488bd8d)  
-**Documento de Referencia:** [`docs/reports/2026-10-18-adversarial-benchmark-specification.md`](file:///C:/papx/statscepal/docs/reports/2026-10-18-adversarial-benchmark-specification.md)  
+**Documento de Referencia:** [`docs/reports/2026-10-18-adversarial-benchmark-specification.md`](docs/reports/2026-10-18-adversarial-benchmark-specification.md)  
 **Catálogo Maestro Auditado:** `scratch/catalog.csv` (1,739 series e indicadores oficiales de CEPALSTAT)
 
 ---
@@ -125,16 +125,4 @@ uv run pytest tests/test_adversarial_benchmark_40.py -v
 3. **Abstention Precision:** $100\%$ de abstenciones justificadas ante conceptos fuera de mandato o con discrepancia categorial severa.
 4. **Latency Budget:** $p50 < 0.5\text{ ms}$, $p95 < 2.0\text{ ms}$ (resolución local en memoria sin llamadas a red).
 
----
 
-## 5. Espacio para Cosas Picantes del Usuario 🌶️
-
-Este espacio está reservado para que el usuario inserte o modifique consultas de máxima dificultad antes de la ejecución definitiva:
-
-- [ ] *Espacio para caso picante 1:* __________________________________________________
-- [ ] *Espacio para caso picante 2:* __________________________________________________
-- [ ] *Espacio para caso picante 3:* __________________________________________________
-- [ ] *Espacio para caso picante 4:* __________________________________________________
-- [ ] *Espacio para caso picante 5:* __________________________________________________
-
-*Esperando revisión y luz verde del usuario.*

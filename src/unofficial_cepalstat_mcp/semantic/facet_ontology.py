@@ -9,11 +9,13 @@ from __future__ import annotations
 import re
 import unicodedata
 from collections.abc import Mapping, Sequence
+from functools import lru_cache
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
 
+@lru_cache(maxsize=4096)
 def strip_accents(text: str) -> str:
     """Normalize string to lowercase and strip diacritics."""
     if not text:

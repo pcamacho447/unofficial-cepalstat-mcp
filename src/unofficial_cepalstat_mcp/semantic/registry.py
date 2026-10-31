@@ -1425,6 +1425,9 @@ class SemanticRegistry:
         ontology: FacetOntology | None = None,
         thesaurus: Thesaurus | None = None,
     ) -> None:
+        if store is None and catalog_profile == "full_catalog":
+            from unofficial_cepalstat_mcp.catalog.store import CatalogStore
+            store = CatalogStore()
         self.store = store
         self.catalog_profile = catalog_profile
         self.ontology = ontology or DEFAULT_FACET_ONTOLOGY
@@ -1521,10 +1524,14 @@ class SemanticRegistry:
                     )
 
             # Classify dimensions for every indicator in _indicators_cache and union non-structural facets
+            dim_class_cache: dict[tuple[int, str], str | None] = {}
             for ind_id, meta in self._indicators_cache.items():
                 dims = self._dimensions_cache.get(ind_id, [])
                 for d in dims:
-                    f = self.ontology.classify_dimension(d.id, d.name)
+                    dim_key = (d.id, d.name)
+                    if dim_key not in dim_class_cache:
+                        dim_class_cache[dim_key] = self.ontology.classify_dimension(d.id, d.name)
+                    f = dim_class_cache[dim_key]
                     if f and f != "__structural__":
                         meta.supported_facets.add(f)
 
@@ -1608,8 +1615,10 @@ class SemanticRegistry:
         }
 
         self._restricted_country_scope = {}
+        cleaned_names_by_ind: dict[int, str] = {}
         for ind_id, meta in self._indicators_cache.items():
             name_clean = meta.name.upper().translate(_ACCENT_TRANS)
+            cleaned_names_by_ind[ind_id] = name_clean.lower()
             parts = name_clean.split(None, 2)
             c_code = None
             if parts:
@@ -1662,7 +1671,7 @@ class SemanticRegistry:
         for ind_id, meta in self._indicators_cache.items():
             # 1. Name stems (weight: 3.0)
             seen_name = set()
-            for tok in meta.name.lower().translate(_ACCENT_TRANS).split():
+            for tok in cleaned_names_by_ind[ind_id].split():
                 if tok in SPANISH_STOPWORDS or tok.isdigit() or len(tok) < 2:
                     continue
                 seen_name.add(_stem_spanish(tok))
@@ -1864,10 +1873,11 @@ class SemanticRegistry:
             return self._dimensions_cache[indicator_id]
         if self.store is not None:
             dims = self.store.get_indicator_dimensions(indicator_id)
-            if dims:
-                self._dimensions_cache[indicator_id] = dims
-                return dims
-        return self._dimensions.get(indicator_id, [])
+            self._dimensions_cache[indicator_id] = dims
+            return dims
+        res = self._dimensions.get(indicator_id, [])
+        self._dimensions_cache[indicator_id] = res
+        return res
 
     def get_relationships(self, indicator_id: int) -> dict[int, RelationshipType]:
         """Get all typed relationships originating from indicator_id across all sources."""
@@ -1932,24 +1942,31 @@ class SemanticRegistry:
         year: int,
     ) -> tuple[TemporalAvailabilityStatus, int | None, int | None]:
         """Check observation status and anchor years for an indicator, country, and year."""
-        if self.store is not None:
-            rec = self.store.get_temporal_record(indicator_id, country_code, year)
-            if rec is not None:
-                status_raw, prev_a, next_a = rec
-                status_enum = _normalize_temporal_status(status_raw)
-                return (status_enum, prev_a, next_a)
-
         key = (indicator_id, country_code, year)
         if key in self._temporal_availability:
             rec = self._temporal_availability[key]
             status_enum = _normalize_temporal_status(rec[0])
             return (status_enum, rec[1], rec[2])
 
+        if self.store is not None:
+            store_rec = self.store.get_temporal_record(indicator_id, country_code, year)
+            if store_rec is not None:
+                status_raw, prev_a, next_a = store_rec
+                status_enum = _normalize_temporal_status(status_raw)
+                cached_rec = (status_enum, prev_a, next_a)
+                self._temporal_availability[key] = cached_rec
+                return cached_rec
+
         if key in TEMPORAL_AVAILABILITY_MATRIX:
-            return TEMPORAL_AVAILABILITY_MATRIX[key]
+            res_matrix = TEMPORAL_AVAILABILITY_MATRIX[key]
+            self._temporal_availability[key] = res_matrix
+            return res_matrix
 
         # Default: if between 1950 and current UTC year, assume existing
         current_year = datetime.now(timezone.utc).year
         if 1950 <= year <= current_year:
-            return (TemporalAvailabilityStatus.OBSERVATION_EXISTING, None, None)
-        return (TemporalAvailabilityStatus.OBSERVATION_MISSING, None, None)
+            fallback = (TemporalAvailabilityStatus.OBSERVATION_EXISTING, None, None)
+        else:
+            fallback = (TemporalAvailabilityStatus.OBSERVATION_MISSING, None, None)
+        self._temporal_availability[key] = fallback
+        return fallback

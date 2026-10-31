@@ -8,7 +8,7 @@
 
 ## 1. Resumen Ejecutivo y Métricas Clave
 
-La evaluación empírica somete al motor semántico ([`src/statscepal/semantic/engine.py`](file:///C:/papx/statscepal/src/statscepal/semantic/engine.py)) a una batería de consultas que van desde terminología econométrica de alta precisión hasta modismos coloquiales de Argentina, Chile, México y Colombia, desgloses multidimensionales y preguntas con vacíos muestrales o trampas conceptuales.
+La evaluación empírica somete al motor semántico ([`src/unofficial_cepalstat_mcp/semantic/engine.py`](src/unofficial_cepalstat_mcp/semantic/engine.py)) a una batería de consultas que van desde terminología econométrica de alta precisión hasta modismos coloquiales de Argentina, Chile, México y Colombia, desgloses multidimensionales y preguntas con vacíos muestrales o trampas conceptuales.
 
 | Métrica | Objetivo de Diseño | Resultado Obtenido | Calificación |
 | :--- | :---: | :---: | :---: |
@@ -31,7 +31,7 @@ pie title Distribución de Decisiones del Motor Semántico (200 Casos)
 
 > [!NOTE]
 > **Doble Perfil de Catálogo (`official_25` y `legacy_50`):**  
-> El sistema incorpora desacoplamiento de catálogo en [`src/statscepal/semantic/registry.py`](file:///C:/papx/statscepal/src/statscepal/semantic/registry.py), permitiendo evaluar tanto el nuevo benchmark de 200 casos sobre los 25 indicadores oficiales de CEPAL como la suite legacy de 50 casos sin colisiones ni regresiones.
+> El sistema incorpora desacoplamiento de catálogo en [`src/unofficial_cepalstat_mcp/semantic/registry.py`](src/unofficial_cepalstat_mcp/semantic/registry.py), permitiendo evaluar tanto el nuevo benchmark de 200 casos sobre los 25 indicadores oficiales de CEPAL como la suite legacy de 50 casos sin colisiones ni regresiones.
 
 ---
 
@@ -69,7 +69,7 @@ flowchart TD
 
 ## 3. Desglose Empírico por Cluster Temático (Matriz 8-4-4-2-2)
 
-Los 200 casos de prueba en [`tests/benchmark/semantic_benchmark_cases_200.json`](file:///C:/papx/statscepal/tests/benchmark/semantic_benchmark_cases_200.json) están organizados en **10 clusters temáticos** equilibrados según la **matriz 8-4-4-2-2**:
+Los 200 casos de prueba en [`tests/benchmark/semantic_benchmark_cases_200.json`](tests/benchmark/semantic_benchmark_cases_200.json) están organizados en **10 clusters temáticos** equilibrados según la **matriz 8-4-4-2-2**:
 - **8 Canónicos:** Lenguaje formal y técnico directo.
 - **4 Regionalismos / Jerga:** Lunfardo rioplatense, chilenismos, mexicanismos y modismos andinos/colombianos.
 - **4 Desgloses / Swaps:** Restricciones de sexo, área urbano/rural, edad y canasta con swaps tipados.
@@ -99,7 +99,7 @@ Los 200 casos de prueba en [`tests/benchmark/semantic_benchmark_cases_200.json`]
 > En la jerga cotidiana de la región, *"la guita"*, *"la plata"*, *"la lana"* o *"el sueldo"* se usan indistintamente para referirse al salario mínimo legal, al salario promedio de los trabajadores formales o al ingreso disponible total por persona en el hogar. Confundir estas series invalida cualquier estudio de elasticidad o evaluación de política pública.
 
 ### 4.1 La Desconstrucción de Modificadores en el Parser
-El motor descompone la sintaxis buscando modificadores de contexto en [`src/statscepal/semantic/parser.py`](file:///C:/papx/statscepal/src/statscepal/semantic/parser.py):
+El motor descompone la sintaxis buscando modificadores de contexto en [`src/unofficial_cepalstat_mcp/semantic/parser.py`](src/unofficial_cepalstat_mcp/semantic/parser.py):
 
 1. **Modificadores Institucionales / Legales $\to$ Salario Mínimo Real (ID 3337):**
    - Disparadores: *"mínimo"*, *"mínima"*, *"por ley"*, *"de ley"*, *"básico"*.
@@ -137,7 +137,7 @@ flowchart TD
 
 ## 5. Trazas Reales de Ejecución en Vivo
 
-A continuación se exhiben extractos textuales generados por [`statscepal semantic resolve "<query>" --explain`](file:///C:/papx/statscepal/src/statscepal/cli.py).
+A continuación se exhiben extractos textuales generados por [`unofficial-cepalstat-mcp semantic resolve "<query>" --explain`](src/unofficial_cepalstat_mcp/cli.py).
 
 ### Traza 1: Jerga con Modificador Institucional (`SE-070`)
 ```text

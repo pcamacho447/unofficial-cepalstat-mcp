@@ -1,0 +1,838 @@
+[
+  {
+    "id": "SCALE_001",
+    "area": "Eventos naturales extremos y desastres",
+    "query": "Pérdidas económicas atribuidas a desastres por tipo de desastre en Costa Rica 2020",
+    "expected_status": "RESOLVED",
+    "expected_indicator_id": 4046,
+    "rationale": "Pérdidas económicas directas atribuidas a desastres según tipo de evento."
+  },
+  {
+    "id": "SCALE_002",
+    "area": "Protección, gestión y participación ambiental",
+    "query": "Acuerdos ambientales multilaterales por estado en Colombia 2020",
+    "expected_status": "RESOLVED",
+    "expected_indicator_id": 2031,
+    "rationale": "Estado de ratificación y firma de acuerdos ambientales multilaterales."
+  },
+  {
+    "id": "SCALE_003",
+    "area": "Protección, gestión y participación ambiental",
+    "query": "Empresas con certificación ISO 14001 en Brasil 2021",
+    "expected_status": "ALTERNATIVE_PROPOSED",
+    "expected_indicator_id": 1763,
+    "rationale": "Serie de empresas certificadas bajo el estándar de gestión ambiental ISO 14001."
+  },
+  {
+    "id": "SCALE_004",
+    "area": "Discapacidad",
+    "query": "Hogares con personas con discapacidad en Chile 2022",
+    "expected_status": "RESOLVED",
+    "expected_indicator_id": 5660,
+    "rationale": "Hogares con al menos una persona con discapacidad por quintiles de ingreso."
+  },
+  {
+    "id": "SCALE_005",
+    "area": "Discapacidad",
+    "query": "Participación en la fuerza de trabajo de personas con discapacidad en Uruguay 2021",
+    "expected_status": "RESOLVED",
+    "expected_indicator_id": 5661,
+    "rationale": "Tasa de participación económica de población con discapacidad de 15 años y más."
+  },
+  {
+    "id": "SCALE_006",
+    "area": "Residuos",
+    "query": "Consumo de sustancias que agotan la capa de ozono (SAO), por SAO en México 2020",
+    "expected_status": "RESOLVED",
+    "expected_indicator_id": 2037,
+    "rationale": "Consumo de sustancias agotadoras del ozono estratosférico."
+  },
+  {
+    "id": "SCALE_007",
+    "area": "Residuos",
+    "query": "Emisiones de dióxido de carbono por habitante en Argentina 2020",
+    "expected_status": "RESOLVED",
+    "expected_indicator_ids": [
+      5649,
+      5681
+    ],
+    "rationale": "Emisiones per cápita de CO2 / GEI."
+  },
+  {
+    "id": "SCALE_008",
+    "area": "Residuos",
+    "query": "Emisiones de gases de efecto invernadero por habitante en Chile 2020",
+    "expected_status": "RESOLVED",
+    "expected_indicator_ids": [
+      4461,
+      5681
+    ],
+    "rationale": "Emisiones per cápita de GEI con LULUCF."
+  },
+  {
+    "id": "SCALE_009",
+    "area": "Sector financiero y monetario",
+    "query": "Tasa de interés activa nominal en Colombia 2021",
+    "expected_status": "RESOLVED",
+    "expected_indicator_id": 856,
+    "rationale": "Tasa de interés de colocación nominal bancaria."
+  },
+  {
+    "id": "SCALE_010",
+    "area": "Sector financiero y monetario",
+    "query": "Tasa de interés pasiva nominal en Perú 2021",
+    "expected_status": "RESOLVED",
+    "expected_indicator_id": 857,
+    "rationale": "Tasa de interés de captación bancaria."
+  },
+  {
+    "id": "SCALE_011",
+    "area": "Sector financiero y monetario",
+    "query": "Liquidez monetaria (M2), fin de período en Chile 2022",
+    "expected_status": "RESOLVED",
+    "expected_indicator_id": 868,
+    "rationale": "Agregado monetario M2 a fin de periodo."
+  },
+  {
+    "id": "SCALE_012",
+    "area": "Sector público",
+    "query": "Saldo de la deuda pública en porcentajes del PIB en Chile 2020",
+    "expected_status": "RESOLVED",
+    "expected_indicator_id": 1240,
+    "rationale": "Ratio deuda del gobierno central sobre el PIB."
+  },
+  {
+    "id": "SCALE_013",
+    "area": "Sector público",
+    "query": "Ingresos tributarios por tipo de impuestos en porcentajes del PIB en Chile 2020",
+    "expected_status": "RESOLVED",
+    "expected_indicator_id": 821,
+    "rationale": "Presión tributaria por tipo de gravamen como proporción del PIB."
+  },
+  {
+    "id": "SCALE_014",
+    "area": "Sector público",
+    "query": "Ingresos tributarios por tipo de impuestos en moneda nacional a precios corrientes en Chile 2020",
+    "expected_status": "RESOLVED",
+    "expected_indicator_id": 845,
+    "rationale": "Recaudación impositiva en moneda nacional corriente."
+  },
+  {
+    "id": "SCALE_015",
+    "area": "Precios",
+    "query": "Indice de precios al por mayor en Chile 2020",
+    "expected_status": "RESOLVED",
+    "expected_indicator_id": 544,
+    "rationale": "Índice de precios al por mayor (IPM) serie oficial."
+  },
+  {
+    "id": "SCALE_016",
+    "area": "Precios",
+    "query": "Paridad de Poder Adquisitivo en Chile 2020",
+    "expected_status": "RESOLVED",
+    "expected_indicator_id": 2491,
+    "rationale": "Factores de conversión por paridad de poder adquisitivo."
+  },
+  {
+    "id": "SCALE_017",
+    "area": "Precios",
+    "query": "Tasa de crecimiento anual del índice de precios al consumidor subyacente: diciembre a diciembre en Chile 2020",
+    "expected_status": "RESOLVED",
+    "expected_indicator_id": 4145,
+    "rationale": "Inflación subyacente variación anual interanual diciembre a diciembre."
+  },
+  {
+    "id": "SCALE_018",
+    "area": "Condiciones y calidad ambiental",
+    "query": "Superficie de aguas continentales en Brasil 2020",
+    "expected_status": "RESOLVED",
+    "expected_indicator_id": 2054,
+    "rationale": "Extensión geográfica de aguas continentales."
+  },
+  {
+    "id": "SCALE_019",
+    "area": "Condiciones y calidad ambiental",
+    "query": "Superficie de nieve permanente y glaciares en Chile 2020",
+    "expected_status": "RESOLVED",
+    "expected_indicator_id": 3355,
+    "rationale": "Área de glaciares y nieves perpetuas."
+  },
+  {
+    "id": "SCALE_020",
+    "area": "Condiciones y calidad ambiental",
+    "query": "Variación de la temperatura media en Argentina 2021",
+    "expected_status": "ALTERNATIVE_PROPOSED",
+    "expected_indicator_id": 3381,
+    "rationale": "Anomalías térmicas medias respecto al promedio de referencia."
+  },
+  {
+    "id": "SCALE_021",
+    "area": "Cohesión social",
+    "query": "Desconfianza en los partidos políticos y el congreso en Chile 2020",
+    "expected_status": "RESOLVED",
+    "expected_indicator_id": 995,
+    "rationale": "Población que manifiesta desconfianza política institucional."
+  },
+  {
+    "id": "SCALE_022",
+    "area": "Cohesión social",
+    "query": "Democracia como mejor forma de gobierno en México 2020",
+    "expected_status": "RESOLVED",
+    "expected_indicator_id": 2051,
+    "rationale": "Apoyo a la democracia según encuestas de opinión pública Latinobarómetro."
+  },
+  {
+    "id": "SCALE_023",
+    "area": "Cohesión social",
+    "query": "Confianza en la policía en Uruguay 2020",
+    "expected_status": "RESOLVED",
+    "expected_indicator_id": 3257,
+    "rationale": "Confianza interpersonal en la sociedad uruguaya."
+  },
+  {
+    "id": "SCALE_024",
+    "area": "Pueblos indígenas y afrodescendientes",
+    "query": "Población en situación de pobreza extrema y pobreza por autoidentificación étnico-racial en Bolivia 2021",
+    "expected_status": "RESOLVED",
+    "expected_indicator_id": 3342,
+    "rationale": "Incidencia de pobreza monetaria por condición étnico-racial."
+  },
+  {
+    "id": "SCALE_025",
+    "area": "Pueblos indígenas y afrodescendientes",
+    "query": "Distribución de la población por autoidentificación étnico racial y quintiles en Brasil 2021",
+    "expected_status": "RESOLVED",
+    "expected_indicator_id": 4639,
+    "rationale": "Estratificación de población según quintil socioeconómico y condición étnica."
+  },
+  {
+    "id": "SCALE_026",
+    "area": "Pueblos indígenas y afrodescendientes",
+    "query": "Población Indígena y no indígena según área de residencia en Perú 2020",
+    "expected_status": "RESOLVED",
+    "expected_indicator_id": 4968,
+    "rationale": "Distribución demográfica indígena según área urbana o rural."
+  },
+  {
+    "id": "SCALE_027",
+    "area": "Recursos ambientales y su uso",
+    "query": "Superficie regada en Chile 2020",
+    "expected_status": "RESOLVED",
+    "expected_indicator_id": 1739,
+    "rationale": "Superficie bajo riego de cultivos agrícolas."
+  },
+  {
+    "id": "SCALE_028",
+    "area": "Recursos ambientales y su uso",
+    "query": "Superficie cosechada, por cultivo en Costa Rica 2020",
+    "expected_status": "ALTERNATIVE_PROPOSED",
+    "expected_indicator_id": 1740,
+    "rationale": "Extensión cosechada clasificada por rubro de cultivo."
+  },
+  {
+    "id": "SCALE_029",
+    "area": "Recursos ambientales y su uso",
+    "query": "Superficie agrícola, por destino de uso en Chile 2020",
+    "expected_status": "RESOLVED",
+    "expected_indicator_id": 1869,
+    "rationale": "Uso de la tierra y destino de la superficie agropecuaria."
+  },
+  {
+    "id": "SCALE_030",
+    "area": "Estadísticas de los Subsectores Eléctrico y de Hidrocarburos de Centroamérica y la República Dominicana",
+    "query": "Demanda Máxima de potencia en Costa Rica 2020",
+    "expected_status": "RESOLVED",
+    "expected_indicator_id": 4718,
+    "rationale": "Pico máximo de demanda de potencia en el sistema eléctrico de Centroamérica."
+  },
+  {
+    "id": "SCALE_031",
+    "area": "Estadísticas de los Subsectores Eléctrico y de Hidrocarburos de Centroamérica y la República Dominicana",
+    "query": "Capacidad de almacenamiento en Costa Rica 2020",
+    "expected_status": "RESOLVED",
+    "expected_indicator_id": 4726,
+    "rationale": "Capacidad volumétrica de almacenamiento de derivados de petróleo."
+  },
+  {
+    "id": "SCALE_032",
+    "area": "Estadísticas de los Subsectores Eléctrico y de Hidrocarburos de Centroamérica y la República Dominicana",
+    "query": "Volumen de refinación en Costa Rica 2020",
+    "expected_status": "RESOLVED",
+    "expected_indicator_id": 4733,
+    "rationale": "Volumen físico refinado de crudo y derivados en Centroamérica."
+  },
+  {
+    "id": "SCALE_033",
+    "area": "Estadísticas sectoriales y productividad",
+    "query": "Movimiento portuario de contenedores en Brasil 2020",
+    "expected_status": "RESOLVED",
+    "expected_indicator_id": 1044,
+    "rationale": "Rendimiento y volumen de contenedores operados en puertos de la región."
+  },
+  {
+    "id": "SCALE_034",
+    "area": "Estadísticas sectoriales y productividad",
+    "query": "Producción de petróleo crudo en Brasil 2020",
+    "expected_status": "RESOLVED",
+    "expected_indicator_id": 1665,
+    "rationale": "Extracción y producción física de hidrocarburos líquidos."
+  },
+  {
+    "id": "SCALE_035",
+    "area": "Estadísticas sectoriales y productividad",
+    "query": "Gasto turístico receptor sobre el Producto Interno Bruto (PIB) en Brasil 2020",
+    "expected_status": "RESOLVED",
+    "expected_indicator_id": 2910,
+    "rationale": "Ingreso por turismo receptivo en proporción al PIB."
+  },
+  {
+    "id": "SCALE_036",
+    "area": "PIB y Cuentas Nacionales",
+    "query": "Grado de Apertura de la Economía a precios corrientes en Chile 2020",
+    "expected_status": "RESOLVED",
+    "expected_indicator_id": 1343,
+    "rationale": "Indicador de apertura comercial externa sobre PIB."
+  },
+  {
+    "id": "SCALE_037",
+    "area": "PIB y Cuentas Nacionales",
+    "query": "Brecha Externa a precios corrientes en Chile 2020",
+    "expected_status": "RESOLVED",
+    "expected_indicator_id": 1344,
+    "rationale": "Desbalance del sector externo en las cuentas nacionales."
+  },
+  {
+    "id": "SCALE_038",
+    "area": "PIB y Cuentas Nacionales",
+    "query": "Producto interno bruto anual por objeto del gasto a precios corrientes en moneda nacional en Chile 2020",
+    "expected_status": "RESOLVED",
+    "expected_indicator_id": 2193,
+    "rationale": "PIB anual nominal desglosado por demanda agregada."
+  },
+  {
+    "id": "SCALE_039",
+    "area": "PIB y Cuentas Nacionales",
+    "query": "Producto interno bruto por habitante por tipo de gasto en paridad de poder adquisitivo real en Chile 2020",
+    "expected_status": "RESOLVED",
+    "expected_indicator_id": 2493,
+    "rationale": "PIB real per cápita medido en PPA."
+  },
+  {
+    "id": "SCALE_040",
+    "area": "Ciudades",
+    "query": "Vehículos de motor registrados en circulación 2020",
+    "expected_status": "RESOLVED",
+    "expected_indicator_id": 3004,
+    "rationale": "Parque automotor registrado en áreas urbanas y metropolitanas."
+  },
+  {
+    "id": "SCALE_041",
+    "area": "Ciudades",
+    "query": "Volumen de residuos sólidos 2020",
+    "expected_status": "RESOLVED",
+    "expected_indicator_id": 3065,
+    "rationale": "Generación física total de desechos sólidos municipales en ciudades."
+  },
+  {
+    "id": "SCALE_042",
+    "area": "Ciudades",
+    "query": "Costo de un ticket de bus/metro 2020",
+    "expected_status": "RESOLVED",
+    "expected_indicator_id": 3093,
+    "rationale": "Tarifa media del transporte público urbano en ciudades latinoamericanas."
+  },
+  {
+    "id": "SCALE_043",
+    "area": "Ciudades",
+    "query": "Tratamiento de aguas residuales 2020",
+    "expected_status": "RESOLVED",
+    "expected_indicator_id": 3095,
+    "rationale": "Porcentaje de aguas servidas sometidas a tratamiento municipal."
+  },
+  {
+    "id": "SCALE_044",
+    "area": "Demográficos",
+    "query": "Tasa bruta de mortalidad en Chile 2020",
+    "expected_status": "RESOLVED",
+    "expected_indicator_id": 4785,
+    "rationale": "Defunciones por cada mil habitantes según proyecciones CELADE."
+  },
+  {
+    "id": "SCALE_045",
+    "area": "Demográficos",
+    "query": "Tasa global de fecundidad en Chile 2020",
+    "expected_status": "RESOLVED",
+    "expected_indicator_id": 4786,
+    "rationale": "Número medio de hijos por mujer fértil."
+  },
+  {
+    "id": "SCALE_046",
+    "area": "Demográficos",
+    "query": "Tasa bruta de natalidad en Chile 2020",
+    "expected_status": "RESOLVED",
+    "expected_indicator_id": 4787,
+    "rationale": "Nacidos vivos anuales por cada mil habitantes."
+  },
+  {
+    "id": "SCALE_047",
+    "area": "Demográficos",
+    "query": "Tasa global de movilidad interna (TGMI) en Chile 2020",
+    "expected_status": "RESOLVED",
+    "expected_indicator_id": 5219,
+    "rationale": "Intensidad agregada de las migraciones interregionales internas."
+  },
+  {
+    "id": "SCALE_048",
+    "area": "Género",
+    "query": "Necesidades insatisfechas en materia de planificación familiar en Colombia 2020",
+    "expected_status": "RESOLVED",
+    "expected_indicator_id": 2183,
+    "rationale": "Demanda no satisfecha de métodos anticonceptivos modernos."
+  },
+  {
+    "id": "SCALE_049",
+    "area": "Género",
+    "query": "Tiempo de trabajo no remunerado según años de estudio y sexo en Colombia 2020",
+    "expected_status": "RESOLVED",
+    "expected_indicator_id": 2644,
+    "rationale": "Carga horaria de cuidados no remunerados por nivel de escolaridad."
+  },
+  {
+    "id": "SCALE_050",
+    "area": "Género",
+    "query": "Número de femicidios o feminicidios en Colombia 2020",
+    "expected_status": "RESOLVED",
+    "expected_indicator_id": 2780,
+    "rationale": "Muertes violentas de mujeres por razones de género."
+  },
+  {
+    "id": "SCALE_051",
+    "area": "Género",
+    "query": "Proporción de tiempo dedicado al trabajo doméstico y de cuidado no remunerado, según tipo de trabajo no remunerado y sexo en Colombia 2020",
+    "expected_status": "RESOLVED",
+    "expected_indicator_id": 3358,
+    "rationale": "ODS 5: Distribución porcentual del tiempo dedicado al trabajo doméstico no pago."
+  },
+  {
+    "id": "SCALE_052",
+    "area": "Estadisticas de la actividad agropecuaria, desarrollo rural y seguridad alimentaria y nutricional de Centroamérica y México",
+    "query": "Número de personas en subalimentación en Guatemala 2020",
+    "expected_status": "RESOLVED",
+    "expected_indicator_id": 2712,
+    "rationale": "Población en situación de hambre crónica y déficit calórico."
+  },
+  {
+    "id": "SCALE_053",
+    "area": "Estadisticas de la actividad agropecuaria, desarrollo rural y seguridad alimentaria y nutricional de Centroamérica y México",
+    "query": "Suministro de Energía Alimentaria (SEA) en Guatemala 2020",
+    "expected_status": "RESOLVED",
+    "expected_indicator_id": 2713,
+    "rationale": "Disponibilidad calórica per cápita expresada en kilocalorías diarias."
+  },
+  {
+    "id": "SCALE_054",
+    "area": "Estadisticas de la actividad agropecuaria, desarrollo rural y seguridad alimentaria y nutricional de Centroamérica y México",
+    "query": "Balance comercial agropecuario en Guatemala 2020",
+    "expected_status": "RESOLVED",
+    "expected_indicator_id": 2779,
+    "rationale": "Saldo neto exportador o importador de productos agroalimentarios."
+  },
+  {
+    "id": "SCALE_055",
+    "area": "Estadisticas de la actividad agropecuaria, desarrollo rural y seguridad alimentaria y nutricional de Centroamérica y México",
+    "query": "Volumen de producción agrícola en Guatemala 2020",
+    "expected_status": "RESOLVED",
+    "expected_indicator_id": 2796,
+    "rationale": "Producción física agregada del sector agrícola en Centroamérica."
+  },
+  {
+    "id": "SCALE_056",
+    "area": "Comercio Internacional y Balanza de Pagos",
+    "query": "Balanza de pagos trimestral en Brasil 2020",
+    "expected_status": "RESOLVED",
+    "expected_indicator_id": 547,
+    "rationale": "Registro de transacciones corrientes y financieras trimestrales."
+  },
+  {
+    "id": "SCALE_057",
+    "area": "Comercio Internacional y Balanza de Pagos",
+    "query": "Saldo en cuenta corriente como porcentaje del producto interno bruto en Brasil 2020",
+    "expected_status": "RESOLVED",
+    "expected_indicator_id": 740,
+    "rationale": "Déficit o superávit en cuenta corriente como ratio del PIB."
+  },
+  {
+    "id": "SCALE_058",
+    "area": "Comercio Internacional y Balanza de Pagos",
+    "query": "Deflactores de comercio exterior en Brasil 2020",
+    "expected_status": "RESOLVED",
+    "expected_indicator_id": 882,
+    "rationale": "Índice de precios implícitos de exportaciones e importaciones de bienes."
+  },
+  {
+    "id": "SCALE_059",
+    "area": "Comercio Internacional y Balanza de Pagos",
+    "query": "Índices de la relación de precios del intercambio y poder de compra de las exportaciones en Brasil 2020",
+    "expected_status": "RESOLVED",
+    "expected_indicator_id": 883,
+    "rationale": "Términos de intercambio netos y poder adquisitivo del comercio exterior."
+  },
+  {
+    "id": "SCALE_060",
+    "area": "Comercio Internacional y Balanza de Pagos",
+    "query": "Índices de volumen de comercio exterior en Brasil 2020",
+    "expected_status": "RESOLVED",
+    "expected_indicator_id": 884,
+    "rationale": "Quantum físico transado en los mercados internacionales."
+  },
+  {
+    "id": "SCALE_061",
+    "area": "Tecnologías de información y comunicación",
+    "query": "Velocidad de descarga de las conexiones de banda ancha fija en Colombia 2021",
+    "expected_status": "RESOLVED",
+    "expected_indicator_id": 4054,
+    "rationale": "Velocidad de bajada residencial medida en megabits por segundo."
+  },
+  {
+    "id": "SCALE_062",
+    "area": "Tecnologías de información y comunicación",
+    "query": "Velocidad de descarga de las conexiones de banda ancha móvil en Uruguay 2021",
+    "expected_status": "RESOLVED",
+    "expected_indicator_id": 4055,
+    "rationale": "Rendimiento de descarga en redes móviles celulares."
+  },
+  {
+    "id": "SCALE_063",
+    "area": "Tecnologías de información y comunicación",
+    "query": "Velocidad de carga de las conexiones de banda ancha fija en Chile 2021",
+    "expected_status": "RESOLVED",
+    "expected_indicator_id": 5057,
+    "rationale": "Velocidad de subida (upstream) en conexiones fijas a internet."
+  },
+  {
+    "id": "SCALE_064",
+    "area": "Tecnologías de información y comunicación",
+    "query": "Velocidad de carga de las conexiones de banda ancha móvil en Brasil 2021",
+    "expected_status": "RESOLVED",
+    "expected_indicator_id": 5058,
+    "rationale": "Velocidad de subida en redes inalámbricas celulares."
+  },
+  {
+    "id": "SCALE_065",
+    "area": "Tecnologías de información y comunicación",
+    "query": "Índice de Desarrollo de Gobierno Electrónico en Chile 2020",
+    "expected_status": "RESOLVED",
+    "expected_indicator_id": 5406,
+    "rationale": "Índice EGDI de Naciones Unidas para modernización digital del Estado."
+  },
+  {
+    "id": "SCALE_066",
+    "area": "Sociales",
+    "query": "Tasa de desocupación por sexo en Brasil 2020",
+    "expected_status": "RESOLVED",
+    "expected_indicator_id": 127,
+    "rationale": "Desocupación abierta desagregada por género."
+  },
+  {
+    "id": "SCALE_067",
+    "area": "Sociales",
+    "query": "Salario mínimo real en Brasil 2020",
+    "expected_status": "RESOLVED",
+    "expected_indicator_id": 340,
+    "rationale": "Remuneración básica legal indexada por inflación."
+  },
+  {
+    "id": "SCALE_068",
+    "area": "Sociales",
+    "query": "Salario medio real anual en Brasil 2020",
+    "expected_status": "RESOLVED",
+    "expected_indicator_id": 341,
+    "rationale": "Salario medio del sector formal deflactado por IPC."
+  },
+  {
+    "id": "SCALE_069",
+    "area": "Sociales",
+    "query": "Promedio de alumnos por maestro por nivel de enseñanza en Brasil 2020",
+    "expected_status": "RESOLVED",
+    "expected_indicator_id": 391,
+    "rationale": "Ratio alumnos por docente en educación básica y media."
+  },
+  {
+    "id": "SCALE_070",
+    "area": "Sociales",
+    "query": "Gasto público en educación en Brasil 2020",
+    "expected_status": "RESOLVED",
+    "expected_indicator_id": 460,
+    "rationale": "Inversión pública social en el sistema formativo nacional."
+  },
+  {
+    "id": "SCALE_071",
+    "area": "Sociales",
+    "query": "Índice de satisfacción con la vida en Brasil 2020",
+    "expected_status": "RESOLVED",
+    "expected_indicator_id": 5295,
+    "rationale": "Bienestar subjetivo percibido según encuestas regionales."
+  },
+  {
+    "id": "SCALE_072",
+    "area": "Estadísticas subnacionales y de áreas pequeñas",
+    "query": "Porcentaje de adolescentes que son madres en Colombia 2020",
+    "expected_status": "RESOLVED",
+    "expected_indicator_id": 4415,
+    "rationale": "Maternidad adolescente a nivel territorial desagregado."
+  },
+  {
+    "id": "SCALE_073",
+    "area": "Estadísticas subnacionales y de áreas pequeñas",
+    "query": "Tasa de alfabetismo en personas mayores de 15 años en Colombia 2020",
+    "expected_status": "RESOLVED",
+    "expected_indicator_id": 4429,
+    "rationale": "Alfabetización adulta en unidades territoriales subnacionales."
+  },
+  {
+    "id": "SCALE_074",
+    "area": "Estadísticas subnacionales y de áreas pequeñas",
+    "query": "Uso de combustibles sólidos para cocinar en Colombia 2020",
+    "expected_status": "RESOLVED",
+    "expected_indicator_id": 4433,
+    "rationale": "Viviendas que emplean leña o carbón vegetal como fuente calórica doméstica."
+  },
+  {
+    "id": "SCALE_075",
+    "area": "Estadísticas subnacionales y de áreas pequeñas",
+    "query": "Índice de tenencia segura de la vivienda en Colombia 2020",
+    "expected_status": "RESOLVED",
+    "expected_indicator_id": 4438,
+    "rationale": "Seguridad jurídica y tenencia propietaria residencial a escala territorial."
+  },
+  {
+    "id": "SCALE_076",
+    "area": "Estadísticas subnacionales y de áreas pequeñas",
+    "query": "Porcentaje de hogares con disponibilidad de agua potable en Colombia 2020",
+    "expected_status": "RESOLVED",
+    "expected_indicator_id": 4444,
+    "rationale": "Acceso a redes de agua segura en departamentos o provincias."
+  },
+  {
+    "id": "SCALE_077",
+    "area": "Estadísticas subnacionales y de áreas pequeñas",
+    "query": "Porcentaje de viviendas con hacinamiento en Colombia 2020",
+    "expected_status": "RESOLVED",
+    "expected_indicator_id": 4447,
+    "rationale": "Déficit habitacional cualitativo por densidad de personas por dormitorio."
+  },
+  {
+    "id": "SCALE_078",
+    "area": "Objetivos de Desarrollo Sostenible (ODS)",
+    "query": "Superficie de humedales designados bajo la Convención de Ramsar en Chile 2020",
+    "expected_status": "RESOLVED",
+    "expected_indicator_id": 2016,
+    "rationale": "ODS 15: Humedales protegidos de importancia internacional."
+  },
+  {
+    "id": "SCALE_079",
+    "area": "Objetivos de Desarrollo Sostenible (ODS)",
+    "query": "Intensidad de uso de fertilizantes en Chile 2020",
+    "expected_status": "RESOLVED",
+    "expected_indicator_id": 2022,
+    "rationale": "ODS 2: Fertilizantes químicos aplicados por hectárea de cultivo."
+  },
+  {
+    "id": "SCALE_080",
+    "area": "Objetivos de Desarrollo Sostenible (ODS)",
+    "query": "Consumo de plaguicidas, por tipo de plaguicida en Chile 2020",
+    "expected_status": "RESOLVED",
+    "expected_indicator_id": 2039,
+    "rationale": "ODS 12: Insumos fitosanitarios y agroquímicos agrícolas."
+  },
+  {
+    "id": "SCALE_081",
+    "area": "Objetivos de Desarrollo Sostenible (ODS)",
+    "query": "Proporción de países que han registrado al menos el 90% de los nacimientos en Chile 2020",
+    "expected_status": "ALTERNATIVE_PROPOSED",
+    "expected_indicator_id": 3676,
+    "rationale": "ODS 16: Cobertura universal de registro civil en recién nacidos."
+  },
+  {
+    "id": "SCALE_082",
+    "area": "Objetivos de Desarrollo Sostenible (ODS)",
+    "query": "Proporción de países que han registrado al menos el 75% de las defunciones en Chile 2020",
+    "expected_status": "ALTERNATIVE_PROPOSED",
+    "expected_indicator_id": 3677,
+    "rationale": "ODS 16: Completitud de estadísticas vitales de mortalidad."
+  },
+  {
+    "id": "SCALE_083",
+    "area": "Objetivos de Desarrollo Sostenible (ODS)",
+    "query": "Proporción de la población cubierta por programas de mercado laboral en Chile 2020",
+    "expected_status": "RESOLVED",
+    "expected_indicator_id": 3696,
+    "rationale": "ODS 1: Redes de protección social y políticas activas de empleo."
+  },
+  {
+    "id": "SCALE_084",
+    "area": "Objetivos de Desarrollo Sostenible (ODS)",
+    "query": "Número de personas afectadas por los desastres en Chile 2020",
+    "expected_status": "ALTERNATIVE_PROPOSED",
+    "expected_indicator_id": 3702,
+    "rationale": "ODS 11: Impacto humano directo de siniestros y emergencias naturales."
+  },
+  {
+    "id": "SCALE_085",
+    "area": "Objetivos de Desarrollo Sostenible (ODS)",
+    "query": "Número de muertes causadas por los desastres en Chile 2020",
+    "expected_status": "RESOLVED",
+    "expected_indicator_id": 3703,
+    "rationale": "ODS 1.5: Mortalidad atribuida a eventos extremos y desastres climáticos."
+  },
+  {
+    "id": "SCALE_086",
+    "area": "Trampas Adversarias y Alcance Fuera de LAC",
+    "query": "Tasa de desempleo en Francia en 2022",
+    "expected_status": "ABSTAINED",
+    "expected_indicator_id": null,
+    "forbidden_indicator_id": 127,
+    "expected_reason": "LOW_CONCEPTUAL_RELEVANCE",
+    "rationale": "Francia no pertenece al mandato geográfico de CEPALSTAT."
+  },
+  {
+    "id": "SCALE_087",
+    "area": "Trampas Adversarias y Alcance Fuera de LAC",
+    "query": "Inflación anual en España en 2021",
+    "expected_status": "ABSTAINED",
+    "expected_indicator_id": null,
+    "forbidden_indicator_id": 2484,
+    "expected_reason": "LOW_CONCEPTUAL_RELEVANCE",
+    "rationale": "España está fuera de la cobertura geográfica regional de CEPALSTAT."
+  },
+  {
+    "id": "SCALE_088",
+    "area": "Trampas Adversarias y Alcance Fuera de LAC",
+    "query": "Producto interno bruto de Alemania en 2020",
+    "expected_status": "ABSTAINED",
+    "expected_indicator_id": null,
+    "forbidden_indicator_id": 2206,
+    "expected_reason": "LOW_CONCEPTUAL_RELEVANCE",
+    "rationale": "Alemania es país europeo fuera de América Latina y el Caribe."
+  },
+  {
+    "id": "SCALE_089",
+    "area": "Trampas Adversarias y Alcance Fuera de LAC",
+    "query": "Pobreza extrema en Estados Unidos en 2021",
+    "expected_status": "ABSTAINED",
+    "expected_indicator_id": null,
+    "forbidden_indicator_id": 3328,
+    "expected_reason": "LOW_CONCEPTUAL_RELEVANCE",
+    "rationale": "Estados Unidos no forma parte del catálogo BADEHOG de CEPALSTAT."
+  },
+  {
+    "id": "SCALE_090",
+    "area": "Trampas Adversarias y Alcance Fuera de LAC",
+    "query": "Emisiones de dióxido de carbono en China en 2020",
+    "expected_status": "ABSTAINED",
+    "expected_indicator_id": null,
+    "forbidden_indicator_id": 5649,
+    "expected_reason": "LOW_CONCEPTUAL_RELEVANCE",
+    "rationale": "China no se encuentra dentro del alcance de países reportados."
+  },
+  {
+    "id": "SCALE_091",
+    "area": "Trampas Adversarias y Alcance Fuera de LAC",
+    "query": "Población total de Japón en 2022",
+    "expected_status": "ABSTAINED",
+    "expected_indicator_id": null,
+    "forbidden_indicator_id": 4788,
+    "expected_reason": "LOW_CONCEPTUAL_RELEVANCE",
+    "rationale": "Japón está fuera del ámbito geográfico de proyecciones demográficas CELADE."
+  },
+  {
+    "id": "SCALE_092",
+    "area": "Trampas Adversarias y Alcance Fuera de LAC",
+    "query": "Balanza comercial de Italia en 2020",
+    "expected_status": "ABSTAINED",
+    "expected_indicator_id": null,
+    "forbidden_indicator_id": 740,
+    "expected_reason": "LOW_CONCEPTUAL_RELEVANCE",
+    "rationale": "Italia se encuentra fuera del mandato institucional de la CEPAL."
+  },
+  {
+    "id": "SCALE_093",
+    "area": "Trampas Adversarias y Alcance Fuera de LAC",
+    "query": "Gasto público en educación en Canadá en 2020",
+    "expected_status": "ABSTAINED",
+    "expected_indicator_id": null,
+    "forbidden_indicator_id": 460,
+    "expected_reason": "LOW_CONCEPTUAL_RELEVANCE",
+    "rationale": "Canadá está fuera del alcance de indicadores sociales de CEPALSTAT."
+  },
+  {
+    "id": "SCALE_094",
+    "area": "Trampas Adversarias y Alcance Fuera de LAC",
+    "query": "Precio spot del bitcoin en El Salvador 2023",
+    "expected_status": "ABSTAINED",
+    "expected_indicator_id": null,
+    "forbidden_indicator_id": null,
+    "expected_reason": "UNSUPPORTED_COMMODITY",
+    "rationale": "Criptoactivos no regulados fuera del catálogo macroeconómico oficial."
+  },
+  {
+    "id": "SCALE_095",
+    "area": "Trampas Adversarias y Alcance Fuera de LAC",
+    "query": "Goles anotados en el torneo nacional de fútbol en Chile 2022",
+    "expected_status": "ABSTAINED",
+    "expected_indicator_id": null,
+    "forbidden_indicator_id": null,
+    "expected_reason": "LOW_CONCEPTUAL_RELEVANCE",
+    "rationale": "Estadística deportiva fuera del mandato estadístico regional."
+  },
+  {
+    "id": "SCALE_096",
+    "area": "Trampas Adversarias y Alcance Fuera de LAC",
+    "query": "Horóscopo y compatibilidad zodiacal en Argentina 2021",
+    "expected_status": "ABSTAINED",
+    "expected_indicator_id": null,
+    "forbidden_indicator_id": null,
+    "expected_reason": "LOW_CONCEPTUAL_RELEVANCE",
+    "rationale": "Concepto pseudocientífico carente de cobertura estadística."
+  },
+  {
+    "id": "SCALE_097",
+    "area": "Trampas Adversarias y Alcance Fuera de LAC",
+    "query": "Premios cinematográficos Oscar ganados por directores de México 2020",
+    "expected_status": "ABSTAINED",
+    "expected_indicator_id": null,
+    "forbidden_indicator_id": null,
+    "expected_reason": "LOW_CONCEPTUAL_RELEVANCE",
+    "rationale": "Eventos de entretenimiento fuera del alcance temático de CEPAL."
+  },
+  {
+    "id": "SCALE_098",
+    "area": "Trampas Adversarias y Alcance Fuera de LAC",
+    "query": "Partidas ganadas en torneos de ajedrez en Colombia 2021",
+    "expected_status": "ABSTAINED",
+    "expected_indicator_id": null,
+    "forbidden_indicator_id": null,
+    "expected_reason": "LOW_CONCEPTUAL_RELEVANCE",
+    "rationale": "Métrica lúdica fuera del alcance socioeconómico de la ONU."
+  },
+  {
+    "id": "SCALE_099",
+    "area": "Trampas Adversarias y Alcance Fuera de LAC",
+    "query": "Computación cuántica y cúbits superconductores en Brasil 2022",
+    "expected_status": "ABSTAINED",
+    "expected_indicator_id": null,
+    "forbidden_indicator_id": null,
+    "expected_reason": "LOW_CONCEPTUAL_RELEVANCE",
+    "rationale": "Concepto de física fundamental no cubierto en indicadores TIC de CEPALSTAT."
+  },
+  {
+    "id": "SCALE_100",
+    "area": "Trampas Adversarias y Alcance Fuera de LAC",
+    "query": "Demanda Máxima de potencia en Chile 2021",
+    "expected_status": "ABSTAINED",
+    "expected_indicator_id": null,
+    "forbidden_indicator_id": 4718,
+    "expected_reason": "LOW_CONCEPTUAL_RELEVANCE",
+    "rationale": "La serie 4718 está restringida estrictamente a Centroamérica y República Dominicana."
+  }
+]

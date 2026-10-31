@@ -96,20 +96,27 @@ def _is_token_covered_by_indicator(
     if not token_norm:
         return True
 
-    texts: list[str] = [indicator_meta.name, str(indicator_meta.concept)]
-    if hasattr(indicator_meta, "unit") and indicator_meta.unit:
-        texts.append(str(indicator_meta.unit))
-    if hasattr(indicator_meta, "supported_facets") and indicator_meta.supported_facets:
-        texts.extend(str(f) for f in indicator_meta.supported_facets)
-    if dims:
-        for d in dims:
-            texts.append(str(d.name))
-            if hasattr(d, "members") and d.members:
-                for m in d.members:
-                    texts.append(str(m.name))
+    words = getattr(indicator_meta, "_cached_words", None)
+    word_stems = getattr(indicator_meta, "_cached_word_stems", None)
+    if words is None:
+        texts: list[str] = [indicator_meta.name, str(indicator_meta.concept)]
+        if hasattr(indicator_meta, "unit") and indicator_meta.unit:
+            texts.append(str(indicator_meta.unit))
+        if hasattr(indicator_meta, "supported_facets") and indicator_meta.supported_facets:
+            texts.extend(str(f) for f in indicator_meta.supported_facets)
+        if dims:
+            for d in dims:
+                texts.append(str(d.name))
+                if hasattr(d, "members") and d.members:
+                    for m in d.members:
+                        texts.append(str(m.name))
 
-    combined = strip_accents(" ".join(texts)).lower()
-    words = set(re.findall(r"\b[a-z0-9_]+\b", combined))
+        combined = strip_accents(" ".join(texts)).lower()
+        words = set(re.findall(r"\b[a-z0-9_]+\b", combined))
+        try:
+            indicator_meta._cached_words = words
+        except Exception:
+            pass
 
     if token_norm in words:
         return True
@@ -137,7 +144,12 @@ def _is_token_covered_by_indicator(
         raw_syn_stems = set(synonym_stem_map.get(token_norm, ())) | set(synonym_stem_map.get(token_stem, ()))
         syn_stems = {s for s in raw_syn_stems if len(s) > 2 and s not in SPANISH_STOPWORDS}
         if syn_stems:
-            word_stems = {_stem_spanish(w) for w in words if w not in SPANISH_STOPWORDS and len(w) > 2}
+            if word_stems is None:
+                word_stems = {_stem_spanish(w) for w in words if w not in SPANISH_STOPWORDS and len(w) > 2}
+                try:
+                    indicator_meta._cached_word_stems = word_stems
+                except Exception:
+                    pass
             if syn_stems.intersection(word_stems):
                 return True
 
@@ -157,6 +169,9 @@ class SemanticResolutionEngine:
         store: CatalogStore | None = None,
         enable_tier2_catalog: bool | None = None,
     ):
+        if store is None and catalog_profile == "full_catalog":
+            from unofficial_cepalstat_mcp.catalog.store import CatalogStore
+            store = CatalogStore()
         self.catalog_profile = catalog_profile
         self.ontology = ontology or DEFAULT_FACET_ONTOLOGY
         self.parser = parser or QueryParser(catalog_profile=catalog_profile, ontology=self.ontology)
