@@ -27,8 +27,8 @@ EXPECTED_25_INDICATORS = {
         "measure_type": "INDICE_FEMINIDAD",
         "unit": "razón",
     },
-    3340: {
-        "name": "Distribución del ingreso de los hogares por quintiles y deciles",
+    3324: {
+        "name": "Distribución del ingreso de las personas, por quintiles y área",
         "measure_type": "DISTRIBUCION_INGRESO",
         "unit": "%",
     },
@@ -37,84 +37,84 @@ EXPECTED_25_INDICATORS = {
         "measure_type": "TASA_DESOCUPACION",
         "unit": "%",
     },
-    3331: {
-        "name": "Tasa de desempleo juvenil de 15 a 24 años",
+    5097: {
+        "name": "Tasa de desempleo, por sexo y edad - 19ª CIET (%)",
         "measure_type": "TASA_DESOCUPACION",
         "unit": "%",
     },
-    128: {
-        "name": "Índice del salario medio real",
+    341: {
+        "name": "Salario medio real anual",
         "measure_type": "INDICE_REAL",
         "unit": "índice 2018=100",
     },
-    3337: {
+    340: {
         "name": "Salario mínimo real",
         "measure_type": "INDICE_REAL",
         "unit": "índice 2018=100",
     },
-    3339: {
-        "name": "Ingreso laboral medio de la población ocupada por sexo y área",
+    2287: {
+        "name": "Ingreso medio de la población ocupada, por sexo e inserción laboral",
         "measure_type": "MONTO_MONEDA_LOCAL",
         "unit": "moneda local",
     },
-    3345: {
-        "name": "Ingreso medio per cápita de los hogares",
+    2198: {
+        "name": "Ingresos y gastos de los hogares a precios corrientes en moneda nacional",
         "measure_type": "MONTO_MONEDA_LOCAL",
         "unit": "moneda local",
     },
-    729: {
-        "name": "Producto interno bruto total anual a precios constantes",
-        "measure_type": "MONTO_MONEDA_LOCAL",
-        "unit": "millones moneda nacional",
+    2204: {
+        "name": "Producto interno bruto (PIB) total anual a precios constantes en dólares",
+        "measure_type": "VOLUMEN_REAL",
+        "unit": "Millones de USD constantes",
     },
-    730: {
-        "name": "Producto interno bruto per cápita a precios constantes",
-        "measure_type": "USD_PER_CAPITA",
-        "unit": "USD",
+    2206: {
+        "name": "Producto interno bruto (PIB) total anual por habitante a precios constantes en dólares",
+        "measure_type": "VOLUMEN_REAL_PER_CAPITA",
+        "unit": "USD constantes por habitante",
     },
-    731: {
-        "name": "Producto interno bruto trimestral a precios constantes",
+    286: {
+        "name": "Producto interno bruto trimestral por tipo del gasto a precios constantes en moneda nacional",
+        "measure_type": "VOLUMEN_REAL_TRIMESTRAL",
+        "unit": "Millones de moneda nacional",
+    },
+    2484: {
+        "name": "Tasa de crecimiento anual del índice de precios al consumidor: diciembre a diciembre",
         "measure_type": "TASA_VARIACION_INTERANUAL",
         "unit": "%",
     },
-    2928: {
-        "name": "Índice de precios al consumidor (IPC) general",
-        "measure_type": "INDICE_PRECIOS",
-        "unit": "índice 2018=100",
-    },
     2929: {
-        "name": "Índice de precios al consumidor de alimentos y bebidas",
-        "measure_type": "INDICE_PRECIOS",
-        "unit": "índice 2018=100",
+        "name": "Tasa de crecimiento anual del índice de precios al consumidor alimentos: diciembre a diciembre",
+        "measure_type": "TASA_VARIACION_INTERANUAL",
+        "unit": "%",
     },
-    2930: {
-        "name": "Índice de precios al consumidor de transporte y energía",
+    365: {
+        "name": "Índice de precios al consumidor general",
         "measure_type": "INDICE_PRECIOS",
-        "unit": "índice 2018=100",
+        "unit": "Índice base",
     },
     1240: {
         "name": "Saldo de la deuda pública del gobierno central en porcentaje del PIB",
         "measure_type": "PORCENTAJE_PIB",
         "unit": "%",
     },
-    1241: {
-        "name": "Balance primario del gobierno central en porcentaje del PIB",
+    1246: {
+        "name": "Operaciones del gobierno (clasificación económica), en porcentajes del PIB",
         "measure_type": "PORCENTAJE_PIB",
         "unit": "%",
     },
-    1242: {
-        "name": "Ingresos tributarios del gobierno central en porcentaje del PIB",
+    821: {
+        "name": "Ingresos tributarios por tipo de impuestos en porcentajes del PIB",
         "measure_type": "PORCENTAJE_PIB",
         "unit": "%",
     },
-    1243: {
-        "name": "Saldo en cuenta corriente de la balanza de pagos en porcentaje del PIB",
+    740: {
+        "name": "Saldo en cuenta corriente como porcentaje del PIB",
         "measure_type": "PORCENTAJE_PIB",
         "unit": "%",
     },
-    1244: {
-        "name": "Términos de intercambio de bienes FOB/CIF",
-        "measure_type": "INDICE_PRECIOS",
+    883: {
+        "name": "Índices de la relación de precios del intercambio y poder de compra de las exportaciones",
+        "measure_type": "INDICE_PRECIOS_RELATIVOS",
         "unit": "índice 2018=100",
     },
     5681: {
@@ -127,8 +127,8 @@ EXPECTED_25_INDICATORS = {
         "measure_type": "VOLUMEN_EMISIONES",
         "unit": "Mt CO2 eq",
     },
-    5683: {
-        "name": "Participación de energías renovables en la generación eléctrica",
+    3154: {
+        "name": "Proporción de energía renovable en la oferta de energía primaria",
         "measure_type": "PORCENTAJE_GENERACION",
         "unit": "%",
     },
@@ -138,15 +138,15 @@ EXPECTED_TYPED_RELATIONSHIPS = [
     (3328, 3341, RelationshipType.BREAKDOWN_OF),
     (3341, 3330, RelationshipType.ALTERNATIVE_MEASURE),
     (3328, 3329, RelationshipType.ALTERNATIVE_MEASURE),
-    (128, 3339, RelationshipType.BREAKDOWN_OF),
-    (128, 3337, RelationshipType.ALTERNATIVE_MEASURE),
-    (128, 3345, RelationshipType.ALTERNATIVE_MEASURE),
-    (729, 730, RelationshipType.BREAKDOWN_OF),
-    (729, 731, RelationshipType.ALTERNATIVE_MEASURE),
-    (2928, 2929, RelationshipType.BREAKDOWN_OF),
-    (2928, 2930, RelationshipType.BREAKDOWN_OF),
-    (1240, 1241, RelationshipType.ALTERNATIVE_MEASURE),
-    (1240, 1242, RelationshipType.ALTERNATIVE_MEASURE),
+    (341, 2287, RelationshipType.BREAKDOWN_OF),
+    (341, 340, RelationshipType.ALTERNATIVE_MEASURE),
+    (341, 2198, RelationshipType.ALTERNATIVE_MEASURE),
+    (2204, 2206, RelationshipType.BREAKDOWN_OF),
+    (2204, 286, RelationshipType.ALTERNATIVE_MEASURE),
+    (2484, 2929, RelationshipType.BREAKDOWN_OF),
+    (2484, 365, RelationshipType.BREAKDOWN_OF),
+    (1240, 1246, RelationshipType.ALTERNATIVE_MEASURE),
+    (1240, 821, RelationshipType.ALTERNATIVE_MEASURE),
     (5681, 5682, RelationshipType.ALTERNATIVE_MEASURE),
 ]
 
@@ -176,26 +176,26 @@ def test_registry_typed_relationships_and_targets():
     alts_3328 = registry.get_target_indicators(3328, "alternative_measure")
     assert 3329 in alts_3328
 
-    swaps_salary = registry.get_target_indicators(128, "breakdown_of")
-    assert 3339 in swaps_salary
+    swaps_salary = registry.get_target_indicators(341, "breakdown_of")
+    assert 2287 in swaps_salary
 
-    alts_salary = registry.get_target_indicators(128, "alternative_measure")
-    assert 3337 in alts_salary
-    assert 3345 in alts_salary
+    alts_salary = registry.get_target_indicators(341, "alternative_measure")
+    assert 340 in alts_salary
+    assert 2198 in alts_salary
 
-    swaps_gdp = registry.get_target_indicators(729, "breakdown_of")
-    assert 730 in swaps_gdp
+    swaps_gdp = registry.get_target_indicators(2204, "breakdown_of")
+    assert 2206 in swaps_gdp
 
-    alts_gdp = registry.get_target_indicators(729, "alternative_measure")
-    assert 731 in alts_gdp
+    alts_gdp = registry.get_target_indicators(2204, "alternative_measure")
+    assert 286 in alts_gdp
 
-    swaps_cpi = registry.get_target_indicators(2928, "breakdown_of")
+    swaps_cpi = registry.get_target_indicators(2484, "breakdown_of")
     assert 2929 in swaps_cpi
-    assert 2930 in swaps_cpi
+    assert 365 in swaps_cpi
 
     alts_fiscal = registry.get_target_indicators(1240, "alternative_measure")
-    assert 1241 in alts_fiscal
-    assert 1242 in alts_fiscal
+    assert 1246 in alts_fiscal
+    assert 821 in alts_fiscal
 
     alts_env = registry.get_target_indicators(5681, "alternative_measure")
     assert 5682 in alts_env
@@ -229,8 +229,8 @@ def test_catalog_store_persists_25_indicators_and_relationships(tmp_path: Path):
     assert store_rels_3328.get(3341) == "breakdown_of"
     assert store_rels_3328.get(3329) == "alternative_measure"
 
-    store_swaps_128 = store.get_target_indicators(128, "breakdown_of")
-    assert 3339 in store_swaps_128
+    store_swaps_341 = store.get_target_indicators(341, "breakdown_of")
+    assert 2287 in store_swaps_341
 
     # Test querying dimensions through store
     dims_3341 = registry.get_dimensions(3341)

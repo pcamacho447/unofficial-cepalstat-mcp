@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING, Any
 from unofficial_cepalstat_mcp.dimensions import Dimension, Member
 from unofficial_cepalstat_mcp.semantic.facet_ontology import DEFAULT_FACET_ONTOLOGY, FacetOntology
 from unofficial_cepalstat_mcp.semantic.models import (
+    AppliedDimensionFilter,
     MeasureType,
     RelationshipType,
     TemporalAvailabilityStatus,
@@ -29,6 +30,7 @@ class IndicatorMetadata:
         unit: str,
         supported_facets: set[str],
         relationships: dict[int, RelationshipType] | None = None,
+        mandatory_filters: tuple[AppliedDimensionFilter, ...] = (),
     ):
         self.indicator_id = indicator_id
         self.name = name
@@ -37,6 +39,7 @@ class IndicatorMetadata:
         self.unit = unit
         self.supported_facets = supported_facets
         self.relationships = relationships or {}
+        self.mandatory_filters = mandatory_filters
 
 
 # Default official dimensions and members for the core 25 indicators
@@ -137,7 +140,7 @@ DEFAULT_OFFICIAL_DIMENSIONS: dict[int, list[Dimension]] = {
             members=[Member(id=266, name="Mujeres")],
         ),
     ],
-    3340: [
+    3324: [
         Dimension(
             id=326,
             name="Área geográfica",
@@ -152,14 +155,34 @@ DEFAULT_OFFICIAL_DIMENSIONS: dict[int, list[Dimension]] = {
                 Member(id=603, name="Tercer quintil"),
                 Member(id=604, name="Cuarto quintil"),
                 Member(id=605, name="Quinto quintil"),
-                Member(id=610, name="Primer decil"),
-                Member(id=611, name="Décimo decil"),
-                Member(id=612, name="Deciles"),
                 Member(id=613, name="Relación quintil 5 / quintil 1"),
             ],
         ),
     ],
-    3339: [
+    3390: [
+        Dimension(
+            id=326,
+            name="Área geográfica",
+            members=[Member(id=327, name="Nacional"), Member(id=330, name="Urbano"), Member(id=331, name="Rural")],
+        ),
+        Dimension(
+            id=600,
+            name="Estrato de ingreso",
+            members=[
+                Member(id=610, name="Primer decil"),
+                Member(id=611, name="Décimo decil"),
+                Member(id=612, name="Deciles"),
+            ],
+        ),
+    ],
+    3295: [
+        Dimension(
+            id=326,
+            name="Área geográfica",
+            members=[Member(id=327, name="Nacional"), Member(id=330, name="Urbano"), Member(id=331, name="Rural")],
+        ),
+    ],
+    2287: [
         Dimension(
             id=144,
             name="Sexo__ESTANDAR",
@@ -171,14 +194,8 @@ DEFAULT_OFFICIAL_DIMENSIONS: dict[int, list[Dimension]] = {
             members=[Member(id=327, name="Nacional"), Member(id=330, name="Urbano"), Member(id=331, name="Rural")],
         ),
     ],
-    3345: [
-        Dimension(
-            id=326,
-            name="Área geográfica",
-            members=[Member(id=327, name="Nacional"), Member(id=330, name="Urbano"), Member(id=331, name="Rural")],
-        ),
-    ],
-    2928: [
+    2198: [],
+    2484: [
         Dimension(
             id=700,
             name="Rubro de gasto",
@@ -192,11 +209,16 @@ DEFAULT_OFFICIAL_DIMENSIONS: dict[int, list[Dimension]] = {
             members=[Member(id=79578, name="Alimentos y bebidas no alcohólicas")],
         ),
     ],
-    2930: [
+    28: [
         Dimension(
-            id=79565,
-            name="Canasta de bienes",
-            members=[Member(id=79580, name="Transporte y energía")],
+            id=144,
+            name="Sexo__ESTANDAR",
+            members=[Member(id=146, name="Ambos sexos"), Member(id=265, name="Hombres"), Member(id=266, name="Mujeres")],
+        ),
+        Dimension(
+            id=326,
+            name="Área geográfica",
+            members=[Member(id=327, name="Nacional"), Member(id=330, name="Urbano"), Member(id=331, name="Rural")],
         ),
     ],
     4788: [
@@ -236,6 +258,11 @@ DEFAULT_OFFICIAL_DIMENSIONS: dict[int, list[Dimension]] = {
             name="Area Geografica",
             members=[Member(id=48529, name="Total"), Member(id=48526, name="Urbano"), Member(id=48528, name="Rural")],
         ),
+        Dimension(
+            id=78149,
+            name="Condición Indígena",
+            members=[Member(id=78150, name="Indígena"), Member(id=78152, name="No Indígena"), Member(id=78154, name="Total")],
+        ),
     ],
     4639: [
         Dimension(
@@ -271,27 +298,6 @@ DEFAULT_OFFICIAL_DIMENSIONS: dict[int, list[Dimension]] = {
             id=144,
             name="Sexo__ESTANDAR",
             members=[Member(id=146, name="Ambos sexos"), Member(id=265, name="Hombres"), Member(id=266, name="Mujeres")],
-        ),
-    ],
-    3331: [
-        Dimension(
-            id=144,
-            name="Sexo__ESTANDAR",
-            members=[Member(id=146, name="Ambos sexos"), Member(id=265, name="Hombres"), Member(id=266, name="Mujeres")],
-        ),
-        Dimension(
-            id=43054,
-            name="Grupo de edad",
-            members=[
-                Member(id=43058, name="15 a 24 años"),
-            ],
-        ),
-    ],
-    3337: [
-        Dimension(
-            id=326,
-            name="Área geográfica",
-            members=[Member(id=327, name="Nacional"), Member(id=330, name="Urbano"), Member(id=331, name="Rural")],
         ),
     ],
     5097: [
@@ -333,7 +339,12 @@ DEFAULT_OFFICIAL_DIMENSIONS: dict[int, list[Dimension]] = {
         Dimension(
             id=29281,
             name="Rubro",
-            members=[Member(id=29282, name="General"), Member(id=29283, name="Salud")],
+            members=[
+                Member(id=29282, name="General"),
+                Member(id=29283, name="Salud"),
+                Member(id=29284, name="Transporte"),
+                Member(id=29285, name="Vivienda y energía"),
+            ],
         ),
     ],
     1684: [
@@ -343,7 +354,7 @@ DEFAULT_OFFICIAL_DIMENSIONS: dict[int, list[Dimension]] = {
             members=[Member(id=79578, name="Alimentos y bebidas no alcohólicas")],
         ),
     ],
-    3344: [
+    2288: [
         Dimension(
             id=144,
             name="Sexo__ESTANDAR",
@@ -353,17 +364,97 @@ DEFAULT_OFFICIAL_DIMENSIONS: dict[int, list[Dimension]] = {
             id=43054,
             name="Grupo de edad",
             members=[
-                Member(id=43059, name="0 a 14 años"),
                 Member(id=43058, name="15 a 24 años"),
                 Member(id=43060, name="65 años y más"),
             ],
         ),
+        Dimension(
+            id=326,
+            name="Área geográfica",
+            members=[Member(id=327, name="Nacional"), Member(id=330, name="Urbano"), Member(id=331, name="Rural")],
+        ),
     ],
-    3333: [
+    5698: [
         Dimension(
             id=144,
             name="Sexo__ESTANDAR",
             members=[Member(id=146, name="Ambos sexos"), Member(id=265, name="Hombres"), Member(id=266, name="Mujeres")],
+        ),
+        Dimension(
+            id=43039,
+            name="Tipo de etnia",
+            members=[
+                Member(id=43040, name="Total"),
+                Member(id=43044, name="Afrodescendiente"),
+                Member(id=77477, name="Indígena"),
+                Member(id=43043, name="No indígena ni afrodescendiente"),
+            ],
+        ),
+        Dimension(
+            id=326,
+            name="Área geográfica",
+            members=[Member(id=327, name="Nacional"), Member(id=330, name="Urbano"), Member(id=331, name="Rural")],
+        ),
+    ],
+    1246: [
+        Dimension(
+            id=12461,
+            name="Rubro",
+            members=[Member(id=12462, name="Resultado primario")],
+        ),
+    ],
+    883: [
+        Dimension(
+            id=8831,
+            name="Rubro",
+            members=[Member(id=8832, name="Relación de precios del intercambio de bienes")],
+        ),
+    ],
+    2050: [
+        Dimension(
+            id=20501,
+            name="Rubro",
+            members=[Member(id=20502, name="Balanza de bienes")],
+        ),
+    ],
+    286: [
+        Dimension(
+            id=2861,
+            name="Rubro",
+            members=[Member(id=2862, name="Producto interno bruto (Total)")],
+        ),
+    ],
+    2193: [
+        Dimension(
+            id=21931,
+            name="Rubro",
+            members=[Member(id=21932, name="Producto interno bruto (Total)")],
+        ),
+    ],
+    4410: [
+        Dimension(
+            id=44101,
+            name="Función",
+            members=[
+                Member(id=44102, name="Total gasto social"),
+                Member(id=44103, name="Salud"),
+                Member(id=44104, name="Educación"),
+                Member(id=44105, name="Protección social"),
+            ],
+        ),
+    ],
+    4185: [
+        Dimension(
+            id=41851,
+            name="Sector",
+            members=[Member(id=41852, name="Total extracción de agua")],
+        ),
+    ],
+    821: [
+        Dimension(
+            id=8211,
+            name="Rubro",
+            members=[Member(id=8212, name="Total ingresos tributarios")],
         ),
     ],
     4145: [],
@@ -384,34 +475,9 @@ SYNTHETIC_DIMENSION_MEMBER_IDS: frozenset[int] = frozenset({
     79578, 79580,
 })
 
-# Mapping from synthetic/placeholder official_25 indicator IDs to real CEPALSTAT master_indicators IDs
-EMPIRICAL_INDICATOR_ID_MAP: dict[int, int] = {
-    2928: 2484,  # Tasa de crecimiento anual del índice de precios al consumidor: diciembre a diciembre
-    2930: 4145,  # Tasa de crecimiento anual del índice de precios al consumidor subyacente: diciembre a diciembre
-    4145: 4145,  # Tasa de crecimiento anual del índice de precios al consumidor subyacente: diciembre a diciembre
-    845: 845,    # Ingresos tributarios en moneda nacional a precios corrientes
-    729: 2204,   # Producto interno bruto (PIB) total anual a precios constantes en dólares
-    730: 2206,   # Producto interno bruto (PIB) total anual por habitante a precios constantes en dólares
-    731: 286,    # Producto interno bruto trimestral por tipo del gasto a precios constantes
-    2447: 286,   # Producto interno bruto trimestral
-    3331: 5097,  # Tasa de desempleo, por sexo y edad - 19ª CIET (%)
-    3344: 5097,  # Tasa de desocupación según sexo y edad
-    128: 341,    # Salario medio real anual
-    3337: 340,   # Salario mínimo real
-    3339: 2287,  # Ingreso medio de la población ocupada, por sexo e inserción laboral
-    3345: 5698,  # Ingreso medio de la población ocupada, por sexo, autoidentificación étnico-racial y área
-    3340: 3390,  # Distribución del ingreso de los hogares, por deciles y área
-    1241: 1246,  # Operaciones del gobierno (clasificación económica), en porcentajes del PIB
-    1242: 821,   # Ingresos tributarios por tipo de impuestos en porcentajes del PIB
-    1243: 740,   # Saldo en cuenta corriente como porcentaje del producto interno bruto
-    1244: 883,   # Índices de la relación de precios del intercambio y poder de compra de las exportaciones
-    5683: 3154,  # Proporción de energía renovable en la oferta de energía primaria
-    4406: 460,   # Gasto público en educación
-    1318: 3097,  # Porcentaje de población que utiliza fuentes mejoradas de abastecimiento de agua
-    3333: 2288,  # Relación del ingreso medio entre mujeres y hombres, por grupo de edad y área
-    2949: 2050,  # Balanza de pagos
-    2954: 883,   # Índices de la relación de precios del intercambio
-}
+# Mapping from synthetic/placeholder official_25 indicator IDs to real CEPALSTAT master_indicators IDs.
+# Post-migration, all indicators use real CEPALSTAT IDs directly (empty map for backward compatibility).
+EMPIRICAL_INDICATOR_ID_MAP: dict[int, int] = {}
 
 
 # Static registry for the 25 official indicators and vertical slice domain
@@ -429,7 +495,7 @@ VERTICAL_SLICE_INDICATORS: dict[int, IndicatorMetadata] = {
             3342: RelationshipType.BREAKDOWN_OF,
             3329: RelationshipType.ALTERNATIVE_MEASURE,
             3330: RelationshipType.ALTERNATIVE_MEASURE,
-            3337: RelationshipType.ALTERNATIVE_MEASURE,
+            340: RelationshipType.ALTERNATIVE_MEASURE,
             4322: RelationshipType.ALTERNATIVE_MEASURE,
         },
     ),
@@ -484,15 +550,44 @@ VERTICAL_SLICE_INDICATORS: dict[int, IndicatorMetadata] = {
             3341: RelationshipType.ALTERNATIVE_MEASURE,
         },
     ),
-    # 5. Distribución del ingreso
-    3340: IndicatorMetadata(
-        indicator_id=3340,
-        name="Distribución del ingreso de los hogares por quintiles y deciles",
+    # 5. Distribución del ingreso personas quintiles
+    3324: IndicatorMetadata(
+        indicator_id=3324,
+        name="Distribución del ingreso de las personas, por quintiles y área",
         concept="DISTRIBUCION_INGRESO",
         measure_type=MeasureType.DISTRIBUCION_INGRESO,
         unit="%",
-        supported_facets={"estrato", "quintil", "decil"},
-        relationships={},
+        supported_facets={"estrato", "quintil", "area"},
+        relationships={
+            3390: RelationshipType.BREAKDOWN_OF,
+            3295: RelationshipType.ALTERNATIVE_MEASURE,
+        },
+    ),
+    # 5b. Distribución del ingreso hogares deciles
+    3390: IndicatorMetadata(
+        indicator_id=3390,
+        name="Distribución del ingreso de los hogares, por deciles y área",
+        concept="DISTRIBUCION_INGRESO",
+        measure_type=MeasureType.DISTRIBUCION_INGRESO,
+        unit="%",
+        supported_facets={"estrato", "decil", "area"},
+        relationships={
+            3324: RelationshipType.BREAKDOWN_OF,
+            3295: RelationshipType.ALTERNATIVE_MEASURE,
+        },
+    ),
+    # 5c. Ratio Q5/Q1
+    3295: IndicatorMetadata(
+        indicator_id=3295,
+        name="Relación del ingreso medio del quintil 5 respecto al quintil 1",
+        concept="DISTRIBUCION_INGRESO",
+        measure_type=MeasureType.RATIO_RELATIVO,
+        unit="ratio",
+        supported_facets={"area"},
+        relationships={
+            3324: RelationshipType.ALTERNATIVE_MEASURE,
+            3390: RelationshipType.ALTERNATIVE_MEASURE,
+        },
     ),
     # 6. Tasa de desocupación por sexo
     127: IndicatorMetadata(
@@ -504,16 +599,14 @@ VERTICAL_SLICE_INDICATORS: dict[int, IndicatorMetadata] = {
         supported_facets={"sexo", "formalidad"},
         relationships={
             5097: RelationshipType.BREAKDOWN_OF,
-            3344: RelationshipType.BREAKDOWN_OF,
-            3331: RelationshipType.BREAKDOWN_OF,
             119: RelationshipType.ALTERNATIVE_MEASURE,
             340: RelationshipType.RELATED_CONCEPT,
         },
     ),
-    # 7. Desempleo juvenil
-    3331: IndicatorMetadata(
-        indicator_id=3331,
-        name="Tasa de desempleo juvenil de 15 a 24 años",
+    # 7. Desempleo juvenil 19ª CIET
+    5097: IndicatorMetadata(
+        indicator_id=5097,
+        name="Tasa de desempleo, por sexo y edad - 19ª CIET (%)",
         concept="DESEMPLEO_JUVENIL",
         measure_type=MeasureType.TASA_DESOCUPACION,
         unit="%",
@@ -523,130 +616,210 @@ VERTICAL_SLICE_INDICATORS: dict[int, IndicatorMetadata] = {
         },
     ),
     # 8. Salario medio real
-    128: IndicatorMetadata(
-        indicator_id=128,
-        name="Índice del salario medio real",
+    341: IndicatorMetadata(
+        indicator_id=341,
+        name="Salario medio real anual",
         concept="SALARIO_MEDIO",
         measure_type=MeasureType.INDICE_REAL,
         unit="índice 2018=100",
         supported_facets=set(),
         relationships={
-            3339: RelationshipType.BREAKDOWN_OF,
-            3337: RelationshipType.ALTERNATIVE_MEASURE,
-            3345: RelationshipType.ALTERNATIVE_MEASURE,
+            2287: RelationshipType.BREAKDOWN_OF,
+            340: RelationshipType.ALTERNATIVE_MEASURE,
+            2198: RelationshipType.ALTERNATIVE_MEASURE,
         },
     ),
     # 9. Salario mínimo real
-    3337: IndicatorMetadata(
-        indicator_id=3337,
+    340: IndicatorMetadata(
+        indicator_id=340,
         name="Salario mínimo real",
         concept="SALARIO_MINIMO",
         measure_type=MeasureType.INDICE_REAL,
         unit="índice 2018=100",
         supported_facets={"area", "edad"},
         relationships={
-            128: RelationshipType.ALTERNATIVE_MEASURE,
+            341: RelationshipType.ALTERNATIVE_MEASURE,
         },
     ),
-    # 10. Ingreso laboral medio
-    3339: IndicatorMetadata(
-        indicator_id=3339,
-        name="Ingreso laboral medio de la población ocupada por sexo y área",
+    # 10. Ingreso medio de la población ocupada
+    2287: IndicatorMetadata(
+        indicator_id=2287,
+        name="Ingreso medio de la población ocupada, por sexo e inserción laboral",
         concept="INGRESO_LABORAL",
         measure_type=MeasureType.MONTO_MONEDA_LOCAL,
         unit="moneda local",
-        supported_facets={"sexo", "area"},
+        supported_facets={"sexo", "area", "formalidad"},
         relationships={
-            128: RelationshipType.BREAKDOWN_OF,
+            341: RelationshipType.BREAKDOWN_OF,
+            5698: RelationshipType.BREAKDOWN_OF,
+            2288: RelationshipType.RELATED_CONCEPT,
         },
     ),
-    # 11. Ingreso medio per cápita hogares
-    3345: IndicatorMetadata(
-        indicator_id=3345,
-        name="Ingreso medio per cápita de los hogares",
+    # 11. Ingresos y gastos de los hogares
+    2198: IndicatorMetadata(
+        indicator_id=2198,
+        name="Ingresos y gastos de los hogares a precios corrientes en moneda nacional",
         concept="INGRESO_HOGARES",
         measure_type=MeasureType.MONTO_MONEDA_LOCAL,
         unit="moneda local",
-        supported_facets={"area"},
+        supported_facets=set(),
         relationships={
-            128: RelationshipType.ALTERNATIVE_MEASURE,
+            341: RelationshipType.ALTERNATIVE_MEASURE,
+            2287: RelationshipType.RELATED_CONCEPT,
         },
     ),
-    # 12. PIB total a precios constantes
-    729: IndicatorMetadata(
-        indicator_id=729,
-        name="Producto interno bruto total anual a precios constantes",
-        concept="PIB",
+    # 11b. Ingreso ocupados etnia/área
+    5698: IndicatorMetadata(
+        indicator_id=5698,
+        name="Ingreso medio de la población ocupada, por sexo, autoidentificación étnico-racial y área",
+        concept="INGRESO_LABORAL",
         measure_type=MeasureType.MONTO_MONEDA_LOCAL,
-        unit="millones moneda nacional",
-        supported_facets=set(),
+        unit="moneda local",
+        supported_facets={"sexo", "etnia", "area"},
         relationships={
-            730: RelationshipType.BREAKDOWN_OF,
-            731: RelationshipType.ALTERNATIVE_MEASURE,
+            2287: RelationshipType.BREAKDOWN_OF,
         },
     ),
-    # 13. PIB per cápita constante
-    730: IndicatorMetadata(
-        indicator_id=730,
-        name="Producto interno bruto per cápita a precios constantes",
+    # 11c. Brecha salarial mujeres/hombres
+    2288: IndicatorMetadata(
+        indicator_id=2288,
+        name="Relación del ingreso medio entre mujeres y hombres, por grupo de edad y área",
+        concept="BRECHA_SALARIAL",
+        measure_type=MeasureType.RATIO_RELATIVO,
+        unit="Ratio mujeres/hombres",
+        supported_facets={"sexo", "edad", "area"},
+        relationships={
+            340: RelationshipType.RELATED_CONCEPT,
+            2287: RelationshipType.RELATED_CONCEPT,
+        },
+    ),
+    # 12. PIB total anual a precios constantes USD
+    2204: IndicatorMetadata(
+        indicator_id=2204,
+        name="Producto interno bruto (PIB) total anual a precios constantes en dólares",
+        concept="PIB",
+        measure_type=MeasureType.VOLUMEN_REAL,
+        unit="Millones de USD constantes",
+        supported_facets=set(),
+        relationships={
+            2206: RelationshipType.BREAKDOWN_OF,
+            286: RelationshipType.ALTERNATIVE_MEASURE,
+            2203: RelationshipType.ALTERNATIVE_MEASURE,
+        },
+    ),
+    # 12b. PIB total anual a precios corrientes USD
+    2203: IndicatorMetadata(
+        indicator_id=2203,
+        name="Producto interno bruto (PIB) total anual a precios corrientes en dólares",
+        concept="PIB_CORRIENTE",
+        measure_type=MeasureType.VALOR_CORRIENTE,
+        unit="Millones de USD corrientes",
+        supported_facets=set(),
+        relationships={
+            2204: RelationshipType.ALTERNATIVE_MEASURE,
+            2193: RelationshipType.ALTERNATIVE_MEASURE,
+        },
+    ),
+    # 12c. PIB total anual a precios corrientes MN
+    2193: IndicatorMetadata(
+        indicator_id=2193,
+        name="Producto interno bruto anual (PIB) por objeto del gasto a precios corrientes en moneda nacional",
+        concept="PIB_CORRIENTE",
+        measure_type=MeasureType.VALOR_CORRIENTE,
+        unit="Millones de moneda nacional",
+        supported_facets={"rubro"},
+        relationships={
+            2203: RelationshipType.ALTERNATIVE_MEASURE,
+            2204: RelationshipType.ALTERNATIVE_MEASURE,
+        },
+        mandatory_filters=(
+            AppliedDimensionFilter(
+                dim_id=21931,
+                dim_name="Rubro",
+                member_id=21932,
+                member_name="Producto interno bruto (Total)",
+            ),
+        ),
+    ),
+    # 13. PIB per cápita constante USD
+    2206: IndicatorMetadata(
+        indicator_id=2206,
+        name="Producto interno bruto (PIB) total anual por habitante a precios constantes en dólares",
         concept="PIB_PER_CAPITA",
-        measure_type=MeasureType.USD_PER_CAPITA,
-        unit="USD",
+        measure_type=MeasureType.VOLUMEN_REAL_PER_CAPITA,
+        unit="USD constantes por habitante",
         supported_facets=set(),
         relationships={
-            729: RelationshipType.BREAKDOWN_OF,
+            2204: RelationshipType.BREAKDOWN_OF,
         },
     ),
-    # 14. PIB trimestral a precios constantes
-    731: IndicatorMetadata(
-        indicator_id=731,
-        name="Producto interno bruto trimestral a precios constantes",
+    # 14. PIB trimestral precios constantes MN
+    286: IndicatorMetadata(
+        indicator_id=286,
+        name="Producto interno bruto trimestral por tipo del gasto a precios constantes en moneda nacional",
         concept="PIB_TRIMESTRAL",
+        measure_type=MeasureType.VOLUMEN_REAL_TRIMESTRAL,
+        unit="Millones de moneda nacional",
+        supported_facets={"rubro"},
+        relationships={
+            2204: RelationshipType.ALTERNATIVE_MEASURE,
+        },
+        mandatory_filters=(
+            AppliedDimensionFilter(
+                dim_id=2861,
+                dim_name="Rubro",
+                member_id=2862,
+                member_name="Producto interno bruto (Total)",
+            ),
+        ),
+    ),
+    # 15. IPC general variación anual
+    2484: IndicatorMetadata(
+        indicator_id=2484,
+        name="Tasa de crecimiento anual del índice de precios al consumidor: diciembre a diciembre",
+        concept="IPC_GENERAL",
         measure_type=MeasureType.TASA_VARIACION_INTERANUAL,
         unit="%",
-        supported_facets=set(),
-        relationships={
-            729: RelationshipType.ALTERNATIVE_MEASURE,
-        },
-    ),
-    # 15. IPC general
-    2928: IndicatorMetadata(
-        indicator_id=2928,
-        name="Índice de precios al consumidor (IPC) general",
-        concept="IPC_GENERAL",
-        measure_type=MeasureType.INDICE_PRECIOS,
-        unit="índice 2018=100",
         supported_facets={"rubro"},
         relationships={
             2929: RelationshipType.BREAKDOWN_OF,
-            2930: RelationshipType.BREAKDOWN_OF,
+            365: RelationshipType.BREAKDOWN_OF,
+            4145: RelationshipType.ALTERNATIVE_MEASURE,
         },
     ),
-    # 16. IPC alimentos y bebidas
+    # 16. IPC alimentos variación anual
     2929: IndicatorMetadata(
         indicator_id=2929,
-        name="Índice de precios al consumidor de alimentos y bebidas",
+        name="Tasa de crecimiento anual del índice de precios al consumidor alimentos: diciembre a diciembre",
         concept="IPC_ALIMENTOS",
-        measure_type=MeasureType.INDICE_PRECIOS,
-        unit="índice 2018=100",
+        measure_type=MeasureType.TASA_VARIACION_INTERANUAL,
+        unit="%",
         supported_facets={"canasta"},
         relationships={
-            2928: RelationshipType.BREAKDOWN_OF,
-            365: RelationshipType.ALTERNATIVE_MEASURE,
+            2484: RelationshipType.BREAKDOWN_OF,
             1684: RelationshipType.ALTERNATIVE_MEASURE,
         },
     ),
-    # 17. IPC transporte y energía
-    2930: IndicatorMetadata(
-        indicator_id=2930,
-        name="Índice de precios al consumidor de transporte y energía",
-        concept="IPC_TRANSPORTE_ENERGIA",
+    # 17. IPC general y por división (nivel)
+    365: IndicatorMetadata(
+        indicator_id=365,
+        name="Índice de precios al consumidor general",
+        concept="IPC_GENERAL",
         measure_type=MeasureType.INDICE_PRECIOS,
-        unit="índice 2018=100",
-        supported_facets=set(),
+        unit="Índice base",
+        supported_facets={"rubro"},
         relationships={
-            2928: RelationshipType.BREAKDOWN_OF,
+            1684: RelationshipType.BREAKDOWN_OF,
+            2484: RelationshipType.ALTERNATIVE_MEASURE,
         },
+        mandatory_filters=(
+            AppliedDimensionFilter(
+                dim_id=29281,
+                dim_name="Rubro",
+                member_id=29282,
+                member_name="General",
+            ),
+        ),
     ),
     # 17b. IPC subyacente
     4145: IndicatorMetadata(
@@ -657,8 +830,20 @@ VERTICAL_SLICE_INDICATORS: dict[int, IndicatorMetadata] = {
         unit="%",
         supported_facets=set(),
         relationships={
-            2928: RelationshipType.ALTERNATIVE_MEASURE,
             2484: RelationshipType.ALTERNATIVE_MEASURE,
+        },
+    ),
+    # 17c. IPC alimentos nivel
+    1684: IndicatorMetadata(
+        indicator_id=1684,
+        name="Índice de precios al consumidor, alimentos y bebidas",
+        concept="IPC_ALIMENTOS",
+        measure_type=MeasureType.INDICE_PRECIOS,
+        unit="Índice base",
+        supported_facets={"canasta"},
+        relationships={
+            365: RelationshipType.BREAKDOWN_OF,
+            2929: RelationshipType.ALTERNATIVE_MEASURE,
         },
     ),
     # 18. Deuda pública % PIB
@@ -670,30 +855,38 @@ VERTICAL_SLICE_INDICATORS: dict[int, IndicatorMetadata] = {
         unit="%",
         supported_facets=set(),
         relationships={
-            1241: RelationshipType.ALTERNATIVE_MEASURE,
-            1242: RelationshipType.ALTERNATIVE_MEASURE,
+            1246: RelationshipType.ALTERNATIVE_MEASURE,
+            821: RelationshipType.ALTERNATIVE_MEASURE,
         },
     ),
     # 19. Balance primario % PIB
-    1241: IndicatorMetadata(
-        indicator_id=1241,
-        name="Balance primario del gobierno central en porcentaje del PIB",
+    1246: IndicatorMetadata(
+        indicator_id=1246,
+        name="Operaciones del gobierno (clasificación económica), en porcentajes del PIB",
         concept="BALANCE_PRIMARIO",
         measure_type=MeasureType.PORCENTAJE_PIB,
         unit="%",
-        supported_facets=set(),
+        supported_facets={"rubro"},
         relationships={
             1240: RelationshipType.ALTERNATIVE_MEASURE,
         },
+        mandatory_filters=(
+            AppliedDimensionFilter(
+                dim_id=12461,
+                dim_name="Rubro",
+                member_id=12462,
+                member_name="Resultado primario",
+            ),
+        ),
     ),
     # 20. Ingresos tributarios % PIB
-    1242: IndicatorMetadata(
-        indicator_id=1242,
-        name="Ingresos tributarios del gobierno central en porcentaje del PIB",
+    821: IndicatorMetadata(
+        indicator_id=821,
+        name="Ingresos tributarios por tipo de impuestos en porcentajes del PIB",
         concept="INGRESOS_TRIBUTARIOS",
         measure_type=MeasureType.PORCENTAJE_PIB,
         unit="%",
-        supported_facets=set(),
+        supported_facets={"rubro"},
         relationships={
             1240: RelationshipType.ALTERNATIVE_MEASURE,
             845: RelationshipType.ALTERNATIVE_MEASURE,
@@ -708,13 +901,13 @@ VERTICAL_SLICE_INDICATORS: dict[int, IndicatorMetadata] = {
         unit="moneda nacional",
         supported_facets=set(),
         relationships={
-            1242: RelationshipType.ALTERNATIVE_MEASURE,
+            821: RelationshipType.ALTERNATIVE_MEASURE,
         },
     ),
     # 21. Cuenta corriente % PIB
-    1243: IndicatorMetadata(
-        indicator_id=1243,
-        name="Saldo en cuenta corriente de la balanza de pagos en porcentaje del PIB",
+    740: IndicatorMetadata(
+        indicator_id=740,
+        name="Saldo en cuenta corriente como porcentaje del PIB",
         concept="CUENTA_CORRIENTE",
         measure_type=MeasureType.PORCENTAJE_PIB,
         unit="%",
@@ -722,14 +915,22 @@ VERTICAL_SLICE_INDICATORS: dict[int, IndicatorMetadata] = {
         relationships={},
     ),
     # 22. Términos de intercambio
-    1244: IndicatorMetadata(
-        indicator_id=1244,
-        name="Términos de intercambio de bienes FOB/CIF",
+    883: IndicatorMetadata(
+        indicator_id=883,
+        name="Índices de la relación de precios del intercambio y poder de compra de las exportaciones",
         concept="TERMINOS_INTERCAMBIO",
-        measure_type=MeasureType.INDICE_PRECIOS,
+        measure_type=MeasureType.INDICE_PRECIOS_RELATIVOS,
         unit="índice 2018=100",
-        supported_facets=set(),
+        supported_facets={"rubro"},
         relationships={},
+        mandatory_filters=(
+            AppliedDimensionFilter(
+                dim_id=8831,
+                dim_name="Rubro",
+                member_id=8832,
+                member_name="Relación de precios del intercambio de bienes",
+            ),
+        ),
     ),
     # 23. GEI con LULUCF
     5681: IndicatorMetadata(
@@ -756,27 +957,34 @@ VERTICAL_SLICE_INDICATORS: dict[int, IndicatorMetadata] = {
         },
     ),
     # 25. Energías renovables %
-    5683: IndicatorMetadata(
-        indicator_id=5683,
-        name="Participación de energías renovables en la generación eléctrica",
+    3154: IndicatorMetadata(
+        indicator_id=3154,
+        name="Proporción de energía renovable en la oferta de energía primaria",
         concept="ENERGIA_RENOVABLE",
         measure_type=MeasureType.PORCENTAJE_GENERACION,
         unit="%",
         supported_facets=set(),
         relationships={},
     ),
-    # Existing slice indicators preserved for backward compatibility
-    5097: IndicatorMetadata(
-        indicator_id=5097,
-        name="Tasa de desempleo, por sexo y edad - 19ª CIET (%)",
-        concept="EMPLEO",
-        measure_type=MeasureType.TASA_DESOCUPACION,
-        unit="%",
-        supported_facets={"sexo", "edad"},
-        relationships={
-            127: RelationshipType.BREAKDOWN_OF,
-        },
+    # Balanza comercial de bienes (FOB)
+    2050: IndicatorMetadata(
+        indicator_id=2050,
+        name="Balanza de pagos",
+        concept="BALANZA_COMERCIAL",
+        measure_type=MeasureType.SALDO_COMERCIAL,
+        unit="Millones de USD",
+        supported_facets={"rubro"},
+        relationships={},
+        mandatory_filters=(
+            AppliedDimensionFilter(
+                dim_id=20501,
+                dim_name="Rubro",
+                member_id=20502,
+                member_name="Balanza de bienes",
+            ),
+        ),
     ),
+    # Desocupación abierta urbana
     119: IndicatorMetadata(
         indicator_id=119,
         name="Tasa de desocupación abierta en el área urbana, por sexo y años de educación",
@@ -788,52 +996,7 @@ VERTICAL_SLICE_INDICATORS: dict[int, IndicatorMetadata] = {
             127: RelationshipType.ALTERNATIVE_MEASURE,
         },
     ),
-    2203: IndicatorMetadata(
-        indicator_id=2203,
-        name="Producto interno bruto (PIB) anual a precios constantes en dólares",
-        concept="PIB",
-        measure_type=MeasureType.VOLUMEN_REAL,
-        unit="Millones de USD constantes",
-        supported_facets=set(),
-        relationships={
-            2204: RelationshipType.ALTERNATIVE_MEASURE,
-        },
-    ),
-    2204: IndicatorMetadata(
-        indicator_id=2204,
-        name="Producto interno bruto (PIB) anual a precios corrientes en moneda nacional",
-        concept="PIB_CORRIENTE",
-        measure_type=MeasureType.VALOR_CORRIENTE,
-        unit="Moneda nacional corriente",
-        supported_facets=set(),
-        relationships={
-            2203: RelationshipType.ALTERNATIVE_MEASURE,
-        },
-    ),
-    2206: IndicatorMetadata(
-        indicator_id=2206,
-        name="Producto interno bruto (PIB) per cápita a precios constantes",
-        concept="PIB_PER_CAPITA",
-        measure_type=MeasureType.VOLUMEN_REAL_PER_CAPITA,
-        unit="USD constantes por habitante",
-        supported_facets=set(),
-    ),
-    2447: IndicatorMetadata(
-        indicator_id=2447,
-        name="Producto interno bruto (PIB) trimestral",
-        concept="PIB_TRIMESTRAL",
-        measure_type=MeasureType.VOLUMEN_REAL_TRIMESTRAL,
-        unit="Millones de USD constantes",
-        supported_facets=set(),
-    ),
-    340: IndicatorMetadata(
-        indicator_id=340,
-        name="Salario mínimo real",
-        concept="SALARIO",
-        measure_type=MeasureType.INDICE_REAL,
-        unit="Índice base 2018=100",
-        supported_facets={"area", "edad"},
-    ),
+    # Gini
     3289: IndicatorMetadata(
         indicator_id=3289,
         name="Índice de Gini de concentración del ingreso",
@@ -841,47 +1004,9 @@ VERTICAL_SLICE_INDICATORS: dict[int, IndicatorMetadata] = {
         measure_type=MeasureType.COEFICIENTE_CONCENTRACION,
         unit="Coeficiente (0 a 1)",
         supported_facets=set(),
+        relationships={},
     ),
-    365: IndicatorMetadata(
-        indicator_id=365,
-        name="Índice de precios al consumidor general",
-        concept="IPC_GENERAL",
-        measure_type=MeasureType.INDICE_PRECIOS,
-        unit="Índice base",
-        supported_facets={"rubro"},
-        relationships={
-            1684: RelationshipType.BREAKDOWN_OF,
-            2929: RelationshipType.ALTERNATIVE_MEASURE,
-        },
-    ),
-    1684: IndicatorMetadata(
-        indicator_id=1684,
-        name="Índice de precios al consumidor, alimentos y bebidas",
-        concept="IPC_ALIMENTOS",
-        measure_type=MeasureType.INDICE_PRECIOS,
-        unit="Índice base",
-        supported_facets={"canasta"},
-        relationships={
-            365: RelationshipType.BREAKDOWN_OF,
-            2929: RelationshipType.ALTERNATIVE_MEASURE,
-        },
-    ),
-    2949: IndicatorMetadata(
-        indicator_id=2949,
-        name="Balanza comercial de bienes",
-        concept="BALANZA_COMERCIAL",
-        measure_type=MeasureType.SALDO_COMERCIAL,
-        unit="Millones de USD",
-        supported_facets=set(),
-    ),
-    740: IndicatorMetadata(
-        indicator_id=740,
-        name="Saldo en cuenta corriente como porcentaje del PIB",
-        concept="CUENTA_CORRIENTE",
-        measure_type=MeasureType.PORCENTAJE_PIB,
-        unit="%",
-        supported_facets=set(),
-    ),
+    # IED
     4231: IndicatorMetadata(
         indicator_id=4231,
         name="Inversión extranjera directa entradas netas",
@@ -889,66 +1014,71 @@ VERTICAL_SLICE_INDICATORS: dict[int, IndicatorMetadata] = {
         measure_type=MeasureType.FLUJO_CAPITAL,
         unit="Millones de USD",
         supported_facets=set(),
+        relationships={},
     ),
-    2954: IndicatorMetadata(
-        indicator_id=2954,
-        name="Términos de intercambio de bienes",
-        concept="TERMINOS_INTERCAMBIO",
-        measure_type=MeasureType.INDICE_PRECIOS_RELATIVOS,
-        unit="Índice base",
-        supported_facets=set(),
-    ),
+    # Gasto social en moneda nacional (metodología SOCX)
     4405: IndicatorMetadata(
         indicator_id=4405,
-        name="Gasto social público total como porcentaje del PIB",
+        name="Gasto social público y privado (metodología SOCX), en moneda nacional",
+        concept="GASTO_SOCIAL",
+        measure_type=MeasureType.MONTO_MONEDA_LOCAL,
+        unit="moneda nacional",
+        supported_facets=set(),
+        relationships={
+            4410: RelationshipType.ALTERNATIVE_MEASURE,
+            460: RelationshipType.BREAKDOWN_OF,
+        },
+    ),
+    # Gasto público por función (COFOG) % PIB
+    4410: IndicatorMetadata(
+        indicator_id=4410,
+        name="Gasto público por función (clasificación COFOG), en porcentajes del PIB",
         concept="GASTO_SOCIAL",
         measure_type=MeasureType.PORCENTAJE_PIB,
         unit="%",
-        supported_facets=set(),
+        supported_facets={"funcion"},
         relationships={
-            4406: RelationshipType.BREAKDOWN_OF,
+            4405: RelationshipType.ALTERNATIVE_MEASURE,
+            460: RelationshipType.BREAKDOWN_OF,
         },
+        mandatory_filters=(
+            AppliedDimensionFilter(
+                dim_id=44101,
+                dim_name="Función",
+                member_id=44102,
+                member_name="Total gasto social",
+            ),
+        ),
     ),
-    4406: IndicatorMetadata(
-        indicator_id=4406,
+    # Gasto educación
+    460: IndicatorMetadata(
+        indicator_id=460,
         name="Gasto público en educación",
         concept="GASTO_EDUCACION",
         measure_type=MeasureType.PORCENTAJE_PIB,
         unit="%",
         supported_facets=set(),
         relationships={
-            4405: RelationshipType.BREAKDOWN_OF,
+            4410: RelationshipType.BREAKDOWN_OF,
         },
     ),
-    1318: IndicatorMetadata(
-        indicator_id=1318,
-        name="Extracción de agua dulce por habitante",
+    # Extracción de agua por sector
+    4185: IndicatorMetadata(
+        indicator_id=4185,
+        name="Extracción de agua, por sector",
         concept="AGUA_DULCE",
         measure_type=MeasureType.VOLUMEN_PER_CAPITA,
         unit="m3 por habitante",
-        supported_facets=set(),
-    ),
-    3344: IndicatorMetadata(
-        indicator_id=3344,
-        name="Tasa de desocupación según sexo y edad",
-        concept="DESEMPLEO_JUVENIL",
-        measure_type=MeasureType.TASA_DESOCUPACION,
-        unit="%",
-        supported_facets={"sexo", "edad"},
-        relationships={
-            127: RelationshipType.BREAKDOWN_OF,
-        },
-    ),
-    3333: IndicatorMetadata(
-        indicator_id=3333,
-        name="Relación de ingresos laborales por sexo",
-        concept="BRECHA_SALARIAL",
-        measure_type=MeasureType.RATIO_RELATIVO,
-        unit="Ratio mujeres/hombres",
-        supported_facets={"sexo"},
-        relationships={
-            340: RelationshipType.RELATED_CONCEPT,
-        },
+        supported_facets={"rubro"},
+        relationships={},
+        mandatory_filters=(
+            AppliedDimensionFilter(
+                dim_id=41851,
+                dim_name="Sector",
+                member_id=41852,
+                member_name="Total extracción de agua",
+            ),
+        ),
     ),
     # Demographic / Population Indicators
     4788: IndicatorMetadata(
@@ -959,10 +1089,23 @@ VERTICAL_SLICE_INDICATORS: dict[int, IndicatorMetadata] = {
         unit="personas",
         supported_facets={"sexo"},
         relationships={
+            28: RelationshipType.BREAKDOWN_OF,
             4968: RelationshipType.BREAKDOWN_OF,
             4969: RelationshipType.BREAKDOWN_OF,
-            4992: RelationshipType.BREAKDOWN_OF,
             4639: RelationshipType.BREAKDOWN_OF,
+        },
+    ),
+    28: IndicatorMetadata(
+        indicator_id=28,
+        name="Población, según área geográfica y sexo",
+        concept="POBLACION",
+        measure_type=MeasureType.VOLUMEN_REAL,
+        unit="personas",
+        supported_facets={"area", "sexo"},
+        relationships={
+            4788: RelationshipType.BREAKDOWN_OF,
+            4968: RelationshipType.BREAKDOWN_OF,
+            4969: RelationshipType.BREAKDOWN_OF,
         },
     ),
     4968: IndicatorMetadata(
@@ -974,7 +1117,7 @@ VERTICAL_SLICE_INDICATORS: dict[int, IndicatorMetadata] = {
         supported_facets={"area", "etnia"},
         relationships={
             4788: RelationshipType.BREAKDOWN_OF,
-            4992: RelationshipType.BREAKDOWN_OF,
+            28: RelationshipType.BREAKDOWN_OF,
         },
     ),
     4969: IndicatorMetadata(
@@ -986,20 +1129,19 @@ VERTICAL_SLICE_INDICATORS: dict[int, IndicatorMetadata] = {
         supported_facets={"area", "etnia"},
         relationships={
             4788: RelationshipType.BREAKDOWN_OF,
-            4992: RelationshipType.BREAKDOWN_OF,
+            28: RelationshipType.BREAKDOWN_OF,
         },
     ),
     4992: IndicatorMetadata(
         indicator_id=4992,
-        name="Población según área urbana y rural",
+        name="Porcentaje de población indígena por área de residencia",
         concept="POBLACION",
-        measure_type=MeasureType.VOLUMEN_REAL,
-        unit="personas",
-        supported_facets={"area"},
+        measure_type=MeasureType.INCIDENCIA_PORCENTUAL,
+        unit="%",
+        supported_facets={"area", "etnia"},
         relationships={
-            4788: RelationshipType.BREAKDOWN_OF,
-            4968: RelationshipType.BREAKDOWN_OF,
-            4969: RelationshipType.BREAKDOWN_OF,
+            28: RelationshipType.RELATED_CONCEPT,
+            4968: RelationshipType.RELATED_CONCEPT,
         },
     ),
     4639: IndicatorMetadata(
@@ -1021,43 +1163,43 @@ OFFICIAL_25_CANONICAL_DEFAULTS: dict[str, int] = {
     "POBREZA": 3328,
     "POBREZA_BRECHA": 3329,
     "POBREZA_FEMINIDAD": 3330,
-    "DISTRIBUCION_INGRESO": 3340,
+    "DISTRIBUCION_INGRESO": 3324,
     "EMPLEO": 127,
-    "DESEMPLEO_JUVENIL": 3331,
-    "DESEMPLEO_JUVENIL_15_24": 3331,
-    "SALARIO": 128,
-    "SALARIO_MEDIO": 128,
-    "SALARIO_REAL": 128,
-    "SALARIO_MINIMO": 3337,
-    "INGRESO_LABORAL": 3339,
-    "INGRESO_HOGARES": 3345,
-    "INGRESO_HOGAR_PER_CAPITA": 3345,
-    "PIB": 729,
-    "PIB_CORRIENTE": 729,
-    "PIB_PER_CAPITA": 730,
-    "PIB_TRIMESTRAL": 731,
+    "DESEMPLEO_JUVENIL": 5097,
+    "DESEMPLEO_JUVENIL_15_24": 5097,
+    "SALARIO": 341,
+    "SALARIO_MEDIO": 341,
+    "SALARIO_REAL": 341,
+    "SALARIO_MINIMO": 340,
+    "INGRESO_LABORAL": 2287,
+    "INGRESO_HOGARES": 2198,
+    "INGRESO_HOGAR_PER_CAPITA": 2198,
+    "PIB": 2204,
+    "PIB_CORRIENTE": 2193,
+    "PIB_PER_CAPITA": 2206,
+    "PIB_TRIMESTRAL": 286,
     "GINI": 3289,
-    "IPC_GENERAL": 2928,
+    "IPC_GENERAL": 2484,
     "IPC_SUBYACENTE": 4145,
     "IPC_ALIMENTOS": 2929,
     "INFLACION_ALIMENTOS": 2929,
-    "IPC_TRANSPORTE_ENERGIA": 2930,
-    "BALANZA_COMERCIAL": 2949,
-    "CUENTA_CORRIENTE": 1243,
-    "CUENTA_CORRIENTE_740": 1243,
+    "IPC_TRANSPORTE_ENERGIA": 365,
+    "BALANZA_COMERCIAL": 2050,
+    "CUENTA_CORRIENTE": 740,
+    "CUENTA_CORRIENTE_740": 740,
     "INVERSION_EXTRANJERA_DIRECTA": 4231,
-    "TERMINOS_INTERCAMBIO": 1244,
+    "TERMINOS_INTERCAMBIO": 883,
     "DEUDA_PUBLICA": 1240,
-    "BALANCE_PRIMARIO": 1241,
-    "INGRESOS_TRIBUTARIOS": 1242,
+    "BALANCE_PRIMARIO": 1246,
+    "INGRESOS_TRIBUTARIOS": 821,
     "INGRESOS_TRIBUTARIOS_CORRIENTES": 845,
-    "GASTO_SOCIAL": 4405,
-    "GASTO_EDUCACION": 4406,
+    "GASTO_SOCIAL": 4410,
+    "GASTO_EDUCACION": 460,
     "EMISIONES_GEI_LULUCF": 5681,
     "EMISIONES_GEI_SIN_LULUCF": 5682,
-    "ENERGIA_RENOVABLE": 5683,
-    "AGUA_DULCE": 1318,
-    "BRECHA_SALARIAL": 3333,
+    "ENERGIA_RENOVABLE": 3154,
+    "AGUA_DULCE": 4185,
+    "BRECHA_SALARIAL": 2288,
 }
 
 LEGACY_50_CANONICAL_DEFAULTS: dict[str, int] = {
@@ -1065,43 +1207,43 @@ LEGACY_50_CANONICAL_DEFAULTS: dict[str, int] = {
     "POBREZA": 3328,
     "POBREZA_BRECHA": 3329,
     "POBREZA_FEMINIDAD": 3330,
-    "DISTRIBUCION_INGRESO": 3340,
+    "DISTRIBUCION_INGRESO": 3324,
     "EMPLEO": 127,
-    "DESEMPLEO_JUVENIL": 3344,
+    "DESEMPLEO_JUVENIL": 5097,
     "DESEMPLEO_JUVENIL_15_24": 5097,
     "SALARIO": 340,
-    "SALARIO_MEDIO": 128,
-    "SALARIO_REAL": 128,
+    "SALARIO_MEDIO": 341,
+    "SALARIO_REAL": 341,
     "SALARIO_MINIMO": 340,
-    "INGRESO_LABORAL": 3339,
-    "INGRESO_HOGARES": 3345,
-    "INGRESO_HOGAR_PER_CAPITA": 3345,
+    "INGRESO_LABORAL": 2287,
+    "INGRESO_HOGARES": 2198,
+    "INGRESO_HOGAR_PER_CAPITA": 2198,
     "PIB": 2203,
     "PIB_CORRIENTE": 2204,
     "PIB_PER_CAPITA": 2206,
-    "PIB_TRIMESTRAL": 2447,
+    "PIB_TRIMESTRAL": 286,
     "GINI": 3289,
     "IPC_GENERAL": 365,
     "IPC_SUBYACENTE": 4145,
     "IPC_ALIMENTOS": 1684,
     "INFLACION_ALIMENTOS": 2929,
-    "IPC_TRANSPORTE_ENERGIA": 2930,
-    "BALANZA_COMERCIAL": 2949,
-    "CUENTA_CORRIENTE": 1243,
+    "IPC_TRANSPORTE_ENERGIA": 365,
+    "BALANZA_COMERCIAL": 2050,
+    "CUENTA_CORRIENTE": 740,
     "CUENTA_CORRIENTE_740": 740,
     "INVERSION_EXTRANJERA_DIRECTA": 4231,
-    "TERMINOS_INTERCAMBIO": 2954,
+    "TERMINOS_INTERCAMBIO": 883,
     "DEUDA_PUBLICA": 1240,
-    "BALANCE_PRIMARIO": 1241,
-    "INGRESOS_TRIBUTARIOS": 1242,
+    "BALANCE_PRIMARIO": 1246,
+    "INGRESOS_TRIBUTARIOS": 821,
     "INGRESOS_TRIBUTARIOS_CORRIENTES": 845,
-    "GASTO_SOCIAL": 4405,
-    "GASTO_EDUCACION": 4406,
+    "GASTO_SOCIAL": 4410,
+    "GASTO_EDUCACION": 460,
     "EMISIONES_GEI_LULUCF": 5681,
     "EMISIONES_GEI_SIN_LULUCF": 5682,
-    "ENERGIA_RENOVABLE": 5683,
-    "AGUA_DULCE": 1318,
-    "BRECHA_SALARIAL": 3333,
+    "ENERGIA_RENOVABLE": 3154,
+    "AGUA_DULCE": 4185,
+    "BRECHA_SALARIAL": 2288,
 }
 
 CONCEPT_CANONICAL_DEFAULTS = OFFICIAL_25_CANONICAL_DEFAULTS
@@ -1110,12 +1252,14 @@ BADEHOG_SURVEY_INDICATORS: tuple[int, ...] = (
     3328,
     3329,
     3330,
-    3339,
-    3340,
     3341,
     3342,
-    3345,
     3289,
+    3324,
+    3390,
+    2287,
+    2288,
+    5698,
 )
 
 # Empirical observation availability for country x year x indicator
@@ -1244,6 +1388,7 @@ class SemanticRegistry:
                 unit=v.unit,
                 supported_facets=set(v.supported_facets),
                 relationships=dict(v.relationships),
+                mandatory_filters=v.mandatory_filters,
             )
             for k, v in VERTICAL_SLICE_INDICATORS.items()
         }
