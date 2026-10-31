@@ -7,9 +7,11 @@ from typing import Any
 import pandas as pd
 
 from unofficial_cepalstat_mcp.client import CepalStatClient
+from unofficial_cepalstat_mcp.dimensions import Dimension
 from unofficial_cepalstat_mcp.extractor import DataExtractor
 from unofficial_cepalstat_mcp.semantic.facet_ontology import DEFAULT_FACET_ONTOLOGY
 from unofficial_cepalstat_mcp.semantic.models import ResolutionStatus, SemanticResolutionResponse
+from unofficial_cepalstat_mcp.semantic.parser import COUNTRY_NAMES
 from unofficial_cepalstat_mcp.semantic.registry import (
     EMPIRICAL_INDICATOR_ID_MAP,
     SYNTHETIC_DIMENSION_MEMBER_IDS,
@@ -170,6 +172,10 @@ class SemanticDataFetcher:
         "indicador",
         "unit",
         "unidad",
+        "valor",
+        "val",
+        "monto",
+        "dato",
     })
 
     _AGGREGATE_MEMBER_PRIORITY: tuple[str, ...] = (
@@ -189,11 +195,14 @@ class SemanticDataFetcher:
         "total deciles",
     )
 
+    _last_unconstrained_error: str | None = None
+
     def __init__(
         self,
         extractor: DataExtractor | None = None,
         client: CepalStatClient | None = None,
     ) -> None:
+        self._last_unconstrained_error = None
         if extractor is not None:
             self.extractor = extractor
             self.client = client or getattr(extractor, "client", None)
@@ -205,12 +214,24 @@ class SemanticDataFetcher:
                 self.extractor = DataExtractor(client=self.client)
 
     def _load_indicator_data(
-        self, indicator_id: int, member_ids: list[int] | None = None
+        self,
+        indicator_id: int,
+        member_ids: list[int] | None = None,
+        dimensions: list[Dimension] | None = None,
     ) -> pd.DataFrame | None:
         """Load indicator dataframe using available extractor method."""
         df: pd.DataFrame | None = None
         if hasattr(self.extractor, "get_dataframe"):
-            res = self.extractor.get_dataframe(indicator_id, members=member_ids or None)
+            call_kwargs: dict[str, Any] = {"members": member_ids or None}
+            if dimensions is not None:
+                import inspect
+                try:
+                    sig = inspect.signature(self.extractor.get_dataframe)
+                    if "dimensions" in sig.parameters:
+                        call_kwargs["dimensions"] = dimensions
+                except (ValueError, TypeError):
+                    call_kwargs["dimensions"] = dimensions
+            res = self.extractor.get_dataframe(indicator_id, **call_kwargs)
             if isinstance(res, pd.DataFrame):
                 df = res
                 if df.empty and member_ids:
@@ -293,6 +314,11 @@ class SemanticDataFetcher:
                     result[col].astype(str).str.strip().map(lambda s: _strip_accents(s).lower())
                     == chosen_norm
                 ]
+            else:
+                err = f"AMBIGUOUS_UNCONSTRAINED_DIMENSION: {col}"
+                result.attrs["unconstrained_error"] = err
+                self._last_unconstrained_error = err
+                return result
         return result
 
 
@@ -362,10 +388,121 @@ class SemanticDataFetcher:
             elif f.member_id is not None:
                 raw_member_ids.append(f.member_id)
 
-        member_ids = [
+        non_synth_member_ids = [
             m for m in raw_member_ids if m not in SYNTHETIC_DIMENSION_MEMBER_IDS
         ]
-        df = self._load_indicator_data(empirical_id, member_ids)
+
+        dims: list[Dimension] = []
+        dm = getattr(self.extractor, "dimension_manager", None)
+        if dm is not None and hasattr(dm, "get_dimensions"):
+            try:
+                res_dims = dm.get_dimensions(empirical_id)
+                if isinstance(res_dims, (list, tuple)):
+                    dims = list(res_dims)
+            except Exception:
+                dims = []
+
+        country_dim: Dimension | None = None
+        time_dim: Dimension | None = None
+        for d in dims:
+            d_norm = _strip_accents(d.name).lower()
+            if d.id == 208 or "pais" in d_norm or "paises" in d_norm:
+                country_dim = d
+            elif d.id == 29117 or any(
+                k in d_norm for k in ("ano", "anos", "periodo", "tiempo", "mes", "trimestre")
+            ):
+                time_dim = d
+
+        structural_member_ids: list[int] = []
+
+        # Resolve Country structural member IDs
+        target_country_names = list(
+            getattr(response.applied_filters, "country_names", [])
+            or ([response.applied_filters.country_name] if response.applied_filters.country_name else [])
+        )
+        target_country_codes = list(
+            getattr(response.applied_filters, "country_codes", [])
+            or ([response.applied_filters.country_code] if response.applied_filters.country_code else [])
+        )
+        if response.temporal_info:
+            ti = response.temporal_info
+            if getattr(ti, "requested_countries", None):
+                for rc in ti.requested_countries:
+                    if rc and rc not in target_country_codes:
+                        target_country_codes.append(rc)
+            if getattr(ti, "country_anchors", None):
+                for c_code, ca in ti.country_anchors.items():
+                    if c_code and c_code not in target_country_codes:
+                        target_country_codes.append(c_code)
+                    if ca.country_name and ca.country_name not in target_country_names:
+                        target_country_names.append(ca.country_name)
+
+        if country_dim and (target_country_names or target_country_codes):
+            norm_target_names = {_strip_accents(n).lower() for n in target_country_names if n}
+            norm_target_codes = {c.strip().upper() for c in target_country_codes if c}
+            for c in list(norm_target_codes):
+                if c in COUNTRY_NAMES:
+                    norm_target_names.add(_strip_accents(COUNTRY_NAMES[c]).lower())
+
+            for m in country_dim.members:
+                m_norm = _strip_accents(m.name).lower()
+                m_code = m.name.strip().upper()
+                matched = False
+                if m_norm in norm_target_names or m_code in norm_target_codes:
+                    matched = True
+                else:
+                    for t_name in norm_target_names:
+                        if m_norm.startswith(t_name + " ("):
+                            matched = True
+                            break
+                if matched:
+                    structural_member_ids.append(m.id)
+
+        # Resolve Time structural member IDs (including anchor years)
+        target_years: set[int] = set()
+        if response.applied_filters.year:
+            target_years.add(response.applied_filters.year)
+        if getattr(response.applied_filters, "years", None):
+            target_years.update(y for y in response.applied_filters.years if isinstance(y, int))
+        if response.temporal_info:
+            ti = response.temporal_info
+            if getattr(ti, "requested_year", None):
+                target_years.add(ti.requested_year)
+            if getattr(ti, "requested_years", None):
+                target_years.update(y for y in ti.requested_years if isinstance(y, int))
+            if ti.previous_anchor_year is not None:
+                target_years.add(ti.previous_anchor_year)
+            if ti.next_anchor_year is not None:
+                target_years.add(ti.next_anchor_year)
+            if getattr(ti, "country_anchors", None):
+                for ca in ti.country_anchors.values():
+                    if ca.previous_anchor_year is not None:
+                        target_years.add(ca.previous_anchor_year)
+                    if ca.next_anchor_year is not None:
+                        target_years.add(ca.next_anchor_year)
+
+        if time_dim and target_years:
+            for m in time_dim.members:
+                y_match = re.search(r"\b(19\d\d|20\d\d)\b", m.name)
+                if y_match:
+                    if int(y_match.group(1)) in target_years:
+                        structural_member_ids.append(m.id)
+                elif m.name.strip().isdigit() and int(m.name.strip()) in target_years:
+                    structural_member_ids.append(m.id)
+
+        member_ids = list(dict.fromkeys(structural_member_ids + non_synth_member_ids))
+        import inspect
+        try:
+            sig = inspect.signature(self._load_indicator_data)
+            if "dimensions" in sig.parameters:
+                df = self._load_indicator_data(empirical_id, member_ids or None, dimensions=dims or None)
+            else:
+                df = self._load_indicator_data(empirical_id, member_ids or None)
+        except (ValueError, TypeError):
+            try:
+                df = self._load_indicator_data(empirical_id, member_ids or None, dimensions=dims or None)
+            except TypeError:
+                df = self._load_indicator_data(empirical_id, member_ids or None)
         if df is None:
             return empirical_id, pd.DataFrame()
         df = df.copy()
@@ -663,6 +800,8 @@ class SemanticDataFetcher:
             response=response,
             breakdown_facets=facet_keys_in_breakdown,
         )
+        if filtered_df.attrs.get("unconstrained_error"):
+            return filtered_df, year_col, False, sorted(set(getattr(response.applied_filters, "years", []) or ([response.applied_filters.year] if response.applied_filters.year else [])))
 
         has_rescued_anchors = False
         target_years = getattr(response.applied_filters, "years", []) or []
@@ -1043,6 +1182,8 @@ class SemanticDataFetcher:
                         ],
                         "notes": latest_item["notes"],
                         "series": series,
+                        "has_rescued_anchors": has_rescued_anchors,
+                        "status": response.status.value,
                     }
             else:
                 if target_year is None and year_col is not None:
@@ -1160,6 +1301,9 @@ class SemanticDataFetcher:
         Returns:
             Dictionary payload with observation data and provenance.
         """
+        work_resp = response.model_copy(deep=True)
+        self._last_unconstrained_error = None
+
         valid_statuses: tuple[ResolutionStatus, ...] = (
             ResolutionStatus.RESOLVED,
             ResolutionStatus.RESOLVED_WITH_ANCHORS,
@@ -1168,79 +1312,80 @@ class SemanticDataFetcher:
             valid_statuses += (ResolutionStatus.ALTERNATIVE_PROPOSED,)
 
         if (
-            response.status not in valid_statuses
-            or not response.selected_candidate
+            work_resp.status not in valid_statuses
+            or not work_resp.selected_candidate
         ):
             payload = {
                 "observation_exists": False,
                 "reason": "Query not resolved or abstained",
             }
-            response.empirical_data = payload
+            work_resp.empirical_data = payload
             return payload
 
-        time_mode = getattr(response.applied_filters, "time_mode", "SINGLE")
-        target_years = getattr(response.applied_filters, "years", []) or []
-        target_year = response.applied_filters.year
+        time_mode = getattr(work_resp.applied_filters, "time_mode", "SINGLE")
+        target_years = getattr(work_resp.applied_filters, "years", []) or []
+        target_year = work_resp.applied_filters.year
         is_multi_year = (
             time_mode in ("LIST", "RANGE", "RELATIVE_WINDOW")
             or len(target_years) > 1
         )
         facet_keys_in_breakdown = {
             f_k.lower()
-            for f_k, f_v in getattr(response.applied_filters, "facets", {}).items()
+            for f_k, f_v in getattr(work_resp.applied_filters, "facets", {}).items()
             if "_DESGLOSE" in str(f_v) or str(f_v) in ("ETNICO_TOTAL", "ETNICO")
         }
         has_breakdown = any(
             getattr(d, "is_breakdown", False)
-            for d in response.applied_filters.dimensions
+            for d in work_resp.applied_filters.dimensions
         ) or bool(facet_keys_in_breakdown)
 
-        empirical_id, df = self._prepare_empirical_fetch(response)
+        empirical_id, df = self._prepare_empirical_fetch(work_resp)
 
         if df is None or df.empty:
             payload = {
                 "observation_exists": False,
                 "indicator_id": empirical_id,
                 "empirical_indicator_id": empirical_id,
-                "indicator_name": response.selected_candidate.name,
-                "unit": response.selected_candidate.unit,
-                "country": response.applied_filters.country_name
-                or response.applied_filters.country_code,
-                "year": response.applied_filters.year,
+                "indicator_name": work_resp.selected_candidate.name,
+                "unit": work_resp.selected_candidate.unit,
+                "country": work_resp.applied_filters.country_name
+                or work_resp.applied_filters.country_code,
+                "year": work_resp.applied_filters.year,
                 "reason": "No observation available for the specified filters/period",
             }
             if is_multi_year:
                 payload["series"] = []
-            response.empirical_data = payload
+            work_resp.empirical_data = payload
             return payload
 
         country_col, target_names, target_codes, is_multi_country, code_by_name, country_anchor_map = (
-            self._resolve_geography(df, response)
+            self._resolve_geography(df, work_resp)
         )
         df = self._filter_geography(df, country_col, target_names, target_codes)
-        df, filtered_dim_cols, unbound_error = self._apply_dimension_filters(df, response)
+        df, filtered_dim_cols, unbound_error = self._apply_dimension_filters(df, work_resp)
         if unbound_error:
             payload = {
                 "observation_exists": False,
                 "indicator_id": empirical_id,
                 "empirical_indicator_id": empirical_id,
-                "indicator_name": response.selected_candidate.name,
-                "unit": response.selected_candidate.unit,
-                "country": response.applied_filters.country_name
-                or response.applied_filters.country_code,
-                "year": response.applied_filters.year,
+                "indicator_name": work_resp.selected_candidate.name,
+                "unit": work_resp.selected_candidate.unit,
+                "country": work_resp.applied_filters.country_name
+                or work_resp.applied_filters.country_code,
+                "year": work_resp.applied_filters.year,
                 "reason": unbound_error,
                 "series": [] if is_multi_year else None,
             }
-            response.empirical_data = payload
-            response.execution_trace.append(
+            work_resp.empirical_data = payload
+            work_resp.execution_trace.append(
                 f"[Stage 6: Empirical Extraction] Observation unavailable: {unbound_error}"
             )
             return payload
+
         df, year_col, has_rescued_anchors, requested_years = (
             self._apply_temporal_and_anchors(
                 df,
-                response,
+                work_resp,
                 country_col,
                 filtered_dim_cols,
                 country_anchor_map,
@@ -1248,9 +1393,31 @@ class SemanticDataFetcher:
                 code_by_name,
             )
         )
+        unconstrained_error = df.attrs.get("unconstrained_error") or getattr(
+            self, "_last_unconstrained_error", None
+        )
+        if unconstrained_error:
+            payload = {
+                "observation_exists": False,
+                "indicator_id": empirical_id,
+                "empirical_indicator_id": empirical_id,
+                "indicator_name": work_resp.selected_candidate.name,
+                "unit": work_resp.selected_candidate.unit,
+                "country": work_resp.applied_filters.country_name
+                or work_resp.applied_filters.country_code,
+                "year": work_resp.applied_filters.year,
+                "reason": unconstrained_error,
+                "series": [] if is_multi_year else None,
+            }
+            work_resp.empirical_data = payload
+            work_resp.execution_trace.append(
+                f"[Stage 6: Empirical Extraction] Observation unavailable: {unconstrained_error}"
+            )
+            return payload
+
         payload = self._format_payload(
             df=df,
-            response=response,
+            response=work_resp,
             empirical_id=empirical_id,
             year_col=year_col,
             country_col=country_col,
@@ -1266,17 +1433,17 @@ class SemanticDataFetcher:
         )
 
         payload["empirical_indicator_id"] = empirical_id
-        response.empirical_data = payload
+        work_resp.empirical_data = payload
         if payload.get("observation_exists"):
-            response.execution_trace.append(
+            work_resp.execution_trace.append(
                 f"[Stage 6: Empirical Extraction] Observation found: {payload['value']} {payload.get('unit', '')} for {payload.get('country')} ({payload.get('year')})"
             )
             if has_rescued_anchors:
-                response.execution_trace.append(
+                work_resp.execution_trace.append(
                     "[Stage 6: Empirical Extraction] Rescued official anchor observations for unobserved survey periods."
                 )
         else:
-            response.execution_trace.append(
+            work_resp.execution_trace.append(
                 f"[Stage 6: Empirical Extraction] Observation unavailable: {payload.get('reason')}"
             )
         return payload

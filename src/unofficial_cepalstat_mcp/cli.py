@@ -674,8 +674,7 @@ def main(args: Sequence[str] | None = None, prog: str | None = None) -> int:
                 if parsed.fetch:
                     fetcher = SemanticDataFetcher()
                     emp_data = fetcher.fetch_resolved_data(res)
-                    if emp_data and not res.empirical_data:
-                        res.empirical_data = emp_data
+                    res.empirical_data = emp_data
 
 
                 if parsed.json:

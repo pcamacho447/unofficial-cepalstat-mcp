@@ -5,7 +5,7 @@ from typing import Any
 import pandas as pd
 
 from unofficial_cepalstat_mcp.client import CepalStatClient
-from unofficial_cepalstat_mcp.dimensions import DimensionManager
+from unofficial_cepalstat_mcp.dimensions import Dimension, DimensionManager
 
 
 class DataExtractor:
@@ -65,6 +65,7 @@ class DataExtractor:
         indicator_id: int,
         members: list[int] | None = None,
         decode_labels: bool = True,
+        dimensions: list[Dimension] | None = None,
     ) -> pd.DataFrame:
         """Fetch indicator records converted into a clean Pandas DataFrame.
 
@@ -73,6 +74,8 @@ class DataExtractor:
             members: Optional list of numeric member IDs to filter data by.
             decode_labels: If True, resolves dimension columns (e.g. dim_208) into
                 their human-readable dimension name and member label (e.g. País__ESTANDAR = 'Chile').
+            dimensions: Optional pre-fetched list of Dimension objects. If provided,
+                bypasses fetching dimensions from the API or manager cache.
 
         Returns:
             A pandas DataFrame with observation records.
@@ -88,8 +91,8 @@ class DataExtractor:
             df["value"] = pd.to_numeric(df["value"], errors="coerce")
 
         if decode_labels:
-            dimensions = self.dimension_manager.get_dimensions(indicator_id)
-            for dim in dimensions:
+            dims = dimensions if dimensions is not None else self.dimension_manager.get_dimensions(indicator_id)
+            for dim in dims:
                 dim_col = f"dim_{dim.id}"
                 if dim_col in df.columns:
                     member_map: dict[Any, str] = {}

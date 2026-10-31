@@ -66,7 +66,7 @@ def test_semantic_data_fetcher_extracts_and_formats_observation():
     assert len(payload["dimensions_applied"]) == 1
     assert payload["dimensions_applied"][0]["member_name"] == "Ambos sexos"
     assert payload["notes"] == ""
-    assert response.empirical_data == payload
+    assert response.empirical_data is None
 
     mock_extractor.get_dataframe.assert_called_once_with(3328, members=[146])
 
@@ -86,7 +86,7 @@ def test_semantic_data_fetcher_handles_unresolved_status():
 
     assert payload["observation_exists"] is False
     assert payload["reason"] == "Query not resolved or abstained"
-    assert response.empirical_data == payload
+    assert response.empirical_data is None
     mock_extractor.get_dataframe.assert_not_called()
 
 
@@ -119,7 +119,7 @@ def test_semantic_data_fetcher_handles_missing_observation():
     assert payload["country"] == "Brasil"
     assert payload["year"] == 2025
     assert payload["reason"] == "No observation available for the specified filters/period"
-    assert response.empirical_data == payload
+    assert response.empirical_data is None
 
 
 def test_semantic_data_fetcher_filters_by_country_and_year_and_dimension():
@@ -725,8 +725,10 @@ def test_fetcher_multi_year_rescues_anchors_for_missing_year_in_range(mock_clien
     ])
     mock_client.get_dataframe.return_value = df
     payload = fetcher.fetch_resolved_data(res)
-    assert any(item.get("is_anchor") for item in payload["series"]) or res.status == ResolutionStatus.RESOLVED_WITH_ANCHORS
-    assert res.status == ResolutionStatus.RESOLVED_WITH_ANCHORS
+    assert any(item.get("is_anchor") for item in payload["series"]) or payload.get("has_rescued_anchors") is True or payload.get("status") == ResolutionStatus.RESOLVED_WITH_ANCHORS.value
+    assert payload.get("status") == ResolutionStatus.RESOLVED_WITH_ANCHORS.value or payload.get("has_rescued_anchors") is True
+    # Verify response immutability: input res is not mutated in-place
+    assert res.status == ResolutionStatus.RESOLVED
 
 
 def test_fetcher_multi_country_payload_country_attribution(mock_client):
