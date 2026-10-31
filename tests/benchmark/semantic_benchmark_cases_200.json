@@ -284,7 +284,7 @@
     "difficulty": "CANONICAL",
     "query": "Distribución del ingreso por quintiles en Brasil en 2021",
     "expected_status": "RESOLVED",
-    "expected_indicator_id": 3340,
+    "expected_indicator_id": 3324,
     "expected_facets": {
       "estrato": "QUINTIL"
     },
@@ -297,7 +297,7 @@
     "difficulty": "CANONICAL",
     "query": "Participación del decil más rico en México en 2020",
     "expected_status": "RESOLVED",
-    "expected_indicator_id": 3340,
+    "expected_indicator_id": 3390,
     "expected_facets": {
       "estrato": "DECIL_10"
     },
@@ -310,7 +310,7 @@
     "difficulty": "CANONICAL",
     "query": "Distribución del ingreso por deciles en Chile en 2022",
     "expected_status": "RESOLVED",
-    "expected_indicator_id": 3340,
+    "expected_indicator_id": 3390,
     "expected_facets": {
       "estrato": "DECIL"
     },
@@ -323,7 +323,7 @@
     "difficulty": "CANONICAL",
     "query": "Ingresos del quintil más pobre en Colombia en 2021",
     "expected_status": "RESOLVED",
-    "expected_indicator_id": 3340,
+    "expected_indicator_id": 3324,
     "expected_facets": {
       "estrato": "QUINTIL_1"
     },
@@ -336,7 +336,7 @@
     "difficulty": "CANONICAL",
     "query": "Distribución del ingreso de los hogares en Argentina en 2020",
     "expected_status": "RESOLVED",
-    "expected_indicator_id": 3340,
+    "expected_indicator_id": 3324,
     "expected_facets": {},
     "expected_reason": null,
     "expected_alternatives": []
@@ -347,7 +347,7 @@
     "difficulty": "CANONICAL",
     "query": "Participación del 20 por ciento más rico en Perú en 2021",
     "expected_status": "RESOLVED",
-    "expected_indicator_id": 3340,
+    "expected_indicator_id": 3324,
     "expected_facets": {
       "estrato": "QUINTIL_5"
     },
@@ -360,7 +360,7 @@
     "difficulty": "CANONICAL",
     "query": "Concentración del ingreso en Uruguay en 2022",
     "expected_status": "RESOLVED",
-    "expected_indicator_id": 3340,
+    "expected_indicator_id": 3324,
     "expected_facets": {},
     "expected_reason": null,
     "expected_alternatives": []
@@ -371,7 +371,7 @@
     "difficulty": "CANONICAL",
     "query": "Distribución del ingreso por quintiles en Costa Rica en 2021",
     "expected_status": "RESOLVED",
-    "expected_indicator_id": 3340,
+    "expected_indicator_id": 3324,
     "expected_facets": {
       "estrato": "QUINTIL"
     },
@@ -384,7 +384,7 @@
     "difficulty": "SLANG",
     "query": "Cuánta torta se llevan los más ricos en Brasil en 2021",
     "expected_status": "RESOLVED",
-    "expected_indicator_id": 3340,
+    "expected_indicator_id": 3390,
     "expected_facets": {
       "estrato": "DECIL_10"
     },
@@ -397,7 +397,7 @@
     "difficulty": "SLANG",
     "query": "Parte de la guita que tienen los de abajo en Argentina en 2020",
     "expected_status": "RESOLVED",
-    "expected_indicator_id": 3340,
+    "expected_indicator_id": 3324,
     "expected_facets": {
       "estrato": "QUINTIL_1"
     },
@@ -410,7 +410,7 @@
     "difficulty": "SLANG",
     "query": "Distribución de la lana en México entre los deciles en 2020",
     "expected_status": "RESOLVED",
-    "expected_indicator_id": 3340,
+    "expected_indicator_id": 3390,
     "expected_facets": {
       "estrato": "DECIL"
     },
@@ -423,7 +423,7 @@
     "difficulty": "SLANG",
     "query": "Reparto del billete entre los quintiles en Colombia en 2021",
     "expected_status": "RESOLVED",
-    "expected_indicator_id": 3340,
+    "expected_indicator_id": 3324,
     "expected_facets": {
       "estrato": "QUINTIL"
     },
@@ -436,7 +436,7 @@
     "difficulty": "BREAKDOWN",
     "query": "Participación del primer quintil Q1 en Brasil en 2021",
     "expected_status": "RESOLVED",
-    "expected_indicator_id": 3340,
+    "expected_indicator_id": 3324,
     "expected_facets": {
       "estrato": "QUINTIL_1"
     },
@@ -449,7 +449,7 @@
     "difficulty": "BREAKDOWN",
     "query": "Participación del quinto quintil Q5 en Chile en 2022",
     "expected_status": "RESOLVED",
-    "expected_indicator_id": 3340,
+    "expected_indicator_id": 3324,
     "expected_facets": {
       "estrato": "QUINTIL_5"
     },
@@ -462,7 +462,7 @@
     "difficulty": "BREAKDOWN",
     "query": "Ingreso del decil 1 más vulnerable en México en 2020",
     "expected_status": "RESOLVED",
-    "expected_indicator_id": 3340,
+    "expected_indicator_id": 3390,
     "expected_facets": {
       "estrato": "DECIL_1"
     },
@@ -475,7 +475,7 @@
     "difficulty": "BREAKDOWN",
     "query": "Comparación de quintil 5 versus quintil 1 en Colombia en 2021",
     "expected_status": "RESOLVED",
-    "expected_indicator_id": 3340,
+    "expected_indicator_id": 3324,
     "expected_facets": {
       "estrato": "RELACION_Q5_Q1"
     },
@@ -488,11 +488,11 @@
     "difficulty": "AMBIGUOUS",
     "query": "Desigualdad del ingreso en Brasil en 2021",
     "expected_status": "ALTERNATIVE_PROPOSED",
-    "expected_indicator_id": 3340,
+    "expected_indicator_id": 3324,
     "expected_facets": {},
     "expected_reason": "Ambiguous query between household distribution by quintiles and per capita income",
     "expected_alternatives": [
-      3345
+      2198
     ]
   },
   {
@@ -501,11 +501,11 @@
     "difficulty": "AMBIGUOUS",
     "query": "Brecha distributiva de ingresos en Colombia",
     "expected_status": "ALTERNATIVE_PROPOSED",
-    "expected_indicator_id": 3340,
+    "expected_indicator_id": 3324,
     "expected_facets": {},
     "expected_reason": "Ambiguous between household distribution by quintiles and labor income by sex",
     "expected_alternatives": [
-      3339
+      2287
     ]
   },
   {
@@ -588,7 +588,7 @@
     "difficulty": "CANONICAL",
     "query": "Tasa de desempleo juvenil en Chile en 2022",
     "expected_status": "RESOLVED",
-    "expected_indicator_id": 3331,
+    "expected_indicator_id": 5097,
     "expected_facets": {
       "edad": "JUVENTUD"
     },
@@ -614,7 +614,7 @@
     "difficulty": "CANONICAL",
     "query": "Desempleo de los jóvenes en Brasil en 2021",
     "expected_status": "RESOLVED",
-    "expected_indicator_id": 3331,
+    "expected_indicator_id": 5097,
     "expected_facets": {
       "edad": "JUVENTUD"
     },
@@ -640,7 +640,7 @@
     "difficulty": "SLANG",
     "query": "Desocupación de los pibes en Argentina en 2021",
     "expected_status": "RESOLVED",
-    "expected_indicator_id": 3331,
+    "expected_indicator_id": 5097,
     "expected_facets": {
       "edad": "JUVENTUD"
     },
@@ -666,7 +666,7 @@
     "difficulty": "SLANG",
     "query": "Cuántos cabros están sin pega en Chile en 2022",
     "expected_status": "RESOLVED",
-    "expected_indicator_id": 3331,
+    "expected_indicator_id": 5097,
     "expected_facets": {
       "edad": "JUVENTUD"
     },
@@ -718,7 +718,7 @@
     "difficulty": "BREAKDOWN",
     "query": "Desempleo de mujeres jóvenes de 15 a 24 años en Colombia en 2022",
     "expected_status": "RESOLVED",
-    "expected_indicator_id": 3331,
+    "expected_indicator_id": 5097,
     "expected_facets": {
       "sexo": "FEMENINO",
       "edad": "JUVENTUD"
@@ -732,7 +732,7 @@
     "difficulty": "BREAKDOWN",
     "query": "Desempleo juvenil masculino en Argentina en 2021",
     "expected_status": "RESOLVED",
-    "expected_indicator_id": 3331,
+    "expected_indicator_id": 5097,
     "expected_facets": {
       "sexo": "MASCULINO",
       "edad": "JUVENTUD"
@@ -750,8 +750,8 @@
     "expected_facets": {},
     "expected_reason": "Ambiguous labor query between general unemployment, youth unemployment, and real wage",
     "expected_alternatives": [
-      3331,
-      128
+      5097,
+      341
     ]
   },
   {
@@ -764,8 +764,8 @@
     "expected_facets": {},
     "expected_reason": "Ambiguous multi-concept query covering unemployment and real wages",
     "expected_alternatives": [
-      128,
-      3337
+      341,
+      340
     ]
   },
   {
@@ -796,7 +796,7 @@
     "difficulty": "CANONICAL",
     "query": "Salario medio real en Chile en 2021",
     "expected_status": "RESOLVED",
-    "expected_indicator_id": 128,
+    "expected_indicator_id": 341,
     "expected_facets": {},
     "expected_reason": null,
     "expected_alternatives": []
@@ -807,7 +807,7 @@
     "difficulty": "CANONICAL",
     "query": "Salario mínimo real en Brasil en 2022",
     "expected_status": "RESOLVED",
-    "expected_indicator_id": 3337,
+    "expected_indicator_id": 340,
     "expected_facets": {},
     "expected_reason": null,
     "expected_alternatives": []
@@ -818,7 +818,7 @@
     "difficulty": "CANONICAL",
     "query": "Ingreso laboral medio en México en 2020",
     "expected_status": "RESOLVED",
-    "expected_indicator_id": 3339,
+    "expected_indicator_id": 2287,
     "expected_facets": {},
     "expected_reason": null,
     "expected_alternatives": []
@@ -829,7 +829,7 @@
     "difficulty": "CANONICAL",
     "query": "Ingreso medio per cápita de los hogares en Colombia en 2021",
     "expected_status": "RESOLVED",
-    "expected_indicator_id": 3345,
+    "expected_indicator_id": 2198,
     "expected_facets": {},
     "expected_reason": null,
     "expected_alternatives": []
@@ -840,7 +840,7 @@
     "difficulty": "CANONICAL",
     "query": "Índice del salario medio real en Argentina en 2021",
     "expected_status": "RESOLVED",
-    "expected_indicator_id": 128,
+    "expected_indicator_id": 341,
     "expected_facets": {},
     "expected_reason": null,
     "expected_alternatives": []
@@ -851,7 +851,7 @@
     "difficulty": "CANONICAL",
     "query": "Salario básico de ley en Uruguay en 2022",
     "expected_status": "RESOLVED",
-    "expected_indicator_id": 3337,
+    "expected_indicator_id": 340,
     "expected_facets": {},
     "expected_reason": null,
     "expected_alternatives": []
@@ -862,7 +862,7 @@
     "difficulty": "CANONICAL",
     "query": "Ingreso per cápita de las familias en Costa Rica en 2021",
     "expected_status": "RESOLVED",
-    "expected_indicator_id": 3345,
+    "expected_indicator_id": 2198,
     "expected_facets": {},
     "expected_reason": null,
     "expected_alternatives": []
@@ -873,7 +873,7 @@
     "difficulty": "CANONICAL",
     "query": "Salario promedio real en Perú en 2020",
     "expected_status": "RESOLVED",
-    "expected_indicator_id": 128,
+    "expected_indicator_id": 341,
     "expected_facets": {},
     "expected_reason": null,
     "expected_alternatives": []
@@ -884,7 +884,7 @@
     "difficulty": "SLANG",
     "query": "La guita de los laburantes en Argentina en 2021",
     "expected_status": "RESOLVED",
-    "expected_indicator_id": 128,
+    "expected_indicator_id": 341,
     "expected_facets": {},
     "expected_reason": null,
     "expected_alternatives": []
@@ -895,7 +895,7 @@
     "difficulty": "SLANG",
     "query": "Cuál fue la guita mínima por ley en Chile en 2022",
     "expected_status": "RESOLVED",
-    "expected_indicator_id": 3337,
+    "expected_indicator_id": 340,
     "expected_facets": {},
     "expected_reason": null,
     "expected_alternatives": []
@@ -906,7 +906,7 @@
     "difficulty": "SLANG",
     "query": "Cuál es la plata de los hogares por cabeza en Colombia en 2020",
     "expected_status": "RESOLVED",
-    "expected_indicator_id": 3345,
+    "expected_indicator_id": 2198,
     "expected_facets": {},
     "expected_reason": null,
     "expected_alternatives": []
@@ -917,7 +917,7 @@
     "difficulty": "SLANG",
     "query": "La lana de los trabajadores en México en 2021",
     "expected_status": "RESOLVED",
-    "expected_indicator_id": 128,
+    "expected_indicator_id": 341,
     "expected_facets": {},
     "expected_reason": null,
     "expected_alternatives": []
@@ -928,7 +928,7 @@
     "difficulty": "BREAKDOWN",
     "query": "Ingreso laboral medio de las mujeres en México en 2020",
     "expected_status": "RESOLVED",
-    "expected_indicator_id": 3339,
+    "expected_indicator_id": 2287,
     "expected_facets": {
       "sexo": "FEMENINO"
     },
@@ -941,7 +941,7 @@
     "difficulty": "BREAKDOWN",
     "query": "Ingreso laboral medio en el campo en Brasil en 2021",
     "expected_status": "RESOLVED",
-    "expected_indicator_id": 3339,
+    "expected_indicator_id": 2287,
     "expected_facets": {
       "area": "RURAL"
     },
@@ -954,7 +954,7 @@
     "difficulty": "BREAKDOWN",
     "query": "Ingreso laboral de hombres rurales en Colombia en 2021",
     "expected_status": "RESOLVED",
-    "expected_indicator_id": 3339,
+    "expected_indicator_id": 2287,
     "expected_facets": {
       "sexo": "MASCULINO",
       "area": "RURAL"
@@ -968,7 +968,7 @@
     "difficulty": "BREAKDOWN",
     "query": "Ingreso de las familias en el área rural en Chile en 2022",
     "expected_status": "RESOLVED",
-    "expected_indicator_id": 3345,
+    "expected_indicator_id": 2287,
     "expected_facets": {
       "area": "RURAL"
     },
@@ -981,12 +981,12 @@
     "difficulty": "AMBIGUOUS",
     "query": "Cómo estuvo la guita en Chile en 2021",
     "expected_status": "ALTERNATIVE_PROPOSED",
-    "expected_indicator_id": 128,
+    "expected_indicator_id": 341,
     "expected_facets": {},
     "expected_reason": "Unmodified slang query without context modifier; propose average wage, minimum wage, or household per capita",
     "expected_alternatives": [
-      3337,
-      3345
+      340,
+      2198
     ]
   },
   {
@@ -995,12 +995,12 @@
     "difficulty": "AMBIGUOUS",
     "query": "Cuánta plata en Colombia en 2020",
     "expected_status": "ALTERNATIVE_PROPOSED",
-    "expected_indicator_id": 128,
+    "expected_indicator_id": 341,
     "expected_facets": {},
     "expected_reason": "Unmodified colloquial query without context modifier; propose alternatives",
     "expected_alternatives": [
-      3337,
-      3345
+      340,
+      2198
     ]
   },
   {
@@ -1031,7 +1031,7 @@
     "difficulty": "CANONICAL",
     "query": "Producto interno bruto total en Brasil en 2021",
     "expected_status": "RESOLVED",
-    "expected_indicator_id": 729,
+    "expected_indicator_id": 2204,
     "expected_facets": {},
     "expected_reason": null,
     "expected_alternatives": []
@@ -1042,7 +1042,7 @@
     "difficulty": "CANONICAL",
     "query": "PIB per cápita a precios constantes en México en 2020",
     "expected_status": "RESOLVED",
-    "expected_indicator_id": 730,
+    "expected_indicator_id": 2206,
     "expected_facets": {},
     "expected_reason": null,
     "expected_alternatives": []
@@ -1053,7 +1053,7 @@
     "difficulty": "CANONICAL",
     "query": "PIB trimestral en Chile en 2022",
     "expected_status": "RESOLVED",
-    "expected_indicator_id": 731,
+    "expected_indicator_id": 286,
     "expected_facets": {},
     "expected_reason": null,
     "expected_alternatives": []
@@ -1064,7 +1064,7 @@
     "difficulty": "CANONICAL",
     "query": "Crecimiento del PIB anual en Colombia en 2021",
     "expected_status": "RESOLVED",
-    "expected_indicator_id": 729,
+    "expected_indicator_id": 2204,
     "expected_facets": {},
     "expected_reason": null,
     "expected_alternatives": []
@@ -1075,7 +1075,7 @@
     "difficulty": "CANONICAL",
     "query": "PIB per cápita en Argentina en 2021",
     "expected_status": "RESOLVED",
-    "expected_indicator_id": 730,
+    "expected_indicator_id": 2206,
     "expected_facets": {},
     "expected_reason": null,
     "expected_alternatives": []
@@ -1086,7 +1086,7 @@
     "difficulty": "CANONICAL",
     "query": "PIB total a precios constantes en Perú en 2022",
     "expected_status": "RESOLVED",
-    "expected_indicator_id": 729,
+    "expected_indicator_id": 2204,
     "expected_facets": {},
     "expected_reason": null,
     "expected_alternatives": []
@@ -1097,7 +1097,7 @@
     "difficulty": "CANONICAL",
     "query": "Variación del PIB trimestral en Brasil en 2022",
     "expected_status": "RESOLVED",
-    "expected_indicator_id": 731,
+    "expected_indicator_id": 286,
     "expected_facets": {},
     "expected_reason": null,
     "expected_alternatives": []
@@ -1108,7 +1108,7 @@
     "difficulty": "CANONICAL",
     "query": "PIB per cápita en Uruguay en 2021",
     "expected_status": "RESOLVED",
-    "expected_indicator_id": 730,
+    "expected_indicator_id": 2206,
     "expected_facets": {},
     "expected_reason": null,
     "expected_alternatives": []
@@ -1119,7 +1119,7 @@
     "difficulty": "SLANG",
     "query": "Cuánto creció la economía chilena en 2021",
     "expected_status": "RESOLVED",
-    "expected_indicator_id": 729,
+    "expected_indicator_id": 2204,
     "expected_facets": {},
     "expected_reason": null,
     "expected_alternatives": []
@@ -1130,7 +1130,7 @@
     "difficulty": "SLANG",
     "query": "La riqueza por cabeza en México en 2020",
     "expected_status": "RESOLVED",
-    "expected_indicator_id": 730,
+    "expected_indicator_id": 2206,
     "expected_facets": {},
     "expected_reason": null,
     "expected_alternatives": []
@@ -1141,7 +1141,7 @@
     "difficulty": "SLANG",
     "query": "Cómo anduvo el aparato productivo de Brasil en 2022",
     "expected_status": "RESOLVED",
-    "expected_indicator_id": 729,
+    "expected_indicator_id": 2204,
     "expected_facets": {},
     "expected_reason": null,
     "expected_alternatives": []
@@ -1152,7 +1152,7 @@
     "difficulty": "SLANG",
     "query": "Evolución de la actividad económica trimestral en Colombia en 2022",
     "expected_status": "RESOLVED",
-    "expected_indicator_id": 731,
+    "expected_indicator_id": 286,
     "expected_facets": {},
     "expected_reason": null,
     "expected_alternatives": []
@@ -1163,7 +1163,7 @@
     "difficulty": "BREAKDOWN",
     "query": "PIB por habitante en dólares constantes en Chile en 2021",
     "expected_status": "RESOLVED",
-    "expected_indicator_id": 730,
+    "expected_indicator_id": 2206,
     "expected_facets": {},
     "expected_reason": null,
     "expected_alternatives": []
@@ -1174,7 +1174,7 @@
     "difficulty": "BREAKDOWN",
     "query": "PIB por habitante en Brasil en 2020",
     "expected_status": "RESOLVED",
-    "expected_indicator_id": 730,
+    "expected_indicator_id": 2206,
     "expected_facets": {},
     "expected_reason": null,
     "expected_alternatives": []
@@ -1185,7 +1185,7 @@
     "difficulty": "BREAKDOWN",
     "query": "Desempeño económico trimestral en México en 2021",
     "expected_status": "RESOLVED",
-    "expected_indicator_id": 731,
+    "expected_indicator_id": 286,
     "expected_facets": {},
     "expected_reason": null,
     "expected_alternatives": []
@@ -1196,7 +1196,7 @@
     "difficulty": "BREAKDOWN",
     "query": "Crecimiento interanual trimestral del PIB en Argentina en 2022",
     "expected_status": "RESOLVED",
-    "expected_indicator_id": 731,
+    "expected_indicator_id": 286,
     "expected_facets": {},
     "expected_reason": null,
     "expected_alternatives": []
@@ -1207,12 +1207,12 @@
     "difficulty": "AMBIGUOUS",
     "query": "Economía de Chile en 2021",
     "expected_status": "ALTERNATIVE_PROPOSED",
-    "expected_indicator_id": 729,
+    "expected_indicator_id": 2204,
     "expected_facets": {},
     "expected_reason": "Ambiguous query between total annual GDP, per capita GDP, and quarterly GDP",
     "expected_alternatives": [
-      730,
-      731
+      2206,
+      286
     ]
   },
   {
@@ -1221,12 +1221,12 @@
     "difficulty": "AMBIGUOUS",
     "query": "Actividad económica en Brasil en 2022",
     "expected_status": "ALTERNATIVE_PROPOSED",
-    "expected_indicator_id": 729,
+    "expected_indicator_id": 2204,
     "expected_facets": {},
     "expected_reason": "Ambiguous query proposing total vs quarterly GDP",
     "expected_alternatives": [
-      730,
-      731
+      2206,
+      286
     ]
   },
   {
@@ -1257,7 +1257,7 @@
     "difficulty": "CANONICAL",
     "query": "Índice de precios al consumidor general en Brasil en 2021",
     "expected_status": "RESOLVED",
-    "expected_indicator_id": 2928,
+    "expected_indicator_id": 2484,
     "expected_facets": {},
     "expected_reason": null,
     "expected_alternatives": []
@@ -1279,7 +1279,7 @@
     "difficulty": "CANONICAL",
     "query": "IPC de transporte y energía en Chile en 2021",
     "expected_status": "RESOLVED",
-    "expected_indicator_id": 2930,
+    "expected_indicator_id": 365,
     "expected_facets": {},
     "expected_reason": null,
     "expected_alternatives": []
@@ -1290,7 +1290,7 @@
     "difficulty": "CANONICAL",
     "query": "Inflación general medida por IPC en Colombia en 2022",
     "expected_status": "RESOLVED",
-    "expected_indicator_id": 2928,
+    "expected_indicator_id": 2484,
     "expected_facets": {},
     "expected_reason": null,
     "expected_alternatives": []
@@ -1312,7 +1312,7 @@
     "difficulty": "CANONICAL",
     "query": "Índice de precios al consumidor en Perú en 2020",
     "expected_status": "RESOLVED",
-    "expected_indicator_id": 2928,
+    "expected_indicator_id": 2484,
     "expected_facets": {},
     "expected_reason": null,
     "expected_alternatives": []
@@ -1323,7 +1323,7 @@
     "difficulty": "CANONICAL",
     "query": "Variación de precios de la energía en Uruguay en 2022",
     "expected_status": "RESOLVED",
-    "expected_indicator_id": 2930,
+    "expected_indicator_id": 365,
     "expected_facets": {},
     "expected_reason": null,
     "expected_alternatives": []
@@ -1367,7 +1367,7 @@
     "difficulty": "SLANG",
     "query": "El golpe al bolsillo por el transporte en Chile en 2022",
     "expected_status": "RESOLVED",
-    "expected_indicator_id": 2930,
+    "expected_indicator_id": 365,
     "expected_facets": {},
     "expected_reason": null,
     "expected_alternatives": []
@@ -1378,7 +1378,7 @@
     "difficulty": "SLANG",
     "query": "El costo de la vida general en México en 2021",
     "expected_status": "RESOLVED",
-    "expected_indicator_id": 2928,
+    "expected_indicator_id": 2484,
     "expected_facets": {},
     "expected_reason": null,
     "expected_alternatives": []
@@ -1400,7 +1400,7 @@
     "difficulty": "BREAKDOWN",
     "query": "Variación de precios en transporte en México en 2022",
     "expected_status": "RESOLVED",
-    "expected_indicator_id": 2930,
+    "expected_indicator_id": 365,
     "expected_facets": {},
     "expected_reason": null,
     "expected_alternatives": []
@@ -1411,7 +1411,7 @@
     "difficulty": "BREAKDOWN",
     "query": "Precios al consumidor en el rubro energía en Chile en 2021",
     "expected_status": "RESOLVED",
-    "expected_indicator_id": 2930,
+    "expected_indicator_id": 365,
     "expected_facets": {},
     "expected_reason": null,
     "expected_alternatives": []
@@ -1433,12 +1433,12 @@
     "difficulty": "AMBIGUOUS",
     "query": "Inflación sectorial en Chile en 2022",
     "expected_status": "ALTERNATIVE_PROPOSED",
-    "expected_indicator_id": 2928,
+    "expected_indicator_id": 2484,
     "expected_facets": {},
     "expected_reason": "Ambiguous between food and beverage IPC and transport and energy IPC",
     "expected_alternatives": [
       2929,
-      2930
+      365
     ]
   },
   {
@@ -1447,12 +1447,12 @@
     "difficulty": "AMBIGUOUS",
     "query": "Precios en Brasil en 2021",
     "expected_status": "ALTERNATIVE_PROPOSED",
-    "expected_indicator_id": 2928,
+    "expected_indicator_id": 2484,
     "expected_facets": {},
     "expected_reason": "Ambiguous between general CPI and specific consumption baskets",
     "expected_alternatives": [
       2929,
-      2930
+      365
     ]
   },
   {
@@ -1494,7 +1494,7 @@
     "difficulty": "CANONICAL",
     "query": "Balance primario del gobierno central en porcentaje del PIB en México en 2020",
     "expected_status": "RESOLVED",
-    "expected_indicator_id": 1241,
+    "expected_indicator_id": 1246,
     "expected_facets": {},
     "expected_reason": null,
     "expected_alternatives": []
@@ -1505,7 +1505,7 @@
     "difficulty": "CANONICAL",
     "query": "Ingresos tributarios como porcentaje del PIB en Chile en 2022",
     "expected_status": "RESOLVED",
-    "expected_indicator_id": 1242,
+    "expected_indicator_id": 821,
     "expected_facets": {},
     "expected_reason": null,
     "expected_alternatives": []
@@ -1527,7 +1527,7 @@
     "difficulty": "CANONICAL",
     "query": "Superávit o déficit primario del gobierno en Argentina en 2021",
     "expected_status": "RESOLVED",
-    "expected_indicator_id": 1241,
+    "expected_indicator_id": 1246,
     "expected_facets": {},
     "expected_reason": null,
     "expected_alternatives": []
@@ -1538,7 +1538,7 @@
     "difficulty": "CANONICAL",
     "query": "Recaudación tributaria sobre el PIB en Perú en 2022",
     "expected_status": "RESOLVED",
-    "expected_indicator_id": 1242,
+    "expected_indicator_id": 821,
     "expected_facets": {},
     "expected_reason": null,
     "expected_alternatives": []
@@ -1560,7 +1560,7 @@
     "difficulty": "CANONICAL",
     "query": "Balance primario fiscal en Costa Rica en 2022",
     "expected_status": "RESOLVED",
-    "expected_indicator_id": 1241,
+    "expected_indicator_id": 1246,
     "expected_facets": {},
     "expected_reason": null,
     "expected_alternatives": []
@@ -1582,7 +1582,7 @@
     "difficulty": "SLANG",
     "query": "Cuántos impuestos cobra el fisco en México en 2020",
     "expected_status": "RESOLVED",
-    "expected_indicator_id": 1242,
+    "expected_indicator_id": 821,
     "expected_facets": {},
     "expected_reason": null,
     "expected_alternatives": []
@@ -1593,7 +1593,7 @@
     "difficulty": "SLANG",
     "query": "El rojo fiscal primario en Argentina en 2021",
     "expected_status": "RESOLVED",
-    "expected_indicator_id": 1241,
+    "expected_indicator_id": 1246,
     "expected_facets": {},
     "expected_reason": null,
     "expected_alternatives": []
@@ -1604,7 +1604,7 @@
     "difficulty": "SLANG",
     "query": "La plata que le entra a la DIAN como porcentaje del PIB en Colombia en 2022",
     "expected_status": "RESOLVED",
-    "expected_indicator_id": 1242,
+    "expected_indicator_id": 821,
     "expected_facets": {},
     "expected_reason": null,
     "expected_alternatives": []
@@ -1615,7 +1615,7 @@
     "difficulty": "BREAKDOWN",
     "query": "Carga tributaria del gobierno central en Brasil en 2021",
     "expected_status": "RESOLVED",
-    "expected_indicator_id": 1242,
+    "expected_indicator_id": 821,
     "expected_facets": {},
     "expected_reason": null,
     "expected_alternatives": []
@@ -1637,7 +1637,7 @@
     "difficulty": "BREAKDOWN",
     "query": "Resultado fiscal primario antes del pago de intereses en Chile en 2022",
     "expected_status": "RESOLVED",
-    "expected_indicator_id": 1241,
+    "expected_indicator_id": 1246,
     "expected_facets": {},
     "expected_reason": null,
     "expected_alternatives": []
@@ -1648,7 +1648,7 @@
     "difficulty": "BREAKDOWN",
     "query": "Presión fiscal tributaria en Colombia en 2020",
     "expected_status": "RESOLVED",
-    "expected_indicator_id": 1242,
+    "expected_indicator_id": 821,
     "expected_facets": {},
     "expected_reason": null,
     "expected_alternatives": []
@@ -1663,8 +1663,8 @@
     "expected_facets": {},
     "expected_reason": "Ambiguous fiscal query between debt, primary balance, and tax revenues",
     "expected_alternatives": [
-      1241,
-      1242
+      1246,
+      821
     ]
   },
   {
@@ -1677,8 +1677,8 @@
     "expected_facets": {},
     "expected_reason": "Ambiguous fiscal health query proposing alternatives",
     "expected_alternatives": [
-      1241,
-      1242
+      1246,
+      821
     ]
   },
   {
@@ -1709,7 +1709,7 @@
     "difficulty": "CANONICAL",
     "query": "Saldo en cuenta corriente de la balanza de pagos en porcentaje del PIB en Brasil en 2021",
     "expected_status": "RESOLVED",
-    "expected_indicator_id": 1243,
+    "expected_indicator_id": 740,
     "expected_facets": {},
     "expected_reason": null,
     "expected_alternatives": []
@@ -1720,7 +1720,7 @@
     "difficulty": "CANONICAL",
     "query": "Términos de intercambio de bienes FOB/CIF en México en 2020",
     "expected_status": "RESOLVED",
-    "expected_indicator_id": 1244,
+    "expected_indicator_id": 883,
     "expected_facets": {},
     "expected_reason": null,
     "expected_alternatives": []
@@ -1731,7 +1731,7 @@
     "difficulty": "CANONICAL",
     "query": "Cuenta corriente sobre el PIB en Chile en 2022",
     "expected_status": "RESOLVED",
-    "expected_indicator_id": 1243,
+    "expected_indicator_id": 740,
     "expected_facets": {},
     "expected_reason": null,
     "expected_alternatives": []
@@ -1742,7 +1742,7 @@
     "difficulty": "CANONICAL",
     "query": "Índice de términos de intercambio en Colombia en 2021",
     "expected_status": "RESOLVED",
-    "expected_indicator_id": 1244,
+    "expected_indicator_id": 883,
     "expected_facets": {},
     "expected_reason": null,
     "expected_alternatives": []
@@ -1753,7 +1753,7 @@
     "difficulty": "CANONICAL",
     "query": "Balanza en cuenta corriente como porcentaje del PIB en Argentina en 2020",
     "expected_status": "RESOLVED",
-    "expected_indicator_id": 1243,
+    "expected_indicator_id": 740,
     "expected_facets": {},
     "expected_reason": null,
     "expected_alternatives": []
@@ -1764,7 +1764,7 @@
     "difficulty": "CANONICAL",
     "query": "Relación de precios del comercio exterior en Perú en 2022",
     "expected_status": "RESOLVED",
-    "expected_indicator_id": 1244,
+    "expected_indicator_id": 883,
     "expected_facets": {},
     "expected_reason": null,
     "expected_alternatives": []
@@ -1775,7 +1775,7 @@
     "difficulty": "CANONICAL",
     "query": "Saldo de cuenta corriente en Uruguay en 2021",
     "expected_status": "RESOLVED",
-    "expected_indicator_id": 1243,
+    "expected_indicator_id": 740,
     "expected_facets": {},
     "expected_reason": null,
     "expected_alternatives": []
@@ -1786,7 +1786,7 @@
     "difficulty": "CANONICAL",
     "query": "Términos de intercambio de bienes en Costa Rica en 2022",
     "expected_status": "RESOLVED",
-    "expected_indicator_id": 1244,
+    "expected_indicator_id": 883,
     "expected_facets": {},
     "expected_reason": null,
     "expected_alternatives": []
@@ -1797,7 +1797,7 @@
     "difficulty": "SLANG",
     "query": "La relación de intercambio de exportaciones versus importaciones en Chile en 2021",
     "expected_status": "RESOLVED",
-    "expected_indicator_id": 1244,
+    "expected_indicator_id": 883,
     "expected_facets": {},
     "expected_reason": null,
     "expected_alternatives": []
@@ -1808,7 +1808,7 @@
     "difficulty": "SLANG",
     "query": "Los dólares que entraron y salieron por cuenta corriente en Argentina en 2020",
     "expected_status": "RESOLVED",
-    "expected_indicator_id": 1243,
+    "expected_indicator_id": 740,
     "expected_facets": {},
     "expected_reason": null,
     "expected_alternatives": []
@@ -1819,7 +1819,7 @@
     "difficulty": "SLANG",
     "query": "Precios de lo que vendemos versus lo que compramos afuera en Brasil en 2021",
     "expected_status": "RESOLVED",
-    "expected_indicator_id": 1244,
+    "expected_indicator_id": 883,
     "expected_facets": {},
     "expected_reason": null,
     "expected_alternatives": []
@@ -1830,7 +1830,7 @@
     "difficulty": "SLANG",
     "query": "Déficit externo en cuenta corriente en Colombia en 2022",
     "expected_status": "RESOLVED",
-    "expected_indicator_id": 1243,
+    "expected_indicator_id": 740,
     "expected_facets": {},
     "expected_reason": null,
     "expected_alternatives": []
@@ -1841,7 +1841,7 @@
     "difficulty": "BREAKDOWN",
     "query": "Términos de intercambio FOB/CIF en Brasil en 2022",
     "expected_status": "RESOLVED",
-    "expected_indicator_id": 1244,
+    "expected_indicator_id": 883,
     "expected_facets": {},
     "expected_reason": null,
     "expected_alternatives": []
@@ -1852,7 +1852,7 @@
     "difficulty": "BREAKDOWN",
     "query": "Superávit o déficit de cuenta corriente sobre el PIB en Perú en 2021",
     "expected_status": "RESOLVED",
-    "expected_indicator_id": 1243,
+    "expected_indicator_id": 740,
     "expected_facets": {},
     "expected_reason": null,
     "expected_alternatives": []
@@ -1863,7 +1863,7 @@
     "difficulty": "BREAKDOWN",
     "query": "Evolución de los términos del comercio exterior en México en 2021",
     "expected_status": "RESOLVED",
-    "expected_indicator_id": 1244,
+    "expected_indicator_id": 883,
     "expected_facets": {},
     "expected_reason": null,
     "expected_alternatives": []
@@ -1874,7 +1874,7 @@
     "difficulty": "BREAKDOWN",
     "query": "Saldo de transacciones corrientes frente al PIB en Chile en 2020",
     "expected_status": "RESOLVED",
-    "expected_indicator_id": 1243,
+    "expected_indicator_id": 740,
     "expected_facets": {},
     "expected_reason": null,
     "expected_alternatives": []
@@ -1885,11 +1885,11 @@
     "difficulty": "AMBIGUOUS",
     "query": "Sector externo en Chile en 2021",
     "expected_status": "ALTERNATIVE_PROPOSED",
-    "expected_indicator_id": 1243,
+    "expected_indicator_id": 740,
     "expected_facets": {},
     "expected_reason": "Ambiguous external query between current account balance and terms of trade",
     "expected_alternatives": [
-      1244
+      883
     ]
   },
   {
@@ -1898,11 +1898,11 @@
     "difficulty": "AMBIGUOUS",
     "query": "Comercio internacional y pagos en Brasil en 2022",
     "expected_status": "ALTERNATIVE_PROPOSED",
-    "expected_indicator_id": 1243,
+    "expected_indicator_id": 740,
     "expected_facets": {},
     "expected_reason": "Ambiguous query proposing external sector alternatives",
     "expected_alternatives": [
-      1244
+      883
     ]
   },
   {
@@ -1955,7 +1955,7 @@
     "difficulty": "CANONICAL",
     "query": "Participación de energías renovables en la generación eléctrica en Chile en 2021",
     "expected_status": "RESOLVED",
-    "expected_indicator_id": 5683,
+    "expected_indicator_id": 3154,
     "expected_facets": {},
     "expected_reason": null,
     "expected_alternatives": []
@@ -1977,7 +1977,7 @@
     "difficulty": "CANONICAL",
     "query": "Generación eléctrica renovable en Argentina en 2021",
     "expected_status": "RESOLVED",
-    "expected_indicator_id": 5683,
+    "expected_indicator_id": 3154,
     "expected_facets": {},
     "expected_reason": null,
     "expected_alternatives": []
@@ -1999,7 +1999,7 @@
     "difficulty": "CANONICAL",
     "query": "Porcentaje de energías limpias en la matriz eléctrica de Uruguay en 2022",
     "expected_status": "RESOLVED",
-    "expected_indicator_id": 5683,
+    "expected_indicator_id": 3154,
     "expected_facets": {},
     "expected_reason": null,
     "expected_alternatives": []
@@ -2032,7 +2032,7 @@
     "difficulty": "SLANG",
     "query": "Luz verde producida con renovables en Chile en 2021",
     "expected_status": "RESOLVED",
-    "expected_indicator_id": 5683,
+    "expected_indicator_id": 3154,
     "expected_facets": {},
     "expected_reason": null,
     "expected_alternatives": []
@@ -2054,7 +2054,7 @@
     "difficulty": "SLANG",
     "query": "Cuánta energía limpia metemos a los enchufes en Colombia en 2021",
     "expected_status": "RESOLVED",
-    "expected_indicator_id": 5683,
+    "expected_indicator_id": 3154,
     "expected_facets": {},
     "expected_reason": null,
     "expected_alternatives": []
@@ -2087,7 +2087,7 @@
     "difficulty": "BREAKDOWN",
     "query": "Proporción de renovables en la matriz eléctrica en Chile en 2022",
     "expected_status": "RESOLVED",
-    "expected_indicator_id": 5683,
+    "expected_indicator_id": 3154,
     "expected_facets": {},
     "expected_reason": null,
     "expected_alternatives": []
@@ -2126,7 +2126,7 @@
     "expected_facets": {},
     "expected_reason": "Ambiguous between emissions and renewable power share",
     "expected_alternatives": [
-      5683
+      3154
     ]
   },
   {
@@ -2171,7 +2171,7 @@
     "difficulty": "CANONICAL",
     "query": "Salario mínimo real en Chile en 2020",
     "expected_status": "RESOLVED",
-    "expected_indicator_id": 3337,
+    "expected_indicator_id": 340,
     "expected_facets": {},
     "expected_reason": null,
     "expected_alternatives": []
@@ -2182,7 +2182,7 @@
     "difficulty": "CANONICAL",
     "query": "Producto interno bruto de Brasil en 1960",
     "expected_status": "RESOLVED",
-    "expected_indicator_id": 729,
+    "expected_indicator_id": 2204,
     "expected_facets": {},
     "expected_reason": null,
     "expected_alternatives": []
@@ -2206,7 +2206,7 @@
     "difficulty": "CANONICAL",
     "query": "Índice de precios al consumidor general en México en 2022",
     "expected_status": "RESOLVED",
-    "expected_indicator_id": 2928,
+    "expected_indicator_id": 2484,
     "expected_facets": {},
     "expected_reason": null,
     "expected_alternatives": []
@@ -2228,7 +2228,7 @@
     "difficulty": "CANONICAL",
     "query": "Términos de intercambio de bienes FOB/CIF en Colombia en 2020",
     "expected_status": "RESOLVED",
-    "expected_indicator_id": 1244,
+    "expected_indicator_id": 883,
     "expected_facets": {},
     "expected_reason": null,
     "expected_alternatives": []
@@ -2239,7 +2239,7 @@
     "difficulty": "CANONICAL",
     "query": "Generación eléctrica renovable en Costa Rica en 2020",
     "expected_status": "RESOLVED",
-    "expected_indicator_id": 5683,
+    "expected_indicator_id": 3154,
     "expected_facets": {},
     "expected_reason": null,
     "expected_alternatives": []
@@ -2291,7 +2291,7 @@
     "difficulty": "SLANG",
     "query": "El billete de los trabajadores rasos en Colombia en 2021",
     "expected_status": "RESOLVED",
-    "expected_indicator_id": 128,
+    "expected_indicator_id": 341,
     "expected_facets": {},
     "expected_reason": null,
     "expected_alternatives": []
@@ -2318,7 +2318,7 @@
     "difficulty": "BREAKDOWN",
     "query": "Ingreso laboral medio de hombres en zona rural de México en 2020",
     "expected_status": "RESOLVED",
-    "expected_indicator_id": 3339,
+    "expected_indicator_id": 2287,
     "expected_facets": {
       "sexo": "MASCULINO",
       "area": "RURAL"
@@ -2332,7 +2332,7 @@
     "difficulty": "BREAKDOWN",
     "query": "Tasa de desempleo juvenil de mujeres en Argentina en 2021",
     "expected_status": "RESOLVED",
-    "expected_indicator_id": 3331,
+    "expected_indicator_id": 5097,
     "expected_facets": {
       "sexo": "FEMENINO",
       "edad": "JUVENTUD"
@@ -2365,8 +2365,8 @@
     "expected_facets": {},
     "expected_reason": "Broad multi-concept query proposing poverty, inequality, and wage indicators",
     "expected_alternatives": [
-      3340,
-      128
+      3324,
+      341
     ]
   },
   {
@@ -2375,12 +2375,12 @@
     "difficulty": "AMBIGUOUS",
     "query": "Panorama macroeconómico y fiscal en Colombia en 2022",
     "expected_status": "ALTERNATIVE_PROPOSED",
-    "expected_indicator_id": 729,
+    "expected_indicator_id": 2204,
     "expected_facets": {},
     "expected_reason": "Broad macro query proposing GDP, debt, and current account",
     "expected_alternatives": [
       1240,
-      1243
+      740
     ]
   },
   {

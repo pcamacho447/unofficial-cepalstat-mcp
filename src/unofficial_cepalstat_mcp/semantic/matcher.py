@@ -174,8 +174,12 @@ class DynamicMemberMatcher:
             ]
             if len(pattern_matched) >= 2:
                 selected_members = pattern_matched
-            else:
+            elif pattern_matched:
                 selected_members = list(dim.members)
+            elif not target_patterns or any(p in ("desglose", "total", "todos") for p in target_patterns):
+                selected_members = list(dim.members)
+            else:
+                continue
 
             return dim, selected_members
 

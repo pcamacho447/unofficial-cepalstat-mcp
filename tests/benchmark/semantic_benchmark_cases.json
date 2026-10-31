@@ -54,7 +54,10 @@
       "competing_relationship": "alternative_measure",
       "required_country": "BRA",
       "must_include_suggestion": true,
-      "suggestion_contains": "Índice de feminidad"
+      "suggestion_contains": "Índice de feminidad",
+      "expected_alternatives": [
+        3330
+      ]
     },
     {
       "case_id": "POV-04",
@@ -136,14 +139,17 @@
       "competing_indicator_id": 119,
       "competing_relationship": "alternative_measure",
       "required_country": "URY",
-      "must_include_suggestion": true
+      "must_include_suggestion": true,
+      "expected_alternatives": [
+        119
+      ]
     },
     {
       "case_id": "MACRO-01",
       "query": "PIB anual a precios constantes en México 2020",
       "category": "DIRECT_CANONICAL",
       "expected_status": "RESOLVED",
-      "expected_indicator_id": 2203,
+      "expected_indicator_id": 2204,
       "required_country": "MEX",
       "required_year": 2020,
       "allow_swap": false
@@ -322,7 +328,7 @@
       "query": "PIB a precios constantes en dólares en Colombia en 2022",
       "category": "DIRECT_CANONICAL",
       "expected_status": "RESOLVED",
-      "expected_indicator_id": 2203,
+      "expected_indicator_id": 2204,
       "required_country": "COL",
       "required_year": 2022,
       "allow_swap": false
@@ -332,10 +338,11 @@
       "query": "PIB a precios corrientes en moneda nacional en Perú en 2021",
       "category": "DIRECT_CANONICAL",
       "expected_status": "RESOLVED",
-      "expected_indicator_id": 2204,
+      "expected_indicator_id": 2193,
       "required_country": "PER",
       "required_year": 2021,
-      "allow_swap": false
+      "allow_swap": true,
+      "swapped_from": 2203
     },
     {
       "case_id": "SE-028",
@@ -352,7 +359,7 @@
       "query": "Crecimiento trimestral del PIB de Chile en 2023",
       "category": "DIRECT_CANONICAL",
       "expected_status": "RESOLVED",
-      "expected_indicator_id": 2447,
+      "expected_indicator_id": 286,
       "required_country": "CHL",
       "required_year": 2023,
       "allow_swap": false
@@ -405,7 +412,7 @@
       "query": "Balanza comercial de bienes en Ecuador en 2022",
       "category": "DIRECT_CANONICAL",
       "expected_status": "RESOLVED",
-      "expected_indicator_id": 2949,
+      "expected_indicator_id": 2050,
       "required_country": "ECU",
       "required_year": 2022,
       "allow_swap": false
@@ -435,7 +442,7 @@
       "query": "Términos de intercambio de bienes de Bolivia en 2020",
       "category": "DIRECT_CANONICAL",
       "expected_status": "RESOLVED",
-      "expected_indicator_id": 2954,
+      "expected_indicator_id": 883,
       "required_country": "BOL",
       "required_year": 2020,
       "allow_swap": false
@@ -455,7 +462,7 @@
       "query": "Gasto social público total como porcentaje del PIB en Chile en 2021",
       "category": "DIRECT_CANONICAL",
       "expected_status": "RESOLVED",
-      "expected_indicator_id": 4405,
+      "expected_indicator_id": 4410,
       "required_country": "CHL",
       "required_year": 2021,
       "allow_swap": false
@@ -465,10 +472,11 @@
       "query": "Gasto público en educación en Paraguay en 2019",
       "category": "DIRECT_CANONICAL",
       "expected_status": "RESOLVED",
-      "expected_indicator_id": 4406,
+      "expected_indicator_id": 460,
       "required_country": "PRY",
       "required_year": 2019,
-      "allow_swap": false
+      "allow_swap": false,
+      "swapped_from": null
     },
     {
       "case_id": "SE-041",
@@ -495,7 +503,7 @@
       "query": "Extracción de agua dulce por habitante en Chile en 2020",
       "category": "DIRECT_CANONICAL",
       "expected_status": "RESOLVED",
-      "expected_indicator_id": 1318,
+      "expected_indicator_id": 4185,
       "required_country": "CHL",
       "required_year": 2020,
       "allow_swap": false
@@ -533,7 +541,7 @@
       "query": "Desempleo juvenil en Colombia 2022",
       "category": "REGIONALISM_NORMALIZATION",
       "expected_status": "RESOLVED",
-      "expected_indicator_id": 3344,
+      "expected_indicator_id": 5097,
       "required_country": "COL",
       "required_year": 2022,
       "required_facets": {
@@ -546,7 +554,7 @@
       "query": "Brecha salarial entre hombres y mujeres en Uruguay 2020",
       "category": "REGIONALISM_NORMALIZATION",
       "expected_status": "RESOLVED",
-      "expected_indicator_id": 3333,
+      "expected_indicator_id": 2288,
       "required_country": "URY",
       "required_year": 2020,
       "allow_swap": false

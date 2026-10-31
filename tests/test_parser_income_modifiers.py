@@ -41,7 +41,7 @@ def test_income_modifier_minimum_wage(parser: QueryParser, engine: SemanticResol
         res = engine.resolve(q)
         assert res.status == ResolutionStatus.RESOLVED
         assert res.selected_candidate is not None
-        assert res.selected_candidate.indicator_id == 3337
+        assert res.selected_candidate.indicator_id == 340
 
 
 def test_income_modifier_average_real_wage(parser: QueryParser, engine: SemanticResolutionEngine):
@@ -64,11 +64,11 @@ def test_income_modifier_average_real_wage(parser: QueryParser, engine: Semantic
         res = engine.resolve(q)
         assert res.status == ResolutionStatus.RESOLVED
         assert res.selected_candidate is not None
-        assert res.selected_candidate.indicator_id == 128
+        assert res.selected_candidate.indicator_id == 341
 
 
 def test_income_modifier_household_per_capita(parser: QueryParser, engine: SemanticResolutionEngine):
-    """Context modifier 'hogares/familias/por cabeza/per capita' -> INGRESO_HOGAR_PER_CAPITA / INGRESO_HOGARES -> Indicator 3345."""
+    """Context modifier 'hogares/familias/por cabeza/per capita' -> INGRESO_HOGAR_PER_CAPITA / INGRESO_HOGARES -> Indicator 2198."""
     queries = [
         "Cuál es la plata de los hogares por cabeza en Colombia en 2020",
         "Ingreso medio per cápita de los hogares en Colombia en 2021",
@@ -83,7 +83,7 @@ def test_income_modifier_household_per_capita(parser: QueryParser, engine: Seman
         res = engine.resolve(q)
         assert res.status == ResolutionStatus.RESOLVED
         assert res.selected_candidate is not None
-        assert res.selected_candidate.indicator_id == 3345
+        assert res.selected_candidate.indicator_id == 2198
 
 
 def test_income_modifier_labor_income_breakdown(parser: QueryParser, engine: SemanticResolutionEngine):
@@ -104,11 +104,11 @@ def test_income_modifier_labor_income_breakdown(parser: QueryParser, engine: Sem
         res = engine.resolve(q)
         assert res.status == ResolutionStatus.RESOLVED
         assert res.selected_candidate is not None
-        assert res.selected_candidate.indicator_id == 3339
+        assert res.selected_candidate.indicator_id == 2287
 
 
 def test_income_modifier_household_rural_breakdown(parser: QueryParser, engine: SemanticResolutionEngine):
-    """Household income with rural breakdown -> Indicator 3345 with area=RURAL."""
+    """Household income with rural breakdown -> Indicator 2287 with area=RURAL."""
     q = "Ingreso de las familias en el área rural en Chile en 2022"
     intent = parser.parse(q)
     assert intent.root_concept in {"INGRESO_HOGAR_PER_CAPITA", "INGRESO_HOGARES"}
@@ -117,7 +117,7 @@ def test_income_modifier_household_rural_breakdown(parser: QueryParser, engine: 
     res = engine.resolve(q)
     assert res.status == ResolutionStatus.RESOLVED
     assert res.selected_candidate is not None
-    assert res.selected_candidate.indicator_id == 3345
+    assert res.selected_candidate.indicator_id == 2287
     assert res.applied_filters.facets.get("area") == "RURAL"
 
 
@@ -125,7 +125,7 @@ def test_unmodified_slang_income_ambiguity(parser: QueryParser, engine: Semantic
     """Unmodified slang ('guita en Chile en 2021', 'cuanta plata en Colombia 2020', 'ingreso en Mexico 2022')
 
     -> is_ambiguous_measure = True, ambiguous_candidate = 'INCOME_MEASURES',
-    status ALTERNATIVE_PROPOSED, primary candidate 128, proposing alternatives [3337, 3345].
+    status ALTERNATIVE_PROPOSED, primary candidate 341, proposing alternatives [340, 2198].
     """
     queries = [
         "Cómo estuvo la guita en Chile en 2021",
@@ -141,10 +141,10 @@ def test_unmodified_slang_income_ambiguity(parser: QueryParser, engine: Semantic
         res = engine.resolve(q)
         assert res.status == ResolutionStatus.ALTERNATIVE_PROPOSED
         assert res.selected_candidate is not None
-        assert res.selected_candidate.indicator_id == 128
+        assert res.selected_candidate.indicator_id == 341
         alt_ids = [alt.indicator_id for alt in res.alternatives]
-        assert 3337 in alt_ids, f"3337 missing in alternatives {alt_ids} for {q}"
-        assert 3345 in alt_ids, f"3345 missing in alternatives {alt_ids} for {q}"
+        assert 340 in alt_ids, f"340 missing in alternatives {alt_ids} for {q}"
+        assert 2198 in alt_ids, f"2198 missing in alternatives {alt_ids} for {q}"
 
 
 # ---------------------------------------------------------------------------
@@ -161,16 +161,16 @@ def test_regionalisms_chilean(parser: QueryParser, engine: SemanticResolutionEng
     res1 = engine.resolve(q1)
     assert res1.status == ResolutionStatus.RESOLVED
     assert res1.selected_candidate is not None
-    assert res1.selected_candidate.indicator_id == 3331
+    assert res1.selected_candidate.indicator_id == 5097
 
-    # 2. lucas de los laburantes -> 128
+    # 2. lucas de los laburantes -> 341
     q2 = "Las lucas de los trabajadores en Chile en 2021"
     intent2 = parser.parse(q2)
     assert intent2.root_concept in {"SALARIO_REAL", "SALARIO_MEDIO"}
     res2 = engine.resolve(q2)
     assert res2.status == ResolutionStatus.RESOLVED
     assert res2.selected_candidate is not None
-    assert res2.selected_candidate.indicator_id == 128
+    assert res2.selected_candidate.indicator_id == 341
 
     # 3. lucas unmodified -> ambiguous
     q3 = "Cómo estuvieron las lucas en Chile en 2021"
@@ -179,7 +179,7 @@ def test_regionalisms_chilean(parser: QueryParser, engine: SemanticResolutionEng
     assert intent3.ambiguous_candidate == "INCOME_MEASURES"
     res3 = engine.resolve(q3)
     assert res3.status == ResolutionStatus.ALTERNATIVE_PROPOSED
-    assert res3.selected_candidate.indicator_id == 128
+    assert res3.selected_candidate.indicator_id == 341
 
 
 def test_regionalisms_rioplatense(parser: QueryParser, engine: SemanticResolutionEngine):
@@ -193,13 +193,14 @@ def test_regionalisms_rioplatense(parser: QueryParser, engine: SemanticResolutio
     assert res1.status == ResolutionStatus.RESOLVED
     assert res1.selected_candidate.indicator_id == 3341
 
-    # 2. desocupación de los pibes -> 3331
+    # 2. desocupación de los pibes -> 5097
     q2 = "Desocupación de los pibes en Argentina en 2021"
     intent2 = parser.parse(q2)
     assert intent2.facets.get("edad") == "JUVENTUD"
     res2 = engine.resolve(q2)
     assert res2.status == ResolutionStatus.RESOLVED
-    assert res2.selected_candidate.indicator_id == 3331
+    assert res2.selected_candidate is not None
+    assert res2.selected_candidate.indicator_id == 5097
 
     # 3. laburo sin empleo -> 127
     q3 = "Gente sin laburo en Argentina en 2021"
@@ -228,13 +229,13 @@ def test_regionalisms_mexican(parser: QueryParser, engine: SemanticResolutionEng
     assert res2.status == ResolutionStatus.RESOLVED
     assert res2.selected_candidate.indicator_id == 127
 
-    # 3. chavos sin chamba -> 3331
+    # 3. chavos sin chamba -> 5097
     q3 = "Chavos sin chamba en México en 2020"
     intent3 = parser.parse(q3)
     assert intent3.facets.get("edad") == "JUVENTUD"
     res3 = engine.resolve(q3)
     assert res3.status == ResolutionStatus.RESOLVED
-    assert res3.selected_candidate.indicator_id == 3331
+    assert res3.selected_candidate.indicator_id == 5097
 
 
 def test_regionalisms_colombian_andean(parser: QueryParser, engine: SemanticResolutionEngine):
@@ -291,7 +292,7 @@ def test_composite_precedence_primary_balance(parser: QueryParser, engine: Seman
         res = engine.resolve(q)
         assert res.status == ResolutionStatus.RESOLVED
         assert res.selected_candidate is not None
-        assert res.selected_candidate.indicator_id == 1241
+        assert res.selected_candidate.indicator_id == 1246
 
 
 def test_composite_precedence_tax_revenues(parser: QueryParser, engine: SemanticResolutionEngine):
@@ -309,7 +310,7 @@ def test_composite_precedence_tax_revenues(parser: QueryParser, engine: Semantic
         res = engine.resolve(q)
         assert res.status == ResolutionStatus.RESOLVED
         assert res.selected_candidate is not None
-        assert res.selected_candidate.indicator_id == 1242
+        assert res.selected_candidate.indicator_id == 821
 
 
 def test_composite_precedence_current_account(parser: QueryParser, engine: SemanticResolutionEngine):

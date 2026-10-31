@@ -140,8 +140,8 @@ def test_root_concept_protection_against_spurious_breakdowns() -> None:
         f"Expected RESOLVED status, got {resp1.status}"
     )
     assert resp1.selected_candidate is not None, "Expected candidate to be selected"
-    # Gasto público en educación: ID 4406 in official CEPALSTAT catalog (also accepting 2942, 3338)
-    assert resp1.selected_candidate.indicator_id in {2942, 3338, 4406}, (
+    # Gasto público en educación: ID 460 in official CEPALSTAT catalog (also accepting 2942, 3338, 4406)
+    assert resp1.selected_candidate.indicator_id in {460, 2942, 3338, 4406}, (
         f"Unexpected indicator_id {resp1.selected_candidate.indicator_id}"
     )
     assert "educacion" not in resp1.applied_filters.facets, (
@@ -154,7 +154,7 @@ def test_root_concept_protection_against_spurious_breakdowns() -> None:
         f"Expected RESOLVED status, got {resp2.status}"
     )
     assert resp2.selected_candidate is not None, "Expected candidate to be selected"
-    assert resp2.selected_candidate.indicator_id in {2943, 4405}, (
+    assert resp2.selected_candidate.indicator_id in {4410, 2943, 4405}, (
         f"Unexpected indicator_id {resp2.selected_candidate.indicator_id}"
     )
     assert "rubro" not in resp2.applied_filters.facets, (

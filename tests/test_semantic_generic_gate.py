@@ -236,10 +236,10 @@ def test_stage3_ambiguity_conversational_hint_matches_selected_and_alternative_i
     engine = SemanticResolutionEngine()
 
     for query, expected_primary_id, expected_alt_id in [
-        ("cuentas fiscales en colombia 2022", 1240, 1241),
-        ("economia de chile en 2022", 729, 730),
-        ("inflacion sectorial en peru 2022", 2928, 2929),
-        ("sector externo en mexico 2022", 1243, 1244),
+        ("cuentas fiscales en colombia 2022", 1240, 1246),
+        ("economia de chile en 2022", 2204, 2206),
+        ("inflacion sectorial en peru 2022", 2484, 2929),
+        ("sector externo en mexico 2022", 740, 883),
         ("emisiones de gases de efecto invernadero en brasil 2021", 5681, 5682),
     ]:
         res = engine.resolve(query)

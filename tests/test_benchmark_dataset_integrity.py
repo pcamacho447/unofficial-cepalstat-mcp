@@ -117,12 +117,12 @@ def test_cluster_4_income_disambiguation_coverage(benchmark_data):
     c4_items = [it for it in benchmark_data if it.get("cluster") == "C4_SALARIOS_E_INGRESOS"]
     assert len(c4_items) == 20
 
-    # Ensure indicators 3337 (minimo), 128 (medio real), 3339 (laboral medio), 3345 (hogares pc) are present
+    # Ensure indicators 340 (minimo), 341 (medio real), 2287 (laboral medio), 2198 (hogares) are present
     indicator_ids = {it["expected_indicator_id"] for it in c4_items if it["expected_indicator_id"] is not None}
-    assert 3337 in indicator_ids, "C4 must include Salario mínimo real (3337)"
-    assert 128 in indicator_ids, "C4 must include Salario medio real (128)"
-    assert 3339 in indicator_ids, "C4 must include Ingreso laboral medio (3339)"
-    assert 3345 in indicator_ids, "C4 must include Ingreso per cápita del hogar (3345)"
+    assert 340 in indicator_ids, "C4 must include Salario mínimo real (340)"
+    assert 341 in indicator_ids, "C4 must include Salario medio real (341)"
+    assert 2287 in indicator_ids, "C4 must include Ingreso laboral medio (2287)"
+    assert 2198 in indicator_ids, "C4 must include Ingresos de los hogares (2198)"
 
     # Check for context modifiers
     c4_queries_lower = [it["query"].lower() for it in c4_items]

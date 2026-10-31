@@ -655,6 +655,17 @@ class QueryParser:
                 facets["rubro"] = "SALUD"
             consumed_phrases.append("salud")
 
+        if any(term in clean for term in ["moneda nacional", "moneda local"]):
+            facets["moneda"] = "MONEDA_NACIONAL"
+            for t in ["moneda nacional", "moneda local"]:
+                if t in clean:
+                    consumed_phrases.append(t)
+        elif any(term in clean for term in ["dolares constantes", "a precios constantes en dolares", "precios constantes en dolares"]):
+            facets["moneda"] = "DOLARES_CONSTANTES"
+            for t in ["dolares constantes", "a precios constantes en dolares", "precios constantes en dolares"]:
+                if t in clean:
+                    consumed_phrases.append(t)
+
         # Generic ontology-driven facet extraction
         for fdef in self.ontology._facets.values():
             compiled_rules = self.ontology._compiled_triggers.get(fdef.facet_key)
@@ -1228,14 +1239,26 @@ class QueryParser:
         ):
             facets["sexo"] = "SEXO_DESGLOSE"
 
-        if intent.root_concept == "GASTO_SOCIAL":
-            facets.pop("rubro", None)
-            if "salud" in clean or "sanitario" in clean or "atencion medica" in clean:
-                facets["funcion"] = "SALUD"
-            elif "educacion" in clean or "educativo" in clean:
-                facets["funcion"] = "EDUCACION"
-            elif "proteccion social" in clean or "seguridad social" in clean:
-                facets["funcion"] = "PROTECCION_SOCIAL"
+        if intent.root_concept in ("GASTO_SOCIAL", "GASTO_EDUCACION"):
+            if intent.root_concept == "GASTO_EDUCACION":
+                facets.pop("funcion", None)
+            else:
+                facets.pop("rubro", None)
+                if "salud" in clean or "sanitario" in clean or "atencion medica" in clean:
+                    facets["funcion"] = "SALUD"
+                elif "educacion" in clean or "educativo" in clean:
+                    facets["funcion"] = "EDUCACION"
+                elif "proteccion social" in clean or "seguridad social" in clean:
+                    facets["funcion"] = "PROTECCION_SOCIAL"
+
+        if intent.root_concept in (
+            "IPC_GENERAL",
+            "IPC_ALIMENTOS",
+            "IPC_SUBYACENTE",
+            "INFLACION_ALIMENTOS",
+            "IPC_TRANSPORTE_ENERGIA",
+        ) or "rubro" in facets:
+            facets.pop("funcion", None)
 
         if "moneda nacional" in clean and facets.get("area") == "NACIONAL":
             if not any(term in clean for term in ["area nacional", "nivel nacional", "total nacional", "todo el pais"]):

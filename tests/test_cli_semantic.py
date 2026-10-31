@@ -204,8 +204,11 @@ def test_cli_semantic_resolve_displays_conversational_hint_on_alternative_propos
 
 
 def test_cli_info_canonical_alias_mapping_to_empirical_table(capsys, monkeypatch):
-    """Test CLI info 1242 automatically maps to empirical table 821 with header note."""
+    """Test CLI info 1242 automatically maps to empirical table 821 with header note when present in map."""
+    import unofficial_cepalstat_mcp.semantic.registry as reg
     from unofficial_cepalstat_mcp.extractor import DataExtractor
+
+    monkeypatch.setattr(reg, "EMPIRICAL_INDICATOR_ID_MAP", {1242: 821})
 
     mock_meta = {
         "indicator_name": "Ingresos tributarios por tipo de impuestos en porcentajes del PIB",

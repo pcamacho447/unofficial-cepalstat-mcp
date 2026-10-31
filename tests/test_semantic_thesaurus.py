@@ -186,17 +186,17 @@ def test_econometric_antonym_polarities():
     assert pol_desemp.polarity_type == PolarityType.STATE_INVERSION
     assert pol_desemp.canonical_opposite in ["ocupacion", "empleo"]
 
-    # 2. Accounting Sign: Superávit vs Déficit (Indicador 1241)
+    # 2. Accounting Sign: Superávit vs Déficit (Indicador 1246)
     pol_def = th.resolve_polarity("deficit primario como porcentaje del pib en brasil 2020")
     assert pol_def is not None
     assert pol_def.polarity_type == PolarityType.ACCOUNTING_SIGN
-    assert pol_def.canonical_indicator_id == 1241
+    assert pol_def.canonical_indicator_id == 1246
     assert pol_def.expected_sign == ExpectedSign.NEGATIVE
 
     pol_sup = th.resolve_polarity("superavit primario en uruguay 2019")
     assert pol_sup is not None
     assert pol_sup.polarity_type == PolarityType.ACCOUNTING_SIGN
-    assert pol_sup.canonical_indicator_id == 1241
+    assert pol_sup.canonical_indicator_id == 1246
     assert pol_sup.expected_sign == ExpectedSign.POSITIVE
 
     # 3. Inclusion / Exclusion: LULUCF (5681 vs 5682)
@@ -210,11 +210,11 @@ def test_econometric_antonym_polarities():
     assert pol_con_lulucf.polarity_type == PolarityType.INCLUSION_EXCLUSION
     assert pol_con_lulucf.canonical_indicator_id == 5681
 
-    # 4. Current Account Sign (1243)
+    # 4. Current Account Sign (740)
     pol_ca = th.resolve_polarity("deficit en cuenta corriente en peru")
     assert pol_ca is not None
     assert pol_ca.polarity_type == PolarityType.ACCOUNTING_SIGN
-    assert pol_ca.canonical_indicator_id == 1243
+    assert pol_ca.canonical_indicator_id == 740
     assert pol_ca.expected_sign == ExpectedSign.NEGATIVE
 
     # 5. Facet Complements (Formalidad y Área)
@@ -282,17 +282,17 @@ def test_end_to_end_synonyms_and_antonyms_queries():
     # Chilean fuels slang
     res_bencina = engine.resolve_query("cual fue el aumento en bencina en chile 2022")
     assert res_bencina.status == ResolutionStatus.RESOLVED
-    assert res_bencina.selected_candidate.indicator_id == 2930
+    assert res_bencina.selected_candidate.indicator_id == 365
 
     # Argentine fuels slang
     res_nafta = engine.resolve_query("inflacion de la nafta en argentina 2022")
     assert res_nafta.status == ResolutionStatus.RESOLVED
-    assert res_nafta.selected_candidate.indicator_id == 2930
+    assert res_nafta.selected_candidate.indicator_id == 365
 
     # Fiscal deficit polarity
     res_def = engine.resolve_query("cual fue el deficit primario en chile 2022")
     assert res_def.status == ResolutionStatus.RESOLVED
-    assert res_def.selected_candidate.indicator_id == 1241
+    assert res_def.selected_candidate.indicator_id == 1246
     assert res_def.polarity_info is not None
     assert res_def.polarity_info.expected_sign.value == "NEGATIVE"
 

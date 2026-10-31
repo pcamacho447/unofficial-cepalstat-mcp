@@ -269,11 +269,11 @@ def test_generic_breakdowns_for_sexo_area_edad_and_deciles():
     assert edad_dim.is_breakdown is True
     assert len(edad_dim.member_names) >= 3
 
-    # 4. 'distribucion del ingreso por deciles' -> binds Estrato de ingreso with is_breakdown=True
+    # 4. 'distribucion del ingreso por deciles' -> binds Estrato de ingreso with is_breakdown=True on 3390
     r_decil = engine.resolve("distribucion del ingreso por deciles en peru 2022")
     assert r_decil.status == ResolutionStatus.RESOLVED
     assert r_decil.selected_candidate is not None
-    assert r_decil.selected_candidate.indicator_id == 3340
+    assert r_decil.selected_candidate.indicator_id == 3390
     decil_dim = next((f for f in r_decil.applied_filters.dimensions if f.dim_id == 600), None)
     assert decil_dim is not None
     assert decil_dim.is_breakdown is True
@@ -358,13 +358,13 @@ def test_poblacion_especifica_afrodescendiente_no_bloqueada_por_etnico_total(eng
 
 
 def test_poblacion_por_area_urbana_rural_routes_to_indicator_4992(engine):
-    """Assert 'poblacion por area urbana y rural en colombia 2022' routes to 4992."""
+    """Assert 'poblacion por area urbana y rural en colombia 2022' routes to real canonical indicator 28."""
     from unofficial_cepalstat_mcp.semantic.models import ResolutionStatus
 
     res = engine.resolve("poblacion por area en colombia 2022")
     assert res.status == ResolutionStatus.RESOLVED
     assert res.selected_candidate is not None
-    assert res.selected_candidate.indicator_id == 4992
+    assert res.selected_candidate.indicator_id == 28
 
 
 

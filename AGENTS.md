@@ -21,14 +21,14 @@ Cliente Python, catálogo SQLite offline (~2,000 indicadores), recetario anti-se
 - Sincronizar entorno completo con `uv sync --all-extras --dev` (instala tanto optional-dependencies como dependency-groups).
 - Ejecutar siempre `uv run pytest -m "not integration"`; correr `pytest` sin filtro dispara pruebas `@pytest.mark.integration` contra la API viva de CEPALSTAT.
 - Al tocar `semantic/`, certificar `uv run pytest tests/test_semantic_benchmark_200.py tests/test_adversarial_benchmark_40.py -v` (**0.00% FSR**, 40/40 adversarias y p50 < 1.0 ms).
-- CI ejecuta `uv run ruff check .` y `uv build`, pero no corre `mypy` (hay 64 errores preexistentes de tipado en `cli.py` y `semantic/`; verificar código nuevo o firmas editadas con `uv run mypy <ruta>`).
+- CI ejecuta `uv run ruff check .` y `uv build`. El código base cuenta con 0 errores de `mypy` en `src/unofficial_cepalstat_mcp/` (verificar cualquier código nuevo o firmas editadas con `uv run mypy src/unofficial_cepalstat_mcp/`).
 - Para resolución semántica con extracción empírica por CLI usar `uv run unofficial-cepalstat-mcp semantic resolve "<consulta>" --fetch` (no existe `semantic fetch`).
 
 ## Conventions that differ from defaults
 
 - Importar siempre desde `unofficial_cepalstat_mcp` en Python y notebooks; `statscepal` solo persiste como alias de script CLI en `pyproject.toml`.
 - Nunca leer las constantes `DEFAULT_DB_PATH` de `catalog/store.py` o `bitacora/store.py` para nuevas rutas; llamar a `get_cache_db_path()` o inyectar `db_path` explícito, abrir SQLite con `timeout=10.0` + `PRAGMA busy_timeout = 10000;` y cerrar en `finally`.
-- Nunca enviar miembros de `SYNTHETIC_DIMENSION_MEMBER_IDS` (ej. `79578`) como parámetro `members=` a `/records` (colisionan con IDs de países en otras tablas) y traducir IDs canónicos mediante `EMPIRICAL_INDICATOR_ID_MAP` antes del fetch HTTP.
+- Nunca enviar miembros de `SYNTHETIC_DIMENSION_MEMBER_IDS` (ej. `79578`) como parámetro `members=` a `/records` (colisionan con IDs de países en otras tablas); todos los indicadores resuelven a IDs canónicos reales de `master_indicators` (`EMPIRICAL_INDICATOR_ID_MAP` permanece `{}` por retrocompatibilidad).
 - Prohibido interpolar años sin encuesta en `BADEHOG_SURVEY_INDICATORS`; retornar `RESOLVED_WITH_ANCHORS` con años ancla adyacentes oficiales (`is_anchor=True`).
 - Registrar nuevas facetas declarativamente en `FacetOntology` (`semantic/facet_ontology.py`), nunca con condicionales `if facet == "..."` en `engine.py`, `parser.py` o `matcher.py`, y nunca sobrescribir aristas `provenance='curated'` con `inferred`.
 

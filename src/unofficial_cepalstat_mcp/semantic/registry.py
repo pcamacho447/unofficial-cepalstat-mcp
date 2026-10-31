@@ -459,6 +459,7 @@ DEFAULT_OFFICIAL_DIMENSIONS: dict[int, list[Dimension]] = {
     ],
     4145: [],
     845: [],
+    2204: [],
 }
 
 
@@ -665,7 +666,7 @@ VERTICAL_SLICE_INDICATORS: dict[int, IndicatorMetadata] = {
         supported_facets=set(),
         relationships={
             341: RelationshipType.ALTERNATIVE_MEASURE,
-            2287: RelationshipType.RELATED_CONCEPT,
+            2287: RelationshipType.BREAKDOWN_OF,
         },
     ),
     # 11b. Ingreso ocupados etnia/área
@@ -700,7 +701,7 @@ VERTICAL_SLICE_INDICATORS: dict[int, IndicatorMetadata] = {
         concept="PIB",
         measure_type=MeasureType.VOLUMEN_REAL,
         unit="Millones de USD constantes",
-        supported_facets=set(),
+        supported_facets={"moneda"},
         relationships={
             2206: RelationshipType.BREAKDOWN_OF,
             286: RelationshipType.ALTERNATIVE_MEASURE,
@@ -717,7 +718,7 @@ VERTICAL_SLICE_INDICATORS: dict[int, IndicatorMetadata] = {
         supported_facets=set(),
         relationships={
             2204: RelationshipType.ALTERNATIVE_MEASURE,
-            2193: RelationshipType.ALTERNATIVE_MEASURE,
+            2193: RelationshipType.BREAKDOWN_OF,
         },
     ),
     # 12c. PIB total anual a precios corrientes MN
@@ -727,7 +728,7 @@ VERTICAL_SLICE_INDICATORS: dict[int, IndicatorMetadata] = {
         concept="PIB_CORRIENTE",
         measure_type=MeasureType.VALOR_CORRIENTE,
         unit="Millones de moneda nacional",
-        supported_facets={"rubro"},
+        supported_facets={"rubro", "moneda"},
         relationships={
             2203: RelationshipType.ALTERNATIVE_MEASURE,
             2204: RelationshipType.ALTERNATIVE_MEASURE,
@@ -899,7 +900,7 @@ VERTICAL_SLICE_INDICATORS: dict[int, IndicatorMetadata] = {
         concept="INGRESOS_TRIBUTARIOS_CORRIENTES",
         measure_type=MeasureType.VALOR_CORRIENTE,
         unit="moneda nacional",
-        supported_facets=set(),
+        supported_facets={"moneda"},
         relationships={
             821: RelationshipType.ALTERNATIVE_MEASURE,
         },
@@ -1218,8 +1219,8 @@ LEGACY_50_CANONICAL_DEFAULTS: dict[str, int] = {
     "INGRESO_LABORAL": 2287,
     "INGRESO_HOGARES": 2198,
     "INGRESO_HOGAR_PER_CAPITA": 2198,
-    "PIB": 2203,
-    "PIB_CORRIENTE": 2204,
+    "PIB": 2204,
+    "PIB_CORRIENTE": 2203,
     "PIB_PER_CAPITA": 2206,
     "PIB_TRIMESTRAL": 286,
     "GINI": 3289,
