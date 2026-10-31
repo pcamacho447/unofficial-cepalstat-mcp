@@ -10,7 +10,7 @@ unit: Millones de dólares a precios constantes
 member_ids:
 - 224
 python_code: |
-  from statscepal import CepalStatClient, DataExtractor
+  from unofficial_cepalstat_mcp import CepalStatClient, DataExtractor
 
   client = CepalStatClient()
   extractor = DataExtractor(client)
@@ -62,7 +62,7 @@ antibias:
 
 ## Código Reproducible en Python
 ```python
-from statscepal import CepalStatClient, DataExtractor
+from unofficial_cepalstat_mcp import CepalStatClient, DataExtractor
 
 client = CepalStatClient()
 extractor = DataExtractor(client)

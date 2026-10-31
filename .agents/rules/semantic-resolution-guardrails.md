@@ -1,6 +1,11 @@
+---
+trigger: model_decision
+description: Use when developing, refactoring, debugging, or benchmarking the semantic resolution engine in src/unofficial_cepalstat_mcp/semantic/ (facets, FacetOntology, BREAKDOWN_OF graph, temporal anchors, country lexicon, or empirical fetcher).
+---
+
 # Guardarraíles de Resolución Semántica y Desglose Multidimensional
 
-Al desarrollar, extender o refactorizar el motor semántico (`statscepal.semantic`), aplican los siguientes invariantes arquitectónicos y de calidad estadística:
+Al desarrollar, extender o refactorizar el motor semántico (`unofficial_cepalstat_mcp.semantic`), aplican los siguientes invariantes arquitectónicos y de calidad estadística:
 
 ## 1. Invariante de Integridad Dimensional y Anti-Degradación
 - **Cero Pérdida de Facetas (Zero Facet Loss):** Si una consulta del usuario contiene un calificador dimensional explícito (e.g. etnia, género, quintil, tramo etario, sector geográfico), el motor **NUNCA** debe ignorar la faceta para retornar el indicador agregado canónico.

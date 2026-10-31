@@ -12,7 +12,7 @@ member_ids:
 - 29190
 - 88623
 python_code: |
-  from statscepal import CepalStatClient, DataExtractor
+  from unofficial_cepalstat_mcp import CepalStatClient, DataExtractor
 
   client = CepalStatClient()
   extractor = DataExtractor(client)
@@ -67,7 +67,7 @@ antibias:
 
 ## Código Reproducible en Python
 ```python
-from statscepal import CepalStatClient, DataExtractor
+from unofficial_cepalstat_mcp import CepalStatClient, DataExtractor
 
 client = CepalStatClient()
 extractor = DataExtractor(client)

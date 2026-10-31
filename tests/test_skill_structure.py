@@ -1,5 +1,13 @@
 import re
+import sys
 from pathlib import Path
+
+import yaml
+
+if sys.version_info >= (3, 11):
+    import tomllib
+else:
+    import tomli as tomllib  # type: ignore[import-not-found]
 
 
 def test_skill_structure_and_frontmatter():
@@ -69,8 +77,6 @@ def test_subagent_structure():
 
 
 def test_bmad_agent_econometrician_structure():
-    import tomllib
-
     project_root = Path(__file__).resolve().parent.parent
     agent_dir = project_root / ".agents" / "skills" / "bmad-agent-econometrician"
     skill_file = agent_dir / "SKILL.md"
@@ -148,4 +154,63 @@ def test_cepalstat_econometrics_skill_structure():
     assert "r-squared" in content.lower() or "r²" in content.lower() or "r_squared" in content.lower()
     assert "elasticity" in content.lower() or "elasticidad" in content.lower()
     assert "statsmodels" in content.lower()
+
+
+def test_semantic_guardrails_rule_frontmatter():
+    project_root = Path(__file__).resolve().parent.parent
+    rule_file = project_root / ".agents" / "rules" / "semantic-resolution-guardrails.md"
+    assert rule_file.exists(), f"Rule file does not exist at {rule_file}"
+
+    content = rule_file.read_text(encoding="utf-8")
+    fm_match = re.match(r"^---\r?\n(.*?)\r?\n---\r?\n(.*)$", content, re.DOTALL)
+    assert fm_match is not None, (
+        "semantic-resolution-guardrails.md must start with YAML frontmatter bounded by ---"
+    )
+
+    frontmatter_raw, body = fm_match.group(1), fm_match.group(2)
+    fm_data = yaml.safe_load(frontmatter_raw)
+    assert isinstance(fm_data, dict), "Frontmatter must parse as a YAML mapping"
+    assert fm_data.get("trigger") == "model_decision"
+    desc = fm_data.get("description")
+    assert isinstance(desc, str) and len(desc.strip()) > 0, (
+        "Frontmatter must contain a non-empty description"
+    )
+
+    assert "unofficial_cepalstat_mcp.semantic" in body
+    assert "statscepal.semantic" not in body
+
+
+def test_antigravity_agents_frontmatter_and_no_legacy_python_imports():
+    project_root = Path(__file__).resolve().parent.parent
+    agents_dir = project_root / ".agents" / "agents"
+
+    expected_agents = ["cepalstat-analyst", "github-scout"]
+    for agent_name in expected_agents:
+        agent_file = agents_dir / f"{agent_name}.md"
+        assert agent_file.exists(), f"Antigravity agent file missing at {agent_file}"
+        content = agent_file.read_text(encoding="utf-8")
+        fm_match = re.match(r"^---\r?\n(.*?)\r?\n---\r?\n", content, re.DOTALL)
+        assert fm_match is not None, f"{agent_file.name} must start with YAML frontmatter"
+        fm_data = yaml.safe_load(fm_match.group(1))
+        assert isinstance(fm_data, dict), (
+            f"{agent_file.name} frontmatter must be a valid YAML mapping"
+        )
+        assert fm_data.get("name") == agent_name
+        desc = fm_data.get("description")
+        assert isinstance(desc, str) and len(desc.strip()) > 0
+        assert fm_data.get("model") == "inherit"
+
+    files_to_scan = [
+        *sorted((project_root / ".agents" / "agents").glob("*.md")),
+        *sorted((project_root / ".agents" / "subagents").glob("*.md")),
+        project_root / ".agents" / "skills" / "cepalstat-api" / "SKILL.md",
+        project_root / ".agents" / "skills" / "cepalstat-econometrics" / "SKILL.md",
+        *sorted((project_root / "bitacoras" / "paises").rglob("*.md")),
+    ]
+    assert len(files_to_scan) >= 8
+    for md_file in files_to_scan:
+        text = md_file.read_text(encoding="utf-8")
+        assert "from statscepal" not in text, f"Legacy 'from statscepal' found in {md_file}"
+        assert "import statscepal" not in text, f"Legacy 'import statscepal' found in {md_file}"
+
 

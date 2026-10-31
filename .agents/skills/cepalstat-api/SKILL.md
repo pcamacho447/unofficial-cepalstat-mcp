@@ -47,7 +47,7 @@ statscepal bitacora list
 
 **Using Python:**
 ```python
-from statscepal.bitacora import BitacoraStore
+from unofficial_cepalstat_mcp.bitacora import BitacoraStore
 
 store = BitacoraStore()
 recipes = store.lookup(query="pobreza", country="Chile")
@@ -91,7 +91,7 @@ statscepal catalog stats
 **Using Python Client:**
 ```python
 # Offline master catalog search
-from statscepal.catalog import CatalogStore
+from unofficial_cepalstat_mcp.catalog import CatalogStore
 
 catalog = CatalogStore()
 results = catalog.search("desempleo", limit=5)
@@ -103,7 +103,7 @@ stats = catalog.get_stats()
 print(f"Total indicators: {stats.total_indicators}")
 
 # Online thematic tree search fallback
-from statscepal import CepalStatClient, ThematicTree
+from unofficial_cepalstat_mcp import CepalStatClient, ThematicTree
 
 with CepalStatClient() as client:
     tree = ThematicTree(client)
@@ -124,7 +124,7 @@ Indicators break down data by dimensions (e.g. `País__ESTANDAR`, `Años__ESTAND
 
 **Using Python Client:**
 ```python
-from statscepal import CepalStatClient, DimensionManager
+from unofficial_cepalstat_mcp import CepalStatClient, DimensionManager
 
 with CepalStatClient() as client:
     manager = DimensionManager(client)
@@ -168,7 +168,7 @@ statscepal fetch 4788 --members 224,29190 --csv output.csv
 
 **Using Python Client:**
 ```python
-from statscepal import CepalStatClient, DataExtractor
+from unofficial_cepalstat_mcp import CepalStatClient, DataExtractor
 
 with CepalStatClient() as client:
     extractor = DataExtractor(client)
@@ -221,17 +221,25 @@ The command automatically audits data quality and demographic/geographic anti-bi
 
 ## Motor de Resolución Semántica Multidimensional (CLI & API)
 
-El paquete incorpora un motor determinístico y ultrarrápido ($p50 < 0.5\text{ ms}$) para resolver lenguaje natural a coordenadas formales de CEPALSTAT sin alucinación y con 0.00% de Tasa de Sustitución Falsa (FSR):
+El paquete incorpora un motor determinístico y ultrarrápido ($p50 < 0.5\text{ ms}$) para resolver lenguaje natural a coordenadas formales de CEPALSTAT sin alucinación y con 0.00% de Tasa de Sustitución Falsa (FSR).
+
+### CLI Canónico de Resolución Semántica Determinista
+Para resolver una consulta en lenguaje natural y extraer observaciones empíricas verificadas (incluyendo rescate de años ancla oficiales sin interpolación), invocar siempre `semantic resolve` con `--fetch` (no existe subcomando `semantic fetch`):
 
 ```bash
+uv run unofficial-cepalstat-mcp semantic resolve "<consulta>" --fetch
+```
+
+Ejemplos adicionales (también compatibles mediante el alias CLI `statscepal`):
+```bash
 # Resolución de indicador canónico y filtros
-statscepal semantic resolve "cual es la pobreza en el peru en 2020"
+uv run unofficial-cepalstat-mcp semantic resolve "cual es la pobreza en el peru en 2020"
 
 # Resolución con desglose multidimensional (etnia, género, etc.)
-statscepal semantic resolve "cual es la pobreza etnica en el peru del 2020"
+uv run unofficial-cepalstat-mcp semantic resolve "cual es la pobreza etnica en el peru del 2020"
 
 # Resolución con extracción de datos empíricos de la API
-statscepal semantic resolve "tasa de pobreza indigena en bolivia 2021" --fetch
+uv run unofficial-cepalstat-mcp semantic resolve "tasa de pobreza indigena en bolivia 2021" --fetch
 
 # Series temporales multi-anuales y ventanas relativas
 statscepal semantic resolve "pobreza en chile los ultimos 4 anos" --fetch
@@ -244,7 +252,7 @@ statscepal semantic resolve "pobreza en chile los ultimos 4 anos" --fetch
 
 ---
 
-## Python SDK Reference (`statscepal`)
+## Python SDK Reference (`unofficial_cepalstat_mcp`)
 
 ### `CepalStatClient`
 - `client = CepalStatClient(base_url="https://api-cepalstat.cepal.org", language="es", timeout=30.0)`

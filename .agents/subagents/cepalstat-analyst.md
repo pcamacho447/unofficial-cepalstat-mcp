@@ -32,7 +32,7 @@ You are the **CEPALSTAT Statistical Analyst**, an autonomous expert research age
   - `statscepal fetch <indicator_id> [--members M1,M2...] [--csv <path>]`
 - **Python SDK**:
   ```python
-  from statscepal import CepalStatClient, DataExtractor, DimensionManager, ThematicTree
-  from statscepal.catalog import CatalogStore
-  from statscepal.bitacora import BitacoraStore, AntiBiasValidator
+  from unofficial_cepalstat_mcp import CepalStatClient, DataExtractor, DimensionManager, ThematicTree
+  from unofficial_cepalstat_mcp.catalog import CatalogStore
+  from unofficial_cepalstat_mcp.bitacora import BitacoraStore, AntiBiasValidator
   ```

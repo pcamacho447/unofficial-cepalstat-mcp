@@ -1,7 +1,13 @@
 """Tests for open source governance, legal disclaimers, and repository cleanliness."""
 
 import json
+import sys
 from pathlib import Path
+
+if sys.version_info >= (3, 11):
+    import tomllib
+else:
+    import tomli as tomllib  # type: ignore[import-not-found]
 
 
 def test_governance_files_exist_and_non_empty():
@@ -65,3 +71,17 @@ def test_notebooks_do_not_import_legacy_statscepal():
                     assert (
                         pattern not in source
                     ), f"Notebook '{ipynb.name}' cell #{cell_idx} contains legacy import '{pattern}'."
+
+
+def test_bmad_custom_config_no_personal_identity():
+    """Verify tracked _bmad/custom/config.toml sets team defaults without personal user_name."""
+    custom_cfg = Path("_bmad/custom/config.toml")
+    assert custom_cfg.exists(), "_bmad/custom/config.toml must exist."
+    data = tomllib.loads(custom_cfg.read_text(encoding="utf-8"))
+    core = data.get("core", {})
+    assert core.get("project_name") == "unofficial-cepalstat-mcp"
+    assert core.get("communication_language") == "Spanish"
+    assert "user_name" not in core, (
+        "Personal user_name belongs in gitignored _bmad/custom/config.user.toml, "
+        "not tracked _bmad/custom/config.toml."
+    )

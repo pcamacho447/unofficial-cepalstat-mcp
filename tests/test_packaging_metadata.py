@@ -3,9 +3,12 @@
 import sys
 from pathlib import Path
 
-import tomllib
-
 from unofficial_cepalstat_mcp.cli import _resolve_prog, main
+
+if sys.version_info >= (3, 11):
+    import tomllib
+else:
+    import tomli as tomllib  # type: ignore[import-not-found]
 
 
 def test_pyproject_packaging_metadata():

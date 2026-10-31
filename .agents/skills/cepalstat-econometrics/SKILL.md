@@ -39,7 +39,7 @@ Where:
 
 ## 3. Multivariate OLS Econometric Model Specification
 
-To isolate the structural determinants of poverty changes across multi-country panel windows, `statscepal.analysis.econometrics.EconometricEstimator` specifies the following multivariate Ordinary Least Squares (OLS) model:
+To isolate the structural determinants of poverty changes across multi-country panel windows, `unofficial_cepalstat_mcp.analysis.econometrics.EconometricEstimator` specifies the following multivariate Ordinary Least Squares (OLS) model:
 
 $$\Delta \text{Pobreza}_{i,t} = \beta_0 + \beta_1 \cdot \text{PIB}_{i,t} + \beta_2 \cdot \Delta\% \text{Salario}_{i,t} + \beta_3 \cdot \text{InflAlimentos}_{i,t} + \varepsilon_{i,t}$$
 
@@ -106,11 +106,11 @@ Classification of country-period performance:
 
 ## 6. Python API Usage with `EconometricEstimator`
 
-`statscepal` implements the econometric estimation pipeline via `statsmodels` in `statscepal.analysis.econometrics.EconometricEstimator`:
+`unofficial_cepalstat_mcp` implements the econometric estimation pipeline via `statsmodels` in `unofficial_cepalstat_mcp.analysis.econometrics.EconometricEstimator`:
 
 ```python
-from statscepal.analysis import DecouplingAnalyzer, EconometricEstimator
-from statscepal.analysis.models import DecouplingDataset, RegressionModelSummary
+from unofficial_cepalstat_mcp.analysis import DecouplingAnalyzer, EconometricEstimator
+from unofficial_cepalstat_mcp.analysis.models import DecouplingDataset, RegressionModelSummary
 
 # 1. Build or retrieve the decoupling dataset across Latin American economies
 analyzer = DecouplingAnalyzer()
