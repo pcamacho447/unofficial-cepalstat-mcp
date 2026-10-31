@@ -336,7 +336,7 @@ def test_fetcher_strips_synthetic_member_ids_to_prevent_api_country_collision():
 
 
 def test_fetcher_maps_synthetic_indicator_2928_to_real_cepalstat_2484():
-    """Verify synthetic indicator ID 2928 (IPC general in official_25) maps to real CEPALSTAT ID 2484 during fetch."""
+    """Verify indicator ID 2484 (IPC general) fetches real CEPALSTAT table."""
     from unittest.mock import MagicMock
 
     import pandas as pd
@@ -350,7 +350,7 @@ def test_fetcher_maps_synthetic_indicator_2928_to_real_cepalstat_2484():
         "necesito los datos de la inflacion de peru, argentina, chile, colombia y paraguay del año 2018 al 2023"
     )
     assert res.selected_candidate is not None
-    assert res.selected_candidate.indicator_id == 2928
+    assert res.selected_candidate.indicator_id == 2484
 
     mock_extractor = MagicMock(spec=DataExtractor)
     mock_extractor.get_dataframe.return_value = pd.DataFrame([
@@ -476,8 +476,8 @@ def test_cli_displays_empirical_indicator_id_when_mapped(capsys, monkeypatch):
     def mock_fetch(self, response):
         payload = {
             "observation_exists": True,
-            "indicator_id": 2928,
-            "empirical_indicator_id": 2484,
+            "indicator_id": 2484,
+            "empirical_indicator_id": 9999,
             "indicator_name": "Variación del índice de precios al consumidor (IPC)",
             "value": 8.46,
             "unit": "%",
@@ -493,7 +493,7 @@ def test_cli_displays_empirical_indicator_id_when_mapped(capsys, monkeypatch):
     ret = main(["semantic", "resolve", "inflacion de peru en 2022", "--fetch"])
     assert ret == 0
     captured = capsys.readouterr()
-    assert "CEPALSTAT API Table ID: 2484" in captured.out
+    assert "CEPALSTAT API Table ID: 9999" in captured.out
 
 
 def test_fetcher_step5_breakdown_cols_matches_accented_dataframe_columns():
@@ -582,14 +582,14 @@ def mock_client():
 
 
 def test_fetcher_empirical_mapping_3340_to_3324_matches_quintil_column_and_members(mock_client):
-    """Assert querying quintile on 3340 correctly remaps to 3324 and filters 'Quintil' column."""
+    """Assert querying quintile on 3324 filters 'Quintil' column."""
     fetcher = SemanticDataFetcher(client=mock_client)
     res = SemanticResolutionResponse(
         query="distribucion del ingreso primer quintil en chile 2022",
         status=ResolutionStatus.RESOLVED,
         selected_candidate=SelectedCandidate(
-            indicator_id=3340,
-            name="Distribución del ingreso por estratos",
+            indicator_id=3324,
+            name="Participación del ingreso por quintiles de personas",
             measure_type="PORCENTAJE",
             unit="%",
         ),
@@ -602,10 +602,10 @@ def test_fetcher_empirical_mapping_3340_to_3324_matches_quintil_column_and_membe
             facets={"estrato": "PRIMER_QUINTIL"},
             dimensions=[
                 AppliedDimensionFilter(
-                    dim_id=33401,
-                    dim_name="Estrato de ingreso",
-                    member_id=33402,
-                    member_name="Primer quintil",
+                    dim_id=378,
+                    dim_name="Quintil",
+                    member_id=380,
+                    member_name="Quintil 1",
                     is_breakdown=False,
                     breakdown_members=[],
                 )
@@ -624,14 +624,14 @@ def test_fetcher_empirical_mapping_3340_to_3324_matches_quintil_column_and_membe
 
 
 def test_fetcher_empirical_mapping_3340_to_3390_matches_decil_column_and_members(mock_client):
-    """Assert querying decile on 3340 correctly remaps to 3390 and filters 'Decil' column."""
+    """Assert querying decile on 3390 filters 'Decil' column."""
     fetcher = SemanticDataFetcher(client=mock_client)
     res = SemanticResolutionResponse(
         query="distribucion del ingreso primer decil en uruguay 2021",
         status=ResolutionStatus.RESOLVED,
         selected_candidate=SelectedCandidate(
-            indicator_id=3340,
-            name="Distribución del ingreso por estratos",
+            indicator_id=3390,
+            name="Participación del ingreso por deciles de hogares",
             measure_type="PORCENTAJE",
             unit="%",
         ),
@@ -644,10 +644,10 @@ def test_fetcher_empirical_mapping_3340_to_3390_matches_decil_column_and_members
             facets={"estrato": "PRIMER_DECIL"},
             dimensions=[
                 AppliedDimensionFilter(
-                    dim_id=33401,
-                    dim_name="Estrato de ingreso",
-                    member_id=33404,
-                    member_name="Primer decil",
+                    dim_id=378,
+                    dim_name="Decil",
+                    member_id=380,
+                    member_name="Decil 1",
                     is_breakdown=False,
                     breakdown_members=[],
                 )
@@ -666,14 +666,14 @@ def test_fetcher_empirical_mapping_3340_to_3390_matches_decil_column_and_members
 
 
 def test_fetcher_empirical_mapping_3340_to_3295_relacion_q5_q1(mock_client):
-    """Assert querying Q5/Q1 ratio on 3340 correctly remaps to 3295 and fetches data."""
+    """Assert querying Q5/Q1 ratio on 3295 fetches data."""
     fetcher = SemanticDataFetcher(client=mock_client)
     res = SemanticResolutionResponse(
         query="relacion de ingresos quintil 5 y quintil 1 en chile 2022",
         status=ResolutionStatus.RESOLVED,
         selected_candidate=SelectedCandidate(
-            indicator_id=3340,
-            name="Distribución del ingreso por estratos",
+            indicator_id=3295,
+            name="Relación quintil 5 / quintil 1",
             measure_type="RATIO",
             unit="ratio",
         ),
@@ -684,16 +684,7 @@ def test_fetcher_empirical_mapping_3340_to_3295_relacion_q5_q1(mock_client):
             year=2022,
             time_mode="SINGLE",
             facets={"estrato": "RELACION_Q5_Q1"},
-            dimensions=[
-                AppliedDimensionFilter(
-                    dim_id=600,
-                    dim_name="Estrato de ingreso",
-                    member_id=613,
-                    member_name="Relación quintil 5 / quintil 1",
-                    is_breakdown=False,
-                    breakdown_members=[],
-                )
-            ],
+            dimensions=[],
         ),
     )
     df_3295 = pd.DataFrame([
@@ -745,7 +736,7 @@ def test_fetcher_multi_country_payload_country_attribution(mock_client):
         query="pib per capita en peru y colombia 2022",
         status=ResolutionStatus.RESOLVED,
         selected_candidate=SelectedCandidate(
-            indicator_id=730,
+            indicator_id=2206,
             name="PIB per cápita",
             measure_type="USD_PER_CAPITA",
             unit="USD",
@@ -777,7 +768,7 @@ def test_fetcher_decomposed_helper_methods_contract(mock_client):
         query="pib per capita en peru y colombia 2022",
         status=ResolutionStatus.RESOLVED,
         selected_candidate=SelectedCandidate(
-            indicator_id=730,
+            indicator_id=2206,
             name="PIB per cápita",
             measure_type="USD_PER_CAPITA",
             unit="USD",
@@ -815,7 +806,7 @@ def test_fetcher_decomposed_helper_methods_contract(mock_client):
     assert len(geo_df) == 2
 
     # 4. _apply_dimension_filters
-    dim_df, filtered_dim_cols = fetcher._apply_dimension_filters(geo_df, res)
+    dim_df, filtered_dim_cols, _ = fetcher._apply_dimension_filters(geo_df, res)
     assert len(dim_df) == 2
     assert len(filtered_dim_cols) == 0
 
@@ -848,4 +839,49 @@ def test_fetcher_decomposed_helper_methods_contract(mock_client):
     assert payload["observation_exists"] is True
     assert len(payload["series"]) == 2
     assert payload["country"] == "Colombia"
+
+
+def test_fetcher_binds_live_eh_column_and_feminine_member_labels(mocker) -> None:
+    from unofficial_cepalstat_mcp.semantic.engine import SemanticResolutionEngine
+
+    df = pd.DataFrame([
+        {"País__ESTANDAR": "Chile", "iso3": "CHL", "Años__ESTANDAR": 2022, "Area geográfica_(EH)": "Nacional", "Pobreza extrema y pobreza": "Pobreza", "value": 8.1},
+        {"País__ESTANDAR": "Chile", "iso3": "CHL", "Años__ESTANDAR": 2022, "Area geográfica_(EH)": "Rural", "Pobreza extrema y pobreza": "Pobreza extrema", "value": 3.4},
+        {"País__ESTANDAR": "Chile", "iso3": "CHL", "Años__ESTANDAR": 2022, "Area geográfica_(EH)": "Urbana", "Pobreza extrema y pobreza": "Pobreza", "value": 7.9},
+    ])
+    engine = SemanticResolutionEngine()
+    resp = engine.resolve("pobreza extrema rural en Chile 2022")
+    fetcher = SemanticDataFetcher(extractor=mocker.Mock(get_dataframe=mocker.Mock(return_value=df)))
+    out = fetcher.fetch_resolved_data(resp)
+    assert out["observation_exists"] is True
+    assert out["value"] == 3.4
+
+
+def test_fetcher_fails_closed_when_non_aggregate_dimension_column_missing(mocker) -> None:
+    from unofficial_cepalstat_mcp.semantic.engine import SemanticResolutionEngine
+
+    df = pd.DataFrame([
+        {"País__ESTANDAR": "Chile", "iso3": "CHL", "Años__ESTANDAR": 2022, "value": 8.1},
+    ])
+    engine = SemanticResolutionEngine()
+    resp = engine.resolve("pobreza extrema rural en Chile 2022")
+    fetcher = SemanticDataFetcher(extractor=mocker.Mock(get_dataframe=mocker.Mock(return_value=df)))
+    out = fetcher.fetch_resolved_data(resp)
+    assert out["observation_exists"] is False
+    assert "UNBOUND_DIMENSION_FILTER" in out["reason"]
+
+
+def test_fetcher_allows_primary_candidate_when_allow_alternative_enabled(mocker) -> None:
+    from unofficial_cepalstat_mcp.semantic.engine import SemanticResolutionEngine
+
+    df = pd.DataFrame([
+        {"País__ESTANDAR": "Chile", "iso3": "CHL", "Años__ESTANDAR": 2022, "value": 108.5},
+    ])
+    engine = SemanticResolutionEngine()
+    resp = engine.resolve("salarios en Chile 2022")
+    assert resp.status == ResolutionStatus.ALTERNATIVE_PROPOSED
+    fetcher = SemanticDataFetcher(extractor=mocker.Mock(get_dataframe=mocker.Mock(return_value=df)))
+    assert fetcher.fetch_resolved_data(resp)["observation_exists"] is False
+    assert fetcher.fetch_resolved_data(resp, allow_alternative=True)["observation_exists"] is True
+
 

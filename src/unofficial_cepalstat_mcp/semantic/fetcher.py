@@ -8,6 +8,7 @@ import pandas as pd
 
 from unofficial_cepalstat_mcp.client import CepalStatClient
 from unofficial_cepalstat_mcp.extractor import DataExtractor
+from unofficial_cepalstat_mcp.semantic.facet_ontology import DEFAULT_FACET_ONTOLOGY
 from unofficial_cepalstat_mcp.semantic.models import ResolutionStatus, SemanticResolutionResponse
 from unofficial_cepalstat_mcp.semantic.registry import (
     EMPIRICAL_INDICATOR_ID_MAP,
@@ -42,6 +43,14 @@ MEMBER_VALUE_ALIASES: dict[str, list[str]] = {
     "octavo decil": ["decil 8", "viii", "decil viii", "8", "d8", "viii decil"],
     "noveno decil": ["decil 9", "ix", "decil ix", "9", "d9", "ix decil"],
     "decimo decil": ["decil 10", "x", "decil x", "10", "d10", "x decil"],
+    "urbano": ["urbana", "area urbana", "zona urbana", "sector urbano"],
+    "urbana": ["urbano", "area urbana", "zona urbana", "sector urbano"],
+    "rural": ["area rural", "zona rural", "sector rural"],
+    "pobreza extrema / indigencia": ["pobreza extrema", "indigencia"],
+    "pobreza extrema": ["indigencia", "pobreza extrema / indigencia"],
+    "total pobreza": ["pobreza"],
+    "ambos sexos": ["total"],
+    "total": ["ambos sexos", "nacional"],
 }
 
 
@@ -71,10 +80,12 @@ def _get_acceptable_member_forms(member_name: str) -> set[str]:
     return acceptable
 
 
-def _match_dim_column(col_name: str, target_name: str) -> bool:
-    """Check if a DataFrame column name matches a target dimension name, ignoring case, accents, and __estandar."""
-    cl = _strip_accents(col_name).lower().strip().replace("__estandar", "")
-    dl = _strip_accents(target_name).lower().strip().replace("__estandar", "")
+def _match_dim_column(col_name: str, target_name: str, dim_id: int | None = None) -> bool:
+    """Check if a DataFrame column name matches a target dimension name, ignoring case, accents, suffixes like _(EH), and __estandar."""
+    cl_raw = re.sub(r"_\([^)]*\)$", "", col_name.strip())
+    dl_raw = re.sub(r"_\([^)]*\)$", "", target_name.strip())
+    cl = _strip_accents(cl_raw).lower().strip().replace("__estandar", "")
+    dl = _strip_accents(dl_raw).lower().strip().replace("__estandar", "")
     if cl == dl or cl.replace(" ", "") == dl.replace(" ", ""):
         return True
     aliases_dl = DIM_NAME_ALIASES.get(dl, [])
@@ -82,6 +93,11 @@ def _match_dim_column(col_name: str, target_name: str) -> bool:
         return True
     aliases_cl = DIM_NAME_ALIASES.get(cl, [])
     if dl in aliases_cl or dl.replace(" ", "") in [a.replace(" ", "") for a in aliases_cl]:
+        return True
+    # Semantic ontology fallback
+    col_facet = DEFAULT_FACET_ONTOLOGY.classify_dimension(None, col_name)
+    target_facet = DEFAULT_FACET_ONTOLOGY.classify_dimension(dim_id, target_name)
+    if col_facet and target_facet and col_facet not in ("__structural__", None) and col_facet == target_facet:
         return True
     return False
 
@@ -286,13 +302,6 @@ class SemanticDataFetcher:
         """Map synthetic vertical-slice indicator IDs to verified real CEPALSTAT indicator IDs."""
         assert response.selected_candidate is not None
         ind_id = response.selected_candidate.indicator_id
-        if ind_id == 3340:
-            estrato = response.applied_filters.facets.get("estrato", "")
-            if estrato == "RELACION_Q5_Q1":
-                return 3295
-            if "QUINTIL" in estrato:
-                return 3324
-            return 3390
         return EMPIRICAL_INDICATOR_ID_MAP.get(ind_id, ind_id)
 
     def _get_row_country_code(
@@ -519,7 +528,7 @@ class SemanticDataFetcher:
 
     def _apply_dimension_filters(
         self, df: pd.DataFrame, response: SemanticResolutionResponse
-    ) -> tuple[pd.DataFrame, set[str]]:
+    ) -> tuple[pd.DataFrame, set[str], str | None]:
         """Filter DataFrame rows by resolved dimensions using aliases and acceptable forms."""
         filtered_df = df
         filtered_dim_cols: set[str] = set()
@@ -527,59 +536,80 @@ class SemanticDataFetcher:
             for dim_filter in response.applied_filters.dimensions:
                 dim_col = None
                 for col in filtered_df.columns:
-                    if _match_dim_column(col, dim_filter.dim_name):
+                    if _match_dim_column(col, dim_filter.dim_name, dim_id=dim_filter.dim_id):
                         dim_col = col
                         break
                 if dim_col is None and dim_filter.dim_id is not None:
                     if f"dim_{dim_filter.dim_id}" in filtered_df.columns:
                         dim_col = f"dim_{dim_filter.dim_id}"
 
-                if dim_col is not None:
-                    filtered_dim_cols.add(dim_col)
-                    dim_mask = pd.Series(False, index=filtered_df.index)
-                    candidate_names = (
-                        list(dim_filter.member_names)
-                        if getattr(dim_filter, "is_breakdown", False) and getattr(dim_filter, "member_names", None)
-                        else ([dim_filter.member_name] if dim_filter.member_name else [])
+                facet_key = DEFAULT_FACET_ONTOLOGY.classify_dimension(dim_filter.dim_id, dim_filter.dim_name)
+                is_aggregate = DEFAULT_FACET_ONTOLOGY.is_aggregate_member_name(facet_key or "", dim_filter.member_name)
+
+                if dim_col is None:
+                    # Synthetic food basket dimension for indicator 2929 (already food-specific in API)
+                    if dim_filter.dim_id == 79565 or dim_filter.member_id in (79578, 79580):
+                        continue
+                    if not is_aggregate and not getattr(dim_filter, "is_breakdown", False):
+                        return (
+                            filtered_df.iloc[0:0],
+                            filtered_dim_cols,
+                            f"UNBOUND_DIMENSION_FILTER: {dim_filter.dim_name}={dim_filter.member_name}",
+                        )
+                    continue
+
+                filtered_dim_cols.add(dim_col)
+                dim_mask = pd.Series(False, index=filtered_df.index)
+                candidate_names = (
+                    list(dim_filter.member_names)
+                    if getattr(dim_filter, "is_breakdown", False) and getattr(dim_filter, "member_names", None)
+                    else ([dim_filter.member_name] if dim_filter.member_name else [])
+                )
+                candidate_ids = (
+                    list(dim_filter.member_ids)
+                    if getattr(dim_filter, "is_breakdown", False) and getattr(dim_filter, "member_ids", None)
+                    else ([dim_filter.member_id] if dim_filter.member_id is not None else [])
+                )
+                if not candidate_names and not candidate_ids:
+                    if getattr(dim_filter, "is_breakdown", False):
+                        dim_mask = pd.Series(True, index=filtered_df.index)
+                for m_name in candidate_names:
+                    dim_mask |= (
+                        filtered_df[dim_col]
+                        .astype(str)
+                        .str.strip()
+                        .str.lower()
+                        == m_name.strip().lower()
                     )
-                    candidate_ids = (
-                        list(dim_filter.member_ids)
-                        if getattr(dim_filter, "is_breakdown", False) and getattr(dim_filter, "member_ids", None)
-                        else ([dim_filter.member_id] if dim_filter.member_id is not None else [])
+                    dim_mask |= (
+                        filtered_df[dim_col]
+                        .astype(str)
+                        .str.strip()
+                        .map(_strip_accents)
+                        == _strip_accents(m_name.strip())
                     )
-                    if not candidate_names and not candidate_ids:
-                        if getattr(dim_filter, "is_breakdown", False):
-                            dim_mask = pd.Series(True, index=filtered_df.index)
-                    for m_name in candidate_names:
-                        dim_mask |= (
-                            filtered_df[dim_col]
-                            .astype(str)
-                            .str.strip()
-                            .str.lower()
-                            == m_name.strip().lower()
-                        )
-                        dim_mask |= (
-                            filtered_df[dim_col]
-                            .astype(str)
-                            .str.strip()
-                            .map(_strip_accents)
-                            == _strip_accents(m_name.strip())
-                        )
-                        acceptable_forms = _get_acceptable_member_forms(m_name)
-                        dim_mask |= (
-                            filtered_df[dim_col]
-                            .astype(str)
-                            .str.strip()
-                            .map(_normalize_member_text)
-                            .isin(acceptable_forms)
-                        )
-                    for m_id in candidate_ids:
-                        dim_mask |= (
-                            filtered_df[dim_col].astype(str).str.strip()
-                            == str(m_id)
-                        )
-                    filtered_df = filtered_df[dim_mask]
-        return filtered_df, filtered_dim_cols
+                    acceptable_forms = _get_acceptable_member_forms(m_name)
+                    dim_mask |= (
+                        filtered_df[dim_col]
+                        .astype(str)
+                        .str.strip()
+                        .map(_normalize_member_text)
+                        .isin(acceptable_forms)
+                    )
+                for m_id in candidate_ids:
+                    dim_mask |= (
+                        filtered_df[dim_col].astype(str).str.strip()
+                        == str(m_id)
+                    )
+                new_filtered = filtered_df[dim_mask]
+                if new_filtered.empty and not is_aggregate and not getattr(dim_filter, "is_breakdown", False):
+                    return (
+                        new_filtered,
+                        filtered_dim_cols,
+                        f"UNBOUND_DIMENSION_FILTER: {dim_filter.dim_name}={dim_filter.member_name}",
+                    )
+                filtered_df = new_filtered
+        return filtered_df, filtered_dim_cols, None
 
     def _apply_temporal_and_anchors(
         self,
@@ -1116,22 +1146,29 @@ class SemanticDataFetcher:
         return payload
 
     def fetch_resolved_data(
-        self, response: SemanticResolutionResponse
+        self,
+        response: SemanticResolutionResponse,
+        *,
+        allow_alternative: bool = False,
     ) -> dict[str, Any]:
         """Fetch and filter concrete observation data for a resolved query response.
 
         Args:
             response: A SemanticResolutionResponse with resolved indicator and filters.
+            allow_alternative: If True, also fetch data when status is ALTERNATIVE_PROPOSED.
 
         Returns:
             Dictionary payload with observation data and provenance.
         """
+        valid_statuses: tuple[ResolutionStatus, ...] = (
+            ResolutionStatus.RESOLVED,
+            ResolutionStatus.RESOLVED_WITH_ANCHORS,
+        )
+        if allow_alternative:
+            valid_statuses += (ResolutionStatus.ALTERNATIVE_PROPOSED,)
+
         if (
-            response.status
-            not in (
-                ResolutionStatus.RESOLVED,
-                ResolutionStatus.RESOLVED_WITH_ANCHORS,
-            )
+            response.status not in valid_statuses
             or not response.selected_candidate
         ):
             payload = {
@@ -1181,7 +1218,25 @@ class SemanticDataFetcher:
             self._resolve_geography(df, response)
         )
         df = self._filter_geography(df, country_col, target_names, target_codes)
-        df, filtered_dim_cols = self._apply_dimension_filters(df, response)
+        df, filtered_dim_cols, unbound_error = self._apply_dimension_filters(df, response)
+        if unbound_error:
+            payload = {
+                "observation_exists": False,
+                "indicator_id": empirical_id,
+                "empirical_indicator_id": empirical_id,
+                "indicator_name": response.selected_candidate.name,
+                "unit": response.selected_candidate.unit,
+                "country": response.applied_filters.country_name
+                or response.applied_filters.country_code,
+                "year": response.applied_filters.year,
+                "reason": unbound_error,
+                "series": [] if is_multi_year else None,
+            }
+            response.empirical_data = payload
+            response.execution_trace.append(
+                f"[Stage 6: Empirical Extraction] Observation unavailable: {unbound_error}"
+            )
+            return payload
         df, year_col, has_rescued_anchors, requested_years = (
             self._apply_temporal_and_anchors(
                 df,
