@@ -10,10 +10,12 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field
+from typing import Any
 
 from pydantic import BaseModel, Field
 
 from unofficial_cepalstat_mcp.catalog.store import CatalogStore
+from unofficial_cepalstat_mcp.dimensions import Dimension
 from unofficial_cepalstat_mcp.semantic.facet_ontology import (
     DEFAULT_FACET_ONTOLOGY,
     FacetOntology,
@@ -78,53 +80,73 @@ class GraphBuilder:
         """Normalize indicator name into a base concept stem.
 
         1. Normalizes accents and lowercase via strip_accents.
-        2. Strips trailing footnotes, methodology markers, or codes:
-           - e.g. - cepal..., (ods..., - 19a ciet...
+        2. Strips trailing footnotes, methodology markers, codes, and units:
+           - e.g. - cepal..., (ods..., - 19a ciet..., (%), SDG codes, units
         3. Splits on breakdown prepositions:
            re.split(r",?\\s+(?:por|segun|desglosad[oa]\\s+por)\\s+", text, maxsplit=1)[0]
         4. Strips trailing commas, dots, dashes, and whitespace.
         """
         if not name:
             return ""
+
+        def _clean_markers(s: str) -> str:
+            prev = ""
+            while prev != s:
+                prev = s
+                s = re.sub(r"\s*-\s*cepal.*$", "", s)
+                s = re.sub(r"\s*\(ods.*$", "", s)
+                s = re.sub(r"\s*-\s*\d+[a-z]?\s*(?:ciet|ciuo|ciiu).*$", "", s)
+                s = re.sub(r"\s*\(ciet.*$", "", s)
+                s = re.sub(r"\s*\(%\)\s*$", "", s)
+                s = re.sub(r"\s+[a-z]{2}(?:_[a-z0-9]+){2,}\s*$", "", s, flags=re.IGNORECASE)
+                s = re.sub(
+                    r"\s*\((?:en\s+|equivalente\s+|millones\s+|miles\s+|porcentaje|%|vatios|toneladas|dolares)[^)]*\)\s*$",
+                    "",
+                    s,
+                    flags=re.IGNORECASE,
+                )
+                s = re.sub(r"[\s,.-]+$", "", s).strip()
+            return s
+
         text = strip_accents(name)
-        # Strip trailing methodology markers or codes
-        text = re.sub(r"\s*-\s*cepal.*$", "", text)
-        text = re.sub(r"\s*\(ods.*$", "", text)
-        text = re.sub(r"\s*-\s*\d+[a-z]?\s*(?:ciet|ciuo|ciiu).*$", "", text)
-        text = re.sub(r"\s*\(ciet.*$", "", text)
-        text = re.sub(r"\s*\(%\)\s*$", "", text)
+        text = _clean_markers(text)
 
         parts = re.split(r",?\s+(?:por|segun|desglosad[oa]\s+por)\s+", text, maxsplit=1)
-        stem = parts[0].strip()
-
-        # Clean any trailing markers left on stem
-        stem = re.sub(r"\s*-\s*cepal.*$", "", stem)
-        stem = re.sub(r"\s*\(ods.*$", "", stem)
-        stem = re.sub(r"\s*-\s*\d+[a-z]?\s*(?:ciet|ciuo|ciiu).*$", "", stem)
-        stem = re.sub(r"\s*\(ciet.*$", "", stem)
-        stem = re.sub(r"\s*\(%\)\s*$", "", stem)
-        stem = re.sub(r"[\s,.-]+$", "", stem).strip()
+        stem = _clean_markers(parts[0].strip())
         return stem
 
-    def extract_indicator_facets(self, indicator_id: int, name: str = "") -> set[str]:
+    def extract_indicator_facets(
+        self,
+        indicator_id: int,
+        name: str = "",
+        dims: list[Dimension] | None = None,
+        meta: dict[str, Any] | None = None,
+    ) -> set[str]:
         """Extract all supported canonical facets for an indicator.
 
         Combines:
         1. Harvested dimensions classified via FacetOntology (excluding __structural__).
+           Unmapped non-structural dimensions are preserved as "__raw_dim__:<dim_name>".
         2. Explicit metadata or curated registry supported_facets.
         3. Breakdown clauses in the title (after 'por', 'según', etc.).
         """
         facets: set[str] = set()
 
-        # 1. Harvested dimensions from SQLite
-        dims = self.store.get_indicator_dimensions(indicator_id)
+        # 1. Harvested dimensions from SQLite or preloaded cache
+        if dims is None:
+            dims = self.store.get_indicator_dimensions(indicator_id)
         for d in dims:
             facet = self.ontology.classify_dimension(d.id, d.name)
             if facet and facet != "__structural__":
                 facets.add(facet)
+            elif facet is None:
+                raw_norm = strip_accents(d.name).lower().strip()
+                if raw_norm:
+                    facets.add(f"__raw_dim__:{raw_norm}")
 
         # 2. Stored metadata or curated registry metadata
-        meta = self.store.get_indicator_metadata(indicator_id)
+        if meta is None:
+            meta = self.store.get_indicator_metadata(indicator_id)
         if meta and meta.get("supported_facets"):
             facets.update(meta["supported_facets"])
         elif indicator_id in VERTICAL_SLICE_INDICATORS:
@@ -138,17 +160,9 @@ class GraphBuilder:
             elif indicator_id in VERTICAL_SLICE_INDICATORS:
                 resolved_name = VERTICAL_SLICE_INDICATORS[indicator_id].name
             else:
-                with self.store._get_connection() as conn:
-                    has_master = conn.execute(
-                        "SELECT name FROM sqlite_master WHERE type='table' AND name='master_indicators'"
-                    ).fetchone()
-                    if has_master:
-                        row = conn.execute(
-                            "SELECT name FROM master_indicators WHERE indicator_id = ?",
-                            (indicator_id,),
-                        ).fetchone()
-                        if row:
-                            resolved_name = row["name"] or ""
+                master_row = self.store.get_master_indicator(indicator_id)
+                if master_row and master_row.get("name"):
+                    resolved_name = master_row["name"]
 
         # 3. Inspect breakdown clause in title
         if resolved_name:
@@ -209,61 +223,58 @@ class GraphBuilder:
             for ind_id, dims in DEFAULT_OFFICIAL_DIMENSIONS.items():
                 self.store.store_indicator_dimensions(ind_id, dims)
 
-        # Collect candidate indicators from database
+        # Single-pass bulk preloading in memory
+        all_master_list = self.store.get_all_master_indicators()
+        all_master = {r["indicator_id"]: r for r in all_master_list}
+        all_meta = self.store.get_all_indicator_metadata()
+        all_dims = self.store.get_all_indicator_dimensions()
+        all_rels = self.store.get_all_relationships()
+
+        # Build candidate indicators map
         candidates: dict[int, _IndicatorCandidate] = {}
-        with self.store._get_connection() as conn:
-            # master_indicators
-            has_master = conn.execute(
-                "SELECT name FROM sqlite_master WHERE type='table' AND name='master_indicators'"
-            ).fetchone()
-            if has_master:
-                for row in conn.execute("SELECT indicator_id, name FROM master_indicators").fetchall():
-                    ind_id = int(row["indicator_id"])
-                    candidates[ind_id] = _IndicatorCandidate(
-                        indicator_id=ind_id,
-                        name=row["name"] or "",
-                    )
+        for ind_id, r in all_master.items():
+            candidates[ind_id] = _IndicatorCandidate(
+                indicator_id=ind_id,
+                name=r.get("name") or "",
+            )
 
-            # indicator_metadata
-            has_meta = conn.execute(
-                "SELECT name FROM sqlite_master WHERE type='table' AND name='indicator_metadata'"
-            ).fetchone()
-            if has_meta:
-                for row in conn.execute(
-                    "SELECT indicator_id, name, concept, measure_type, unit, supported_facets FROM indicator_metadata"
-                ).fetchall():
-                    ind_id = int(row["indicator_id"])
-                    facets_str = row["supported_facets"] or ""
-                    f_set = set(facets_str.split(",")) if facets_str else set()
-                    if ind_id in candidates:
-                        cand = candidates[ind_id]
-                        if not cand.name and row["name"]:
-                            cand.name = row["name"]
-                        cand.concept = row["concept"]
-                        cand.measure_type = row["measure_type"]
-                        cand.unit = row["unit"]
-                        cand.supported_facets.update(f_set)
-                    else:
-                        candidates[ind_id] = _IndicatorCandidate(
-                            indicator_id=ind_id,
-                            name=row["name"] or "",
-                            concept=row["concept"],
-                            measure_type=row["measure_type"],
-                            unit=row["unit"],
-                            supported_facets=f_set,
-                        )
+        for ind_id, m in all_meta.items():
+            f_set = m.get("supported_facets") or set()
+            if isinstance(f_set, str):
+                f_set = set(f_set.split(",")) if f_set else set()
+            if ind_id in candidates:
+                cand = candidates[ind_id]
+                if not cand.name and m.get("name"):
+                    cand.name = m["name"]
+                cand.concept = m.get("concept")
+                cand.measure_type = m.get("measure_type")
+                cand.unit = m.get("unit")
+                cand.supported_facets.update(f_set)
+            else:
+                candidates[ind_id] = _IndicatorCandidate(
+                    indicator_id=ind_id,
+                    name=m.get("name") or "",
+                    concept=m.get("concept"),
+                    measure_type=m.get("measure_type"),
+                    unit=m.get("unit"),
+                    supported_facets=set(f_set),
+                )
 
-            # indicator_dimensions
-            has_dims = conn.execute(
-                "SELECT name FROM sqlite_master WHERE type='table' AND name='indicator_dimensions'"
-            ).fetchone()
-            if has_dims:
-                for row in conn.execute("SELECT DISTINCT indicator_id FROM indicator_dimensions").fetchall():
-                    ind_id = int(row["indicator_id"])
-                    if ind_id not in candidates:
-                        candidates[ind_id] = _IndicatorCandidate(indicator_id=ind_id)
+        for ind_id in all_dims:
+            if ind_id not in candidates:
+                candidates[ind_id] = _IndicatorCandidate(indicator_id=ind_id)
 
         report.total_indicators_analyzed = len(candidates)
+
+        # Pre-index existing relationships for O(1) checks
+        rels_by_indicator: dict[int, dict[int, dict[str, str]]] = {}
+        for r in all_rels:
+            a = int(r["indicator_a"])
+            b = int(r["indicator_b"])
+            rels_by_indicator.setdefault(a, {})[b] = {
+                "rel_type": r["rel_type"],
+                "provenance": r["provenance"],
+            }
 
         # Group indicators into concept families
         families: dict[str, list[_IndicatorCandidate]] = {}
@@ -282,6 +293,7 @@ class GraphBuilder:
 
         single_incompatible = ("por habitante", "per capita", "indice de feminidad", "brecha de")
         evaluated_pairs: set[tuple[int, int]] = set()
+        cand_facets: dict[int, set[str]] = {}
 
         for family_key, members in families.items():
             if len(members) < 2:
@@ -315,6 +327,28 @@ class GraphBuilder:
                         if stem_a != stem_b or len(stem_a) < 8:
                             continue
 
+                        # Check area compatibility when both exist in master_indicators
+                        master_a = all_master.get(ind_a.indicator_id)
+                        master_b = all_master.get(ind_b.indicator_id)
+                        if master_a and master_b:
+                            area_a = (master_a.get("area") or "").strip().lower()
+                            area_b = (master_b.get("area") or "").strip().lower()
+                            if area_a and area_b and area_a != area_b:
+                                continue
+
+                        # Check unit compatibility when both have non-empty units
+                        unit_a = (ind_a.unit or "").strip()
+                        unit_b = (ind_b.unit or "").strip()
+                        if not unit_a and ind_a.indicator_id in all_meta:
+                            unit_a = (all_meta[ind_a.indicator_id].get("unit") or "").strip()
+                        if not unit_b and ind_b.indicator_id in all_meta:
+                            unit_b = (all_meta[ind_b.indicator_id].get("unit") or "").strip()
+                        if unit_a and unit_b:
+                            norm_u_a = strip_accents(unit_a).lower().strip()
+                            norm_u_b = strip_accents(unit_b).lower().strip()
+                            if norm_u_a != norm_u_b:
+                                continue
+
                         norm_a = strip_accents(ind_a.name)
                         norm_b = strip_accents(ind_b.name)
                         if any(q in norm_a or q in norm_b for q in single_incompatible):
@@ -328,8 +362,23 @@ class GraphBuilder:
                         if ("en moneda nacional" in norm_a) != ("en moneda nacional" in norm_b):
                             continue
 
-                    facets_a = self.extract_indicator_facets(ind_a.indicator_id, name=ind_a.name)
-                    facets_b = self.extract_indicator_facets(ind_b.indicator_id, name=ind_b.name)
+                    if ind_a.indicator_id not in cand_facets:
+                        cand_facets[ind_a.indicator_id] = self.extract_indicator_facets(
+                            ind_a.indicator_id,
+                            name=ind_a.name,
+                            dims=all_dims.get(ind_a.indicator_id),
+                            meta=all_meta.get(ind_a.indicator_id),
+                        )
+                    if ind_b.indicator_id not in cand_facets:
+                        cand_facets[ind_b.indicator_id] = self.extract_indicator_facets(
+                            ind_b.indicator_id,
+                            name=ind_b.name,
+                            dims=all_dims.get(ind_b.indicator_id),
+                            meta=all_meta.get(ind_b.indicator_id),
+                        )
+
+                    facets_a = cand_facets[ind_a.indicator_id]
+                    facets_b = cand_facets[ind_b.indicator_id]
 
                     if facets_b > facets_a:
                         parent = ind_a
@@ -345,8 +394,8 @@ class GraphBuilder:
                         continue
 
                     # Check for existing curated non-breakdown_of relationships
-                    existing_a = self.store.get_relationships_with_provenance(parent.indicator_id)
-                    existing_b = self.store.get_relationships_with_provenance(child.indicator_id)
+                    existing_a = rels_by_indicator.get(parent.indicator_id, {})
+                    existing_b = rels_by_indicator.get(child.indicator_id, {})
 
                     conflict = False
                     if child.indicator_id in existing_a:
@@ -391,17 +440,21 @@ class GraphBuilder:
                     report.inferred_edges.append(edge)
 
                     if persist:
-                        w1 = self.store.store_relationship(
+                        # Strictly directed parent -> child only (never write child -> parent)
+                        written = self.store.store_relationship(
                             parent.indicator_id, child.indicator_id, "breakdown_of", provenance="inferred"
                         )
-                        w2 = self.store.store_relationship(
-                            child.indicator_id, parent.indicator_id, "breakdown_of", provenance="inferred"
-                        )
-                        if w1 or w2:
+                        if written:
                             report.newly_persisted_edges_count += 1
+                            rels_by_indicator.setdefault(parent.indicator_id, {})[child.indicator_id] = {
+                                "rel_type": "breakdown_of",
+                                "provenance": "inferred",
+                            }
 
         report.inferred_edges_count = len(report.inferred_edges)
-        report.curated_edges_count = len(self.store.get_all_relationships(provenance="curated"))
+        report.curated_edges_count = sum(
+            1 for r in all_rels if r.get("provenance") == "curated"
+        )
 
         # Verification on 45 curated indicators: zero false edges
         for edge in report.inferred_edges:

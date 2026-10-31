@@ -136,3 +136,12 @@ def test_registry_temporal_status_normalization():
 
     st3, _, _ = registry.check_temporal_availability(3328, "CHL", 2099)
     assert st3 == TemporalAvailabilityStatus.OBSERVATION_MISSING
+
+
+def test_matcher_group_b_excludes_structural_country_and_year_dimensions() -> None:
+    matcher = DynamicMemberMatcher()
+    dims = [Dimension(id=208, name="País__ESTANDAR", members=[Member(id=1, name="Urbano")])]
+    ok, matched, unhandled = matcher.match_facets_to_dimensions(3328, dims, {"area": "URBANO"})
+    assert matched == []
+    assert "area" in unhandled
+

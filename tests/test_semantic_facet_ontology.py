@@ -63,6 +63,29 @@ def test_facet_ontology_dimension_classification():
     assert ontology.classify_dimension(999999, "Dimensión desconocida xyz") is None
 
 
+def test_facet_ontology_qualified_patterns_and_subnacional():
+    ontology = DEFAULT_FACET_ONTOLOGY
+    assert ontology.classify_dimension(None, "División administrativa") == "subnacional"
+    assert ontology.classify_dimension(None, "Municipio") == "subnacional"
+    assert ontology.classify_dimension(None, "Ciudad") == "subnacional"
+    assert ontology.classify_dimension(None, "Área sub nacional") == "subnacional"
+
+    # Qualified patterns
+    assert ontology.classify_dimension(None, "Nivel educativo") == "educacion"
+    assert ontology.classify_dimension(None, "Años de estudio") == "educacion"
+    assert ontology.classify_dimension(None, "Años de instrucción") == "educacion"
+    assert ontology.classify_dimension(None, "Sector de actividad") == "actividad"
+    assert ontology.classify_dimension(None, "Rama de actividad") == "actividad"
+    assert ontology.classify_dimension(None, "Tipo de moneda") == "moneda"
+    assert ontology.classify_dimension(None, "Unidad monetaria") == "moneda"
+
+    # Bare unqualified words alone do not falsely match
+    assert ontology.classify_dimension(None, "Nivel") is None
+    assert ontology.classify_dimension(None, "Sector") is None
+    assert ontology.classify_dimension(None, "Unidad") is None
+
+
+
 def test_matcher_derives_patterns_from_ontology_and_matches_by_dim_id():
     # 1. Asserts DIMENSION_KEY_PATTERNS and MEMBER_VALUE_PATTERNS contain expected facets and members
     expected_facet_keys = {"sexo", "area", "edad", "etnia", "quintil", "moneda", "severidad"}

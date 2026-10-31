@@ -92,7 +92,7 @@ class DynamicMemberMatcher:
 
                 if is_candidate_a:
                     candidate_dims_a.append(d)
-                else:
+                elif not self.ontology.is_structural_dimension(d.id, d.name):
                     candidate_dims_b.append(d)
 
             if is_breakdown:

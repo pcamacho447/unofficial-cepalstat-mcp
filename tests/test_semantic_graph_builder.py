@@ -4,6 +4,8 @@ import sqlite3
 from pathlib import Path
 
 from unofficial_cepalstat_mcp.catalog.store import CatalogStore
+from unofficial_cepalstat_mcp.dimensions import Dimension, Member
+from unofficial_cepalstat_mcp.semantic.graph_builder import GraphBuilder
 
 
 def test_store_relationship_provenance_and_curated_precedence(tmp_path: Path) -> None:
@@ -183,5 +185,31 @@ def test_cli_catalog_build_graph_ascii_and_json(tmp_path: Path, capsys, monkeypa
     assert payload["false_curated_edges"] == 0
     assert payload["inferred_edges_count"] >= 2
     assert "inferred_edges" in payload
+
+
+def test_unmapped_dimension_does_not_become_false_parent_and_edges_are_directed(tmp_path: Path) -> None:
+    store = CatalogStore(db_path=tmp_path / "gb.db")
+    with store._get_connection() as conn:
+        conn.executemany(
+            "INSERT INTO master_indicators VALUES (?, ?, 1, 'Sociales', 'Demográficos', '', 'Sociales > Demográficos', '2026-10-30')",
+            [
+                (9001, "Tasa de mortalidad, por causa de muerte"),
+                (9002, "Tasa de mortalidad, por sexo"),
+                (9003, "Tasa de mortalidad"),
+                (9010, "Tasa de desempleo (%) SL_TLF_UEM"),
+                (9011, "Tasa de desempleo, por sexo (%) SL_TLF_UEM_SEX"),
+            ],
+        )
+    store.store_indicator_dimensions(9001, [Dimension(id=7001, name="Causa de muerte", members=[Member(id=1, name="Cardiovascular")])])
+    store.store_indicator_dimensions(9002, [Dimension(id=144, name="Sexo__ESTANDAR", members=[Member(id=265, name="Hombres"), Member(id=266, name="Mujeres")])])
+    store.store_indicator_dimensions(9011, [Dimension(id=144, name="Sexo__ESTANDAR", members=[Member(id=265, name="Hombres"), Member(id=266, name="Mujeres")])])
+    report = GraphBuilder(store=store).build_breakdown_graph(persist=True, seed_curated=False)
+    edges = {(e.parent_id, e.child_id) for e in report.inferred_edges}
+    assert (9001, 9002) not in edges  # Cause of death is NOT parent of sex!
+    assert (9003, 9002) in edges
+    assert (9010, 9011) in edges      # Trailing SDG codes stripped!
+    assert 9002 in store.get_relationships(9003)
+    assert 9003 not in store.get_relationships(9002)  # Strictly directed parent -> child!
+
 
 

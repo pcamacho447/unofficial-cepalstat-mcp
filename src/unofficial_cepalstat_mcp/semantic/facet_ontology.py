@@ -402,6 +402,44 @@ DEFAULT_FACETS: list[FacetDefinition] = [
         ),
     ),
     FacetDefinition(
+        facet_key="subnacional",
+        description="Desagregación geográfica subnacional (división administrativa, municipio, ciudad)",
+        synset_domain="facet_subnacional",
+        known_dimension_ids=frozenset(),
+        dimension_name_patterns=(
+            "division administrativa",
+            "municipio",
+            "ciudad",
+            "area sub nacional",
+        ),
+        member_value_patterns={
+            "SUBNACIONAL": (
+                "division administrativa",
+                "municipio",
+                "ciudad",
+                "subnacional",
+                "area sub nacional",
+            ),
+        },
+        implicit_aggregate_values=frozenset(),
+        breakdown_values=frozenset({"SUBNACIONAL"}),
+        total_member_patterns=("total", "nacional", "pais"),
+        query_triggers=(
+            QueryTriggerRule(
+                canonical_value="SUBNACIONAL",
+                phrases=(
+                    "por municipio",
+                    "segun municipio",
+                    "por ciudad",
+                    "segun ciudad",
+                    "subnacional",
+                    "a nivel subnacional",
+                    "por division administrativa",
+                ),
+            ),
+        ),
+    ),
+    FacetDefinition(
         facet_key="area",
         description="Desagregación geográfica por área urbana o rural",
         synset_domain="facet_area",
@@ -648,7 +686,9 @@ DEFAULT_FACETS: list[FacetDefinition] = [
         dimension_name_patterns=(
             "educacion",
             "anos de educacion",
-            "nivel",
+            "nivel educativo",
+            "anos de estudio",
+            "anos de instruccion",
             "instruccion",
             "nivel de instruccion",
             "escolaridad",
@@ -758,7 +798,12 @@ DEFAULT_FACETS: list[FacetDefinition] = [
         description="Unidad monetaria o de valuación",
         synset_domain="facet_moneda",
         known_dimension_ids=frozenset(),
-        dimension_name_patterns=("moneda", "precios", "unidad"),
+        dimension_name_patterns=(
+            "moneda",
+            "precios",
+            "tipo de moneda",
+            "unidad monetaria",
+        ),
         member_value_patterns={
             "DOLARES_CONSTANTES": (
                 "dolares a precios constantes",
@@ -777,7 +822,13 @@ DEFAULT_FACETS: list[FacetDefinition] = [
         description="Sector de actividad económica o rama",
         synset_domain="facet_actividad",
         known_dimension_ids=frozenset(),
-        dimension_name_patterns=("actividad", "rama", "sector", "actividad economica"),
+        dimension_name_patterns=(
+            "actividad",
+            "rama",
+            "sector de actividad",
+            "rama de actividad",
+            "actividad economica",
+        ),
         member_value_patterns={
             "PUBLICO": ("publico", "sector publico", "gobierno"),
             "PRIVADO": ("privado", "sector privado"),
