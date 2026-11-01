@@ -268,7 +268,7 @@ SPANISH_STOPWORDS: frozenset[str] = frozenset({
     # Prepositions
     "a", "ante", "bajo", "cabe", "con", "contra", "de", "desde", "durante",
     "en", "entre", "hacia", "hasta", "mediante", "para", "por", "segun",
-    "sin", "so", "sobre", "tras", "versus", "vs", "frente",
+    "sin", "so", "sobre", "tras", "versus", "vs", "frente", "per",
     # Conjunctions, negations and connectives
     "y", "e", "ni", "no", "o", "u", "pero", "mas", "sino", "aunque", "que", "como", "si",
     # Pronouns and inquiry words
@@ -1024,7 +1024,7 @@ class QueryParser:
                 "excluyendo sector utcuts", "sin uso de la tierra", "sin cambio de uso",
                 "sin considerar bosques", "excluyendo el sector uso de la tierra",
                 "con lulucf", "incluyendo utcuts", "deforestacion y cambio de uso de suelo",
-                "metano", "carbono",
+                "carbono",
             ]:
                 if t in clean:
                     consumed_phrases.append(t)

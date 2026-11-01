@@ -431,6 +431,31 @@ DEFAULT_CANONICAL_SYNSETS: list[Synset] = [
         canonical_term="indice de precios al consumidor",
         synonyms=["inflacion", "tasa de inflacion", "ipc", "costo de vida", "carestia", "aumento de precios"],
     ),
+    # measure_modifiers
+    Synset(
+        canonical_id="MODIFIER_PER_CAPITA",
+        domain="measure_modifier",
+        canonical_term="por habitante",
+        synonyms=["per capita", "por habitante", "por persona", "por cabeza"],
+    ),
+    Synset(
+        canonical_id="MODIFIER_RATIO",
+        domain="measure_modifier",
+        canonical_term="relacion",
+        synonyms=["ratio", "relacion", "razon", "cociente", "coeficiente"],
+    ),
+    Synset(
+        canonical_id="MODIFIER_PROPORCION",
+        domain="measure_modifier",
+        canonical_term="proporcion",
+        synonyms=["proporcion", "porcentaje", "participacion", "cuota"],
+    ),
+    Synset(
+        canonical_id="MODIFIER_TASA",
+        domain="measure_modifier",
+        canonical_term="tasa",
+        synonyms=["tasa", "tasas"],
+    ),
 ]
 
 

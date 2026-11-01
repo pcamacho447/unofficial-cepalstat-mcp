@@ -49,6 +49,7 @@ CRITICAL_SPECIFICITY_TOKENS: frozenset[str] = frozenset({
     "renta", "aranceles", "arancel", "subyacente", "medicamentos",
     "remesas", "remesa", "desestacionalizado", "desestacionalizada", "estacional",
     "potencial", "brecha", "propios", "propio", "hipotecario", "hipotecaria",
+    "co2", "metano", "capita", "habitante", "tasa", "ratio", "proporcion", "brutas", "netas",
 })
 
 GENERAL_AGGREGATE_FALLBACKS: dict[int, set[str]] = {
@@ -96,6 +97,18 @@ def _is_token_covered_by_indicator(
     token_norm = strip_accents(token).lower().strip()
     if not token_norm:
         return True
+
+    # Pollutant specificity rule: GEI aggregates (5681, 5682) are expressed in 'CO2 eq' units,
+    # but do NOT measure the specific pollutant CO2 or CH4 (metano).
+    if token_norm in ("co2", "metano"):
+        concept_str = str(getattr(indicator_meta, "concept", "")).upper()
+        if concept_str in ("EMISIONES_GEI_LULUCF", "EMISIONES_GEI_SIN_LULUCF"):
+            return False
+        meta_name = strip_accents(getattr(indicator_meta, "name", "")).lower()
+        if token_norm == "co2" and not ("co2" in meta_name or "dioxido" in meta_name):
+            return False
+        if token_norm == "metano" and "metano" not in meta_name:
+            return False
 
     words = getattr(indicator_meta, "_cached_words", None)
     word_stems = getattr(indicator_meta, "_cached_word_stems", None)
@@ -423,49 +436,69 @@ class SemanticResolutionEngine:
         if intent.unconsumed_tokens:
             cand_meta_early = self.registry.get_indicator(canonical_id)
             cand_dims_early = self.registry.get_dimensions(canonical_id) if cand_meta_early else None
-            uncovered_critical_early = [
-                tok
-                for tok in intent.unconsumed_tokens
-                if strip_accents(tok).lower() in CRITICAL_SPECIFICITY_TOKENS
-                and not _is_token_covered_by_indicator(tok, cand_meta_early, cand_dims_early)
-            ]
-            if uncovered_critical_early:
-                uncovered_norms_early = {strip_accents(t).lower() for t in uncovered_critical_early}
-                is_general_fallback_early = (
-                    canonical_id in GENERAL_AGGREGATE_FALLBACKS
-                    and uncovered_norms_early.issubset(GENERAL_AGGREGATE_FALLBACKS[canonical_id])
-                )
-                if not is_general_fallback_early:
-                    if (
-                        self.enable_tier2_catalog
-                        and not intent.unknown_concept
-                        and not intent.unsupported_facet
-                        and not intent.period_out_of_range
-                        and not intent.unsupported_frequency
-                    ):
-                        tier2_resp = self._resolve_via_tier2_catalog(query_str, intent, applied_filters, trace, t0)
-                        if tier2_resp is not None:
-                            return tier2_resp
+            syn_map_early = getattr(self.registry, "_synonym_stem_map", None)
 
-                    latency = (time.perf_counter() - t0) * 1000.0
-                    uncovered_str = ", ".join(uncovered_critical_early)
-                    cand_name_str = cand_meta_early.name if cand_meta_early else str(canonical_id)
-                    trace.append(
-                        f"[Stage 3: Specificity Audit] REJECTED: Candidate ID {canonical_id} does not cover specificity: {uncovered_critical_early}. Status=ABSTAINED"
+            # If query specifies critical facets not supported by the canonical indicator or its breakdown graph,
+            # defer to Stage 4 Dimensional Gate for formal UNSUPPORTED_FACET abstention.
+            has_unsupported_facets_early = False
+            if intent.facets and cand_meta_early:
+                default_supported_early = self.registry.get_supported_facets(canonical_id)
+                crit_facets_early = {
+                    fk: fv for fk, fv in intent.facets.items()
+                    if self.ontology.is_critical_unhandled_facet(fk, fv)
+                }
+                if any(fk not in default_supported_early for fk in crit_facets_early):
+                    cand_rels = self.registry.get_relationships(canonical_id)
+                    has_breakdown_early = any(r == RelationshipType.BREAKDOWN_OF for r in cand_rels.values())
+                    if not has_breakdown_early:
+                        has_unsupported_facets_early = True
+
+            if not has_unsupported_facets_early:
+                uncovered_critical_early = [
+                    tok
+                    for tok in intent.unconsumed_tokens
+                    if strip_accents(tok).lower() in CRITICAL_SPECIFICITY_TOKENS
+                    and not _is_token_covered_by_indicator(
+                        tok, cand_meta_early, cand_dims_early, synonym_stem_map=syn_map_early
                     )
-                    return SemanticResolutionResponse(
-                        status=ResolutionStatus.ABSTAINED,
-                        query=query_str,
-                        applied_filters=applied_filters,
-                        abstention_reason=f"UNRESOLVED_SPECIFICITY: {uncovered_str}",
-                        conversational_hint=(
-                            f"La consulta incluye especificidades temáticas no cubiertas por el indicador seleccionado ('{cand_name_str}'): "
-                            f"{uncovered_str}. Se requiere un indicador sectorial especializado de CEPALSTAT."
-                        ),
-                        polarity_info=intent.polarity_info,
-                        execution_trace=trace,
-                        latency_ms=latency,
+                ]
+                if uncovered_critical_early:
+                    uncovered_norms_early = {strip_accents(t).lower() for t in uncovered_critical_early}
+                    is_general_fallback_early = (
+                        canonical_id in GENERAL_AGGREGATE_FALLBACKS
+                        and uncovered_norms_early.issubset(GENERAL_AGGREGATE_FALLBACKS[canonical_id])
                     )
+                    if not is_general_fallback_early:
+                        if (
+                            self.enable_tier2_catalog
+                            and not intent.unknown_concept
+                            and not intent.unsupported_facet
+                            and not intent.period_out_of_range
+                            and not intent.unsupported_frequency
+                        ):
+                            tier2_resp = self._resolve_via_tier2_catalog(query_str, intent, applied_filters, trace, t0)
+                            if tier2_resp is not None:
+                                return tier2_resp
+
+                        latency = (time.perf_counter() - t0) * 1000.0
+                        uncovered_str = ", ".join(uncovered_critical_early)
+                        cand_name_str = cand_meta_early.name if cand_meta_early else str(canonical_id)
+                        trace.append(
+                            f"[Stage 3: Specificity Audit] REJECTED: Candidate ID {canonical_id} does not cover specificity: {uncovered_critical_early}. Status=ABSTAINED"
+                        )
+                        return SemanticResolutionResponse(
+                            status=ResolutionStatus.ABSTAINED,
+                            query=query_str,
+                            applied_filters=applied_filters,
+                            abstention_reason=f"UNRESOLVED_SPECIFICITY: {uncovered_str}",
+                            conversational_hint=(
+                                f"La consulta incluye especificidades temáticas no cubiertas por el indicador seleccionado ('{cand_name_str}'): "
+                                f"{uncovered_str}. Se requiere un indicador sectorial especializado de CEPALSTAT."
+                            ),
+                            polarity_info=intent.polarity_info,
+                            execution_trace=trace,
+                            latency_ms=latency,
+                        )
 
         # Handle Ambiguous Measure Proposal upfront
         if intent.is_ambiguous_measure:
@@ -740,11 +773,14 @@ class SemanticResolutionEngine:
         conversational_hint: str | None = None
 
         if intent.unconsumed_tokens:
+            syn_map_audit = getattr(self.registry, "_synonym_stem_map", None)
             uncovered_critical: list[str] = [
                 tok
                 for tok in intent.unconsumed_tokens
                 if strip_accents(tok).lower() in CRITICAL_SPECIFICITY_TOKENS
-                and not _is_token_covered_by_indicator(tok, selected_meta, target_dims)
+                and not _is_token_covered_by_indicator(
+                    tok, selected_meta, target_dims, synonym_stem_map=syn_map_audit
+                )
             ]
 
             if uncovered_critical:

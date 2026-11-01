@@ -25,7 +25,7 @@ SPANISH_STOPWORDS: frozenset[str] = frozenset({
     "de", "del", "la", "el", "los", "las", "en", "por", "segun", "para", "con", "sin", "a", "y", "o",
     "un", "una", "unos", "unas", "al", "lo", "su", "sus", "sobre", "entre", "tras", "durante", "mediante",
     "contra", "hacia", "hasta", "desde", "e", "u", "ni", "que", "cual", "cuales", "como", "donde", "cuando",
-    "quien", "quienes", "and", "or", "not", "near",
+    "quien", "quienes", "and", "or", "not", "near", "per",
 })
 
 
