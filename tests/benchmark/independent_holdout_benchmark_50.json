@@ -1,0 +1,467 @@
+[
+  {
+    "id": "HOLDOUT_001",
+    "area": "PIB y Cuentas Nacionales",
+    "query": "cuánto creció el producto bruto interno de perú en los últimos 3 años",
+    "expected_status": "RESOLVED",
+    "expected_indicator_id": 2204,
+    "allowed_indicator_ids": [2204],
+    "rationale": "Consulta con ventana temporal relativa y redacción coloquial para PIB total a precios constantes."
+  },
+  {
+    "id": "HOLDOUT_002",
+    "area": "PIB y Cuentas Nacionales",
+    "query": "PBI por habitante en uruguay 2020",
+    "expected_status": "RESOLVED",
+    "expected_indicator_id": 2206,
+    "allowed_indicator_ids": [2206],
+    "rationale": "Acrónimo regional PBI y modificador per cápita a precios constantes."
+  },
+  {
+    "id": "HOLDOUT_003",
+    "area": "PIB y Cuentas Nacionales",
+    "query": "Grado de Apertura de la Economía a precios corrientes en Chile 2020",
+    "expected_status": "RESOLVED",
+    "expected_indicator_id": 1343,
+    "allowed_indicator_ids": [1343],
+    "rationale": "Indicador macroeconómico de apertura comercial de cuentas nacionales."
+  },
+  {
+    "id": "HOLDOUT_004",
+    "area": "Sociales",
+    "query": "evolución de la pobreza rural en bolivia entre 2018 y 2021",
+    "expected_status": "RESOLVED",
+    "expected_indicator_id": 3328,
+    "allowed_indicator_ids": [3328],
+    "rationale": "Pobreza con desglose geográfico rural y rango temporal multi-año."
+  },
+  {
+    "id": "HOLDOUT_005",
+    "area": "Sociales",
+    "query": "tasa de paro juvenil en chile 2022",
+    "expected_status": "RESOLVED",
+    "expected_indicator_id": 5097,
+    "allowed_indicator_ids": [5097],
+    "rationale": "Sinónimo regional 'paro' para desempleo juvenil por grupos de edad."
+  },
+  {
+    "id": "HOLDOUT_006",
+    "area": "Sociales",
+    "query": "salario mínimo real en uruguay 2022",
+    "expected_status": "RESOLVED",
+    "expected_indicator_id": 340,
+    "allowed_indicator_ids": [340],
+    "rationale": "Indicador laboral de salario mínimo real general deflactado."
+  },
+  {
+    "id": "HOLDOUT_007",
+    "area": "Comercio Internacional y Balanza de Pagos",
+    "query": "Balanza de pagos trimestral en Brasil 2020",
+    "expected_status": "RESOLVED",
+    "expected_indicator_id": 547,
+    "allowed_indicator_ids": [547],
+    "rationale": "Balanza de pagos trimestral en sector externo."
+  },
+  {
+    "id": "HOLDOUT_008",
+    "area": "Comercio Internacional y Balanza de Pagos",
+    "query": "Saldo en cuenta corriente como porcentaje del producto interno bruto en Uruguay 2021",
+    "expected_status": "RESOLVED",
+    "expected_indicator_id": 740,
+    "allowed_indicator_ids": [740],
+    "rationale": "Saldo en cuenta corriente externa respecto al PIB."
+  },
+  {
+    "id": "HOLDOUT_009",
+    "area": "Sector público",
+    "query": "ingresos tributarios en colombia 2021",
+    "expected_status": "RESOLVED",
+    "expected_indicator_id": 821,
+    "allowed_indicator_ids": [821],
+    "rationale": "Presión tributaria e ingresos fiscales del gobierno central."
+  },
+  {
+    "id": "HOLDOUT_010",
+    "area": "Sector público",
+    "query": "deuda pública externa en argentina 2022",
+    "expected_status": "RESOLVED",
+    "expected_indicator_id": 1240,
+    "allowed_indicator_ids": [1240],
+    "rationale": "Deuda pública del sector público en proporción del PIB."
+  },
+  {
+    "id": "HOLDOUT_011",
+    "area": "Sector financiero y monetario",
+    "query": "Tasa de interés activa nominal en Colombia 2021",
+    "expected_status": "RESOLVED",
+    "expected_indicator_id": 856,
+    "allowed_indicator_ids": [856],
+    "rationale": "Tasa de interés del sistema bancario y financiero."
+  },
+  {
+    "id": "HOLDOUT_012",
+    "area": "Sector financiero y monetario",
+    "query": "Liquidez monetaria (M2), fin de período en Chile 2022",
+    "expected_status": "RESOLVED",
+    "expected_indicator_id": 868,
+    "allowed_indicator_ids": [868],
+    "rationale": "Agregado monetario M2 al cierre de período."
+  },
+  {
+    "id": "HOLDOUT_013",
+    "area": "Precios",
+    "query": "inflación anual en méxico 2021",
+    "expected_status": "RESOLVED",
+    "expected_indicator_id": 2484,
+    "allowed_indicator_ids": [2484],
+    "rationale": "Variación porcentual interanual del índice de precios al consumidor."
+  },
+  {
+    "id": "HOLDOUT_014",
+    "area": "Precios",
+    "query": "Indice de precios al por mayor en Chile 2020",
+    "expected_status": "RESOLVED",
+    "expected_indicator_id": 544,
+    "allowed_indicator_ids": [544],
+    "rationale": "Índice de precios al por mayor (IPM) en el sector real."
+  },
+  {
+    "id": "HOLDOUT_015",
+    "area": "Demográficos",
+    "query": "Tasa global de fecundidad en Guatemala 2022",
+    "expected_status": "RESOLVED",
+    "expected_indicator_id": 4786,
+    "allowed_indicator_ids": [4786],
+    "rationale": "Fecundidad promedio por mujer según proyecciones CELADE."
+  },
+  {
+    "id": "HOLDOUT_016",
+    "area": "Demográficos",
+    "query": "Tasa bruta de mortalidad en Chile 2020",
+    "expected_status": "RESOLVED",
+    "expected_indicator_id": 4785,
+    "allowed_indicator_ids": [4785],
+    "rationale": "Defunciones por cada mil habitantes según estadísticas vitales."
+  },
+  {
+    "id": "HOLDOUT_017",
+    "area": "Género",
+    "query": "Tiempo de trabajo no remunerado según años de estudio y sexo en Colombia 2020",
+    "expected_status": "RESOLVED",
+    "expected_indicator_id": 2644,
+    "allowed_indicator_ids": [2644],
+    "rationale": "Uso del tiempo y trabajo de cuidados no remunerado."
+  },
+  {
+    "id": "HOLDOUT_018",
+    "area": "Género",
+    "query": "Número de femicidios o feminicidios en Colombia 2020",
+    "expected_status": "RESOLVED",
+    "expected_indicator_id": 2780,
+    "allowed_indicator_ids": [2780],
+    "rationale": "Muerte violenta de mujeres por razones de género."
+  },
+  {
+    "id": "HOLDOUT_019",
+    "area": "Pueblos indígenas y afrodescendientes",
+    "query": "Población en situación de pobreza extrema y pobreza por autoidentificación étnico-racial en Bolivia 2021",
+    "expected_status": "RESOLVED",
+    "expected_indicator_id": 3342,
+    "allowed_indicator_ids": [3342],
+    "rationale": "Incidencia de pobreza desagregada por pertenencia étnica."
+  },
+  {
+    "id": "HOLDOUT_020",
+    "area": "Pueblos indígenas y afrodescendientes",
+    "query": "Población Indígena y no indígena según área de residencia en Perú 2020",
+    "expected_status": "RESOLVED",
+    "expected_indicator_id": 4968,
+    "allowed_indicator_ids": [4968],
+    "rationale": "Distribución urbano-rural según autoidentificación indígena."
+  },
+  {
+    "id": "HOLDOUT_021",
+    "area": "Discapacidad",
+    "query": "Participación en la fuerza de trabajo de personas con discapacidad en Uruguay 2021",
+    "expected_status": "RESOLVED",
+    "expected_indicator_id": 5661,
+    "allowed_indicator_ids": [5661],
+    "rationale": "Participación en el mercado laboral de población con discapacidad."
+  },
+  {
+    "id": "HOLDOUT_022",
+    "area": "Objetivos de Desarrollo Sostenible (ODS)",
+    "query": "Superficie de humedales designados bajo la Convención de Ramsar en Chile 2020",
+    "expected_status": "RESOLVED",
+    "expected_indicator_id": 2016,
+    "allowed_indicator_ids": [2016],
+    "rationale": "Protección de ecosistemas acuáticos bajo ODS 15."
+  },
+  {
+    "id": "HOLDOUT_023",
+    "area": "Objetivos de Desarrollo Sostenible (ODS)",
+    "query": "Consumo de plaguicidas, por tipo de plaguicida en Chile 2020",
+    "expected_status": "RESOLVED",
+    "expected_indicator_id": 2039,
+    "allowed_indicator_ids": [2039],
+    "rationale": "Monitoreo ambiental agrícola dentro de metas ODS."
+  },
+  {
+    "id": "HOLDOUT_024",
+    "area": "Condiciones y calidad ambiental",
+    "query": "Superficie de aguas continentales en Brasil 2020",
+    "expected_status": "RESOLVED",
+    "expected_indicator_id": 2054,
+    "allowed_indicator_ids": [2054],
+    "rationale": "Extensión de recursos hídricos superficiales continentales."
+  },
+  {
+    "id": "HOLDOUT_025",
+    "area": "Recursos ambientales y su uso",
+    "query": "Superficie regada en Chile 2020",
+    "expected_status": "RESOLVED",
+    "expected_indicator_id": 1739,
+    "allowed_indicator_ids": [1739],
+    "rationale": "Uso productivo de agua en áreas agrícolas bajo riego."
+  },
+  {
+    "id": "HOLDOUT_026",
+    "area": "Residuos",
+    "query": "Consumo de sustancias que agotan la capa de ozono (SAO), por SAO en México 2020",
+    "expected_status": "RESOLVED",
+    "expected_indicator_id": 2037,
+    "allowed_indicator_ids": [2037],
+    "rationale": "Eliminación de sustancias agotadoras del ozono bajo Protocolo de Montreal."
+  },
+  {
+    "id": "HOLDOUT_027",
+    "area": "Protección, gestión y participación ambiental",
+    "query": "Acuerdos ambientales multilaterales por estado en Colombia 2020",
+    "expected_status": "RESOLVED",
+    "expected_indicator_id": 2031,
+    "allowed_indicator_ids": [2031],
+    "rationale": "Ratificación de convenios y gobernanza ambiental."
+  },
+  {
+    "id": "HOLDOUT_028",
+    "area": "Ciudades",
+    "query": "Vehículos de motor registrados en circulación en Costa Rica 2020",
+    "expected_status": "RESOLVED",
+    "expected_indicator_id": 3004,
+    "allowed_indicator_ids": [3004],
+    "rationale": "Parque automotor y movilidad urbana."
+  },
+  {
+    "id": "HOLDOUT_029",
+    "area": "Cohesión social",
+    "query": "Confianza en la policía en Uruguay 2020",
+    "expected_status": "RESOLVED",
+    "expected_indicator_id": 3257,
+    "allowed_indicator_ids": [3257],
+    "rationale": "Percepción y confianza institucional en fuerzas de seguridad pública."
+  },
+  {
+    "id": "HOLDOUT_030",
+    "area": "Estadísticas sectoriales y productividad",
+    "query": "Movimiento portuario de contenedores en Brasil 2020",
+    "expected_status": "RESOLVED",
+    "expected_indicator_id": 1044,
+    "allowed_indicator_ids": [1044],
+    "rationale": "Infraestructura logística y movimiento portuario de TEUs."
+  },
+  {
+    "id": "HOLDOUT_031",
+    "area": "Estadísticas subnacionales y de áreas pequeñas",
+    "query": "Tasa de alfabetismo en personas mayores de 15 años en Colombia 2020",
+    "expected_status": "RESOLVED",
+    "expected_indicator_id": 4429,
+    "allowed_indicator_ids": [4429],
+    "rationale": "Desagregación territorial subnacional del nivel educativo."
+  },
+  {
+    "id": "HOLDOUT_032",
+    "area": "Eventos naturales extremos y desastres",
+    "query": "Pérdidas económicas atribuidas a desastres por tipo de desastre en Costa Rica 2020",
+    "expected_status": "RESOLVED",
+    "expected_indicator_id": 4046,
+    "allowed_indicator_ids": [4046],
+    "rationale": "Impacto económico directo de desastres socionaturales."
+  },
+  {
+    "id": "HOLDOUT_033",
+    "area": "Estadisticas de la actividad agropecuaria, desarrollo rural y seguridad alimentaria y nutricional de Centroamérica y México",
+    "query": "Suministro de Energía Alimentaria (SEA) en Guatemala 2020",
+    "expected_status": "RESOLVED",
+    "expected_indicator_id": 2713,
+    "allowed_indicator_ids": [2713],
+    "rationale": "Seguridad alimentaria y suficiencia calórica per cápita."
+  },
+  {
+    "id": "HOLDOUT_034",
+    "area": "Estadísticas de los Subsectores Eléctrico y de Hidrocarburos de Centroamérica y la República Dominicana",
+    "query": "Demanda Máxima de potencia en Costa Rica 2020",
+    "expected_status": "RESOLVED",
+    "expected_indicator_id": 4718,
+    "allowed_indicator_ids": [4718],
+    "rationale": "Pico de demanda en el sistema interconectado eléctrico centroamericano."
+  },
+  {
+    "id": "HOLDOUT_035",
+    "area": "Tecnologías de información y comunicación",
+    "query": "Velocidad de descarga de las conexiones de banda ancha fija en Colombia 2021",
+    "expected_status": "RESOLVED",
+    "expected_indicator_id": 4054,
+    "allowed_indicator_ids": [4054],
+    "rationale": "Calidad de conectividad e infraestructura digital de telecomunicaciones."
+  },
+  {
+    "id": "HOLDOUT_036",
+    "area": "Trampas Adversarias y Cobertura No-LAC",
+    "query": "desempleo en reino unido 2021",
+    "expected_status": "ABSTAINED",
+    "expected_indicator_id": null,
+    "forbidden_indicator_id": 127,
+    "expected_reason": "UNSUPPORTED_COUNTRY_NON_LAC_GBR",
+    "rationale": "Reino Unido (GBR) es un país fuera del mandato geográfico de CEPALSTAT."
+  },
+  {
+    "id": "HOLDOUT_037",
+    "area": "Trampas Adversarias y Cobertura No-LAC",
+    "query": "inflación en canadá 2022",
+    "expected_status": "ABSTAINED",
+    "expected_indicator_id": null,
+    "forbidden_indicator_id": 2484,
+    "expected_reason": "UNSUPPORTED_COUNTRY_NON_LAC_CAN",
+    "rationale": "Canadá (CAN) es un país norteamericano no perteneciente al ámbito regional de CEPALSTAT."
+  },
+  {
+    "id": "HOLDOUT_038",
+    "area": "Trampas Adversarias y Cobertura No-LAC",
+    "query": "pib per cápita de australia 2020",
+    "expected_status": "ABSTAINED",
+    "expected_indicator_id": null,
+    "forbidden_indicator_id": 2206,
+    "expected_reason": "UNSUPPORTED_COUNTRY_NON_LAC_AUS",
+    "rationale": "Australia (AUS) está fuera de América Latina y el Caribe."
+  },
+  {
+    "id": "HOLDOUT_039",
+    "area": "Trampas Adversarias y Cobertura No-LAC",
+    "query": "tasa de desempleo en alemania 2021",
+    "expected_status": "ABSTAINED",
+    "expected_indicator_id": null,
+    "forbidden_indicator_id": 127,
+    "expected_reason": "UNSUPPORTED_COUNTRY_NON_LAC_DEU",
+    "rationale": "Alemania (DEU) es un país europeo fuera del mandato regional."
+  },
+  {
+    "id": "HOLDOUT_040",
+    "area": "Trampas Adversarias y Cobertura No-LAC",
+    "query": "crecimiento del pib en españa 2022",
+    "expected_status": "ABSTAINED",
+    "expected_indicator_id": null,
+    "forbidden_indicator_id": 2204,
+    "expected_reason": "UNSUPPORTED_COUNTRY_NON_LAC_ESP",
+    "rationale": "España (ESP) no forma parte de la cobertura macroeconómica interna de CEPALSTAT."
+  },
+  {
+    "id": "HOLDOUT_041",
+    "area": "Trampas Adversarias y Cobertura No-LAC",
+    "query": "precio del euro en colombia hoy",
+    "expected_status": "ABSTAINED",
+    "expected_indicator_id": null,
+    "forbidden_indicator_id": null,
+    "expected_reason": "UNSUPPORTED_FREQUENCY",
+    "rationale": "Cotizaciones de divisas diarias/intradía ('hoy') exceden la frecuencia estadística de CEPALSTAT."
+  },
+  {
+    "id": "HOLDOUT_042",
+    "area": "Trampas Adversarias y Cobertura No-LAC",
+    "query": "cotización del barril de petróleo wti al cierre",
+    "expected_status": "ABSTAINED",
+    "expected_indicator_id": null,
+    "forbidden_indicator_id": 1665,
+    "expected_reason": "LOW_CONCEPTUAL_RELEVANCE",
+    "rationale": "Cotización diaria de materias primas spot de mercado financiero al cierre no corresponde a series históricas de CEPALSTAT."
+  },
+  {
+    "id": "HOLDOUT_043",
+    "area": "Trampas Adversarias y Cobertura No-LAC",
+    "query": "tipo de cambio del dólar blue en argentina hoy",
+    "expected_status": "ABSTAINED",
+    "expected_indicator_id": null,
+    "forbidden_indicator_id": null,
+    "expected_reason": "UNSUPPORTED_FREQUENCY",
+    "rationale": "Tipo de cambio paralelo informal con frecuencia diaria/tiempo real no cubierto."
+  },
+  {
+    "id": "HOLDOUT_044",
+    "area": "Trampas Adversarias y Cobertura No-LAC",
+    "query": "cotización de las acciones de petrobras hoy en brasil",
+    "expected_status": "ABSTAINED",
+    "expected_indicator_id": null,
+    "forbidden_indicator_id": null,
+    "expected_reason": "UNSUPPORTED_FREQUENCY",
+    "rationale": "Renta variable y cotizaciones bursátiles de alta frecuencia ('hoy') fuera del alcance."
+  },
+  {
+    "id": "HOLDOUT_045",
+    "area": "Trampas Adversarias y Cobertura No-LAC",
+    "query": "tasa de criminalidad por signo zodiacal en lima",
+    "expected_status": "ABSTAINED",
+    "expected_indicator_id": null,
+    "forbidden_indicator_id": null,
+    "expected_reason": "LOW_CONCEPTUAL_RELEVANCE",
+    "rationale": "Concepto astrológico pseudocientífico sin respaldo en la base de datos de CEPAL."
+  },
+  {
+    "id": "HOLDOUT_046",
+    "area": "Trampas Adversarias y Cobertura No-LAC",
+    "query": "felicidad según el horóscopo en quito",
+    "expected_status": "ABSTAINED",
+    "expected_indicator_id": null,
+    "forbidden_indicator_id": null,
+    "expected_reason": "LOW_CONCEPTUAL_RELEVANCE",
+    "rationale": "Horóscopos y esoterismo carecen de rigor y relevancia estadística oficial."
+  },
+  {
+    "id": "HOLDOUT_047",
+    "area": "Trampas Adversarias y Cobertura No-LAC",
+    "query": "compatibilidad astral de presidentes de américa latina",
+    "expected_status": "ABSTAINED",
+    "expected_indicator_id": null,
+    "forbidden_indicator_id": null,
+    "expected_reason": "LOW_CONCEPTUAL_RELEVANCE",
+    "rationale": "Compatibilidad astral carece totalmente de relevancia conceptual en indicadores de la ONU."
+  },
+  {
+    "id": "HOLDOUT_048",
+    "area": "Trampas Adversarias y Cobertura No-LAC",
+    "query": "medallas olímpicas de natación ganadas por colombia 2021",
+    "expected_status": "ABSTAINED",
+    "expected_indicator_id": null,
+    "forbidden_indicator_id": null,
+    "expected_reason": "LOW_CONCEPTUAL_RELEVANCE",
+    "rationale": "Estadísticas deportivas olímpicas ajenas a las áreas socioeconómicas y ambientales de CEPALSTAT."
+  },
+  {
+    "id": "HOLDOUT_049",
+    "area": "Trampas Adversarias y Cobertura No-LAC",
+    "query": "emisiones brutas de metano en panama 2020",
+    "expected_status": "ABSTAINED",
+    "expected_indicator_id": null,
+    "forbidden_indicator_id": 5681,
+    "expected_reason": "UNRESOLVED_SPECIFICITY",
+    "rationale": "Metano es un gas específico no desglosado en el catálogo; debe abstenerse en vez de devolver GEI agregado (5681)."
+  },
+  {
+    "id": "HOLDOUT_050",
+    "area": "Trampas Adversarias y Cobertura No-LAC",
+    "query": "emisiones netas de metano por hectárea en uruguay 2020",
+    "expected_status": "ABSTAINED",
+    "expected_indicator_id": null,
+    "forbidden_indicator_id": 5681,
+    "expected_reason": "UNRESOLVED_SPECIFICITY",
+    "rationale": "Especificidad de metano y unidad por hectárea no disponible; prohibido sustituir con agregados totales."
+  }
+]
