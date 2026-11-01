@@ -50,6 +50,7 @@ CRITICAL_SPECIFICITY_TOKENS: frozenset[str] = frozenset({
     "remesas", "remesa", "desestacionalizado", "desestacionalizada", "estacional",
     "potencial", "brecha", "propios", "propio", "hipotecario", "hipotecaria",
     "co2", "metano", "capita", "habitante", "tasa", "ratio", "proporcion", "brutas", "netas",
+    "sangre", "religion", "credo",
 })
 
 GENERAL_AGGREGATE_FALLBACKS: dict[int, set[str]] = {

@@ -424,13 +424,19 @@ class QueryParser:
         if any(term in clean for term in ["telepatia", "telequinesis"]):
             intent.unsupported_facet = "UNSUPPORTED_FACET_TELEPATHY"
 
+        if any(term in clean for term in ["tipo de sangre", "tipos de sangre", "grupo sanguineo", "factor rh"]):
+            intent.unsupported_facet = "UNSUPPORTED_FACET_BLOOD_TYPE"
+
+        if any(term in clean for term in ["religion", "religiones", "credo", "afiliacion religiosa"]):
+            intent.unsupported_facet = "UNSUPPORTED_FACET_RELIGION"
+
         if "trimestral" in clean and "gini" in clean:
             intent.unsupported_frequency = True
 
-        if any(term in clean for term in ["por segundo", "minuto a minuto", "en tiempo real", "tiempo real"]):
+        if any(term in clean for term in ["por segundo", "minuto a minuto", "al minuto", "en tiempo real", "tiempo real"]):
             intent.unsupported_frequency = True
             intent.frequency = "REALTIME"
-            for t in ["por segundo", "minuto a minuto", "en tiempo real", "tiempo real"]:
+            for t in ["por segundo", "minuto a minuto", "al minuto", "en tiempo real", "tiempo real"]:
                 if t in clean:
                     consumed_phrases.append(t)
         elif any(term in clean for term in ["diaria", "diario", "semana pasada"]):
