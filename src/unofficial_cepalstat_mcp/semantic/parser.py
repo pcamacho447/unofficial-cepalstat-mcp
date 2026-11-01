@@ -140,6 +140,10 @@ COUNTRY_LEXICON: dict[str, str] = {
     "haitianas": "HTI",
 }
 
+_SORTED_COUNTRY_LEXICON: tuple[tuple[str, str], ...] = tuple(
+    sorted(COUNTRY_LEXICON.items(), key=lambda x: len(x[0]), reverse=True)
+)
+
 COUNTRY_NAMES: dict[str, str] = {
     "ALC": "América Latina y el Caribe",
     "SUD": "América del Sur",
@@ -173,6 +177,46 @@ COUNTRY_NAMES: dict[str, str] = {
     "GUY": "Guyana",
     "SUR": "Surinam",
 }
+
+NON_LAC_COUNTRY_NAMES: dict[str, str] = {
+    "DEU": "Alemania",
+    "ESP": "España",
+    "FRA": "Francia",
+    "ITA": "Italia",
+    "GBR": "Reino Unido",
+    "USA": "Estados Unidos",
+    "CHN": "China",
+    "JPN": "Japón",
+    "CAN": "Canadá",
+    "PRT": "Portugal",
+    "AUS": "Australia",
+    "RUS": "Rusia",
+    "IND": "India",
+}
+
+NON_LAC_COUNTRIES: dict[str, str] = {
+    "francia": "FRA",
+    "espana": "ESP",
+    "alemania": "DEU",
+    "italia": "ITA",
+    "reino unido": "GBR",
+    "estados unidos": "USA",
+    "eeuu": "USA",
+    "china": "CHN",
+    "japon": "JPN",
+    "canada": "CAN",
+    "portugal": "PRT",
+    "australia": "AUS",
+    "rusia": "RUS",
+    "india": "IND",
+}
+
+_LAC_COUNTRY_PATTERN = re.compile(
+    r"\b(?:" + "|".join(re.escape(c) for c in sorted(COUNTRY_LEXICON.keys(), key=len, reverse=True)) + r")\b"
+)
+_NON_LAC_PATTERN = re.compile(
+    r"\b(?:" + "|".join(re.escape(c) for c in sorted(NON_LAC_COUNTRIES.keys(), key=len, reverse=True)) + r")\b"
+)
 
 
 class ParsedIntent(BaseModel):
@@ -337,29 +381,17 @@ class QueryParser:
         # ----------------------------------------------------
         # 1. Detection of Out-of-Scope / Unsupported cases
         # ----------------------------------------------------
-        NON_LAC_COUNTRIES: dict[str, str] = {
-            "francia": "FRA",
-            "espana": "ESP",
-            "alemania": "DEU",
-            "italia": "ITA",
-            "reino unido": "GBR",
-            "estados unidos": "USA",
-            "eeuu": "USA",
-            "china": "CHN",
-            "japon": "JPN",
-            "canada": "CAN",
-            "portugal": "PRT",
-            "australia": "AUS",
-            "rusia": "RUS",
-            "india": "IND",
-        }
-        has_lac_country = any(re.search(r"\b" + re.escape(c) + r"\b", clean) for c in COUNTRY_LEXICON)
+        has_lac_country = bool(_LAC_COUNTRY_PATTERN.search(clean))
         if not has_lac_country:
-            for non_lac_name, non_lac_code in NON_LAC_COUNTRIES.items():
-                if re.search(r"\b" + re.escape(non_lac_name) + r"\b", clean):
-                    intent.unsupported_facet = f"UNSUPPORTED_COUNTRY_NON_LAC_{non_lac_code}"
-                    intent.unknown_concept = True
-                    break
+            non_lac_match = _NON_LAC_PATTERN.search(clean)
+            if non_lac_match:
+                matched_str = non_lac_match.group(0)
+                non_lac_code = NON_LAC_COUNTRIES[matched_str]
+                intent.unsupported_facet = f"UNSUPPORTED_COUNTRY_NON_LAC_{non_lac_code}"
+                intent.country_code = non_lac_code
+                intent.country_name = NON_LAC_COUNTRY_NAMES.get(non_lac_code, matched_str.title())
+                intent.country_codes = [non_lac_code]
+                intent.country_names = [intent.country_name]
 
         if "lunar" in clean or "en la luna" in clean or "la luna" in clean:
             intent.unsupported_facet = "UNSUPPORTED_GEOGRAPHY_MOON"
@@ -518,7 +550,7 @@ class QueryParser:
         # ----------------------------------------------------
         geo_start_idx = len(consumed_phrases)
         matched_spans: list[tuple[int, int, str, str]] = []
-        for name, code in sorted(COUNTRY_LEXICON.items(), key=lambda x: len(x[0]), reverse=True):
+        for name, code in _SORTED_COUNTRY_LEXICON:
             if name not in clean:
                 continue
             for m in re.finditer(r"\b" + re.escape(name) + r"\b", clean):

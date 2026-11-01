@@ -692,7 +692,7 @@
     "expected_status": "ABSTAINED",
     "expected_indicator_id": null,
     "forbidden_indicator_id": 127,
-    "expected_reason": "LOW_CONCEPTUAL_RELEVANCE",
+    "expected_reason": "UNSUPPORTED_COUNTRY_NON_LAC",
     "rationale": "Francia no pertenece al mandato geográfico de CEPALSTAT."
   },
   {
@@ -702,7 +702,7 @@
     "expected_status": "ABSTAINED",
     "expected_indicator_id": null,
     "forbidden_indicator_id": 2484,
-    "expected_reason": "LOW_CONCEPTUAL_RELEVANCE",
+    "expected_reason": "UNSUPPORTED_COUNTRY_NON_LAC",
     "rationale": "España está fuera de la cobertura geográfica regional de CEPALSTAT."
   },
   {
@@ -712,7 +712,7 @@
     "expected_status": "ABSTAINED",
     "expected_indicator_id": null,
     "forbidden_indicator_id": 2206,
-    "expected_reason": "LOW_CONCEPTUAL_RELEVANCE",
+    "expected_reason": "UNSUPPORTED_COUNTRY_NON_LAC",
     "rationale": "Alemania es país europeo fuera de América Latina y el Caribe."
   },
   {
@@ -722,7 +722,7 @@
     "expected_status": "ABSTAINED",
     "expected_indicator_id": null,
     "forbidden_indicator_id": 3328,
-    "expected_reason": "LOW_CONCEPTUAL_RELEVANCE",
+    "expected_reason": "UNSUPPORTED_COUNTRY_NON_LAC",
     "rationale": "Estados Unidos no forma parte del catálogo BADEHOG de CEPALSTAT."
   },
   {
@@ -732,7 +732,7 @@
     "expected_status": "ABSTAINED",
     "expected_indicator_id": null,
     "forbidden_indicator_id": 5649,
-    "expected_reason": "LOW_CONCEPTUAL_RELEVANCE",
+    "expected_reason": "UNSUPPORTED_COUNTRY_NON_LAC",
     "rationale": "China no se encuentra dentro del alcance de países reportados."
   },
   {
@@ -742,7 +742,7 @@
     "expected_status": "ABSTAINED",
     "expected_indicator_id": null,
     "forbidden_indicator_id": 4788,
-    "expected_reason": "LOW_CONCEPTUAL_RELEVANCE",
+    "expected_reason": "UNSUPPORTED_COUNTRY_NON_LAC",
     "rationale": "Japón está fuera del ámbito geográfico de proyecciones demográficas CELADE."
   },
   {
@@ -752,7 +752,7 @@
     "expected_status": "ABSTAINED",
     "expected_indicator_id": null,
     "forbidden_indicator_id": 740,
-    "expected_reason": "LOW_CONCEPTUAL_RELEVANCE",
+    "expected_reason": "UNSUPPORTED_COUNTRY_NON_LAC",
     "rationale": "Italia se encuentra fuera del mandato institucional de la CEPAL."
   },
   {
@@ -762,7 +762,7 @@
     "expected_status": "ABSTAINED",
     "expected_indicator_id": null,
     "forbidden_indicator_id": 460,
-    "expected_reason": "LOW_CONCEPTUAL_RELEVANCE",
+    "expected_reason": "UNSUPPORTED_COUNTRY_NON_LAC",
     "rationale": "Canadá está fuera del alcance de indicadores sociales de CEPALSTAT."
   },
   {

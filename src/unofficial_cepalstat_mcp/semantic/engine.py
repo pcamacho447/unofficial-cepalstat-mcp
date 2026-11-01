@@ -25,6 +25,7 @@ from unofficial_cepalstat_mcp.semantic.models import (
     TemporalAvailabilityStatus,
 )
 from unofficial_cepalstat_mcp.semantic.parser import (
+    NON_LAC_COUNTRY_NAMES,
     SPANISH_STOPWORDS,
     ParsedIntent,
     QueryParser,
@@ -281,28 +282,53 @@ class SemanticResolutionEngine:
         # ----------------------------------------------------
         # Stage 1 & 2: Hard Abstention Checks (Guaranteed Safety)
         # ----------------------------------------------------
-        if intent.unknown_concept:
-            latency = (time.perf_counter() - t0) * 1000.0
-            trace.append("[Stage 2: Hard Abstention] REJECTED: Phenomenon not in CEPALSTAT scope (LOW_CONCEPTUAL_RELEVANCE).")
-            return SemanticResolutionResponse(
-                status=ResolutionStatus.ABSTAINED,
-                query=query_str,
-                abstention_reason="LOW_CONCEPTUAL_RELEVANCE",
-                conversational_hint="No se identificó un fenómeno socioeconómico cubierto por el catálogo de CEPALSTAT.",
-                polarity_info=intent.polarity_info,
-                execution_trace=trace,
-                latency_ms=latency,
-            )
-
         if intent.unsupported_facet:
             latency = (time.perf_counter() - t0) * 1000.0
-            trace.append(f"[Stage 2: Hard Abstention] REJECTED: Facet '{intent.unsupported_facet}' not supported for this indicator.")
+            if intent.unsupported_facet.startswith("UNSUPPORTED_COUNTRY_NON_LAC_"):
+                iso = intent.unsupported_facet.removeprefix("UNSUPPORTED_COUNTRY_NON_LAC_")
+                display_name = NON_LAC_COUNTRY_NAMES.get(iso, iso)
+                trace.append(
+                    f"[Stage 2: Hard Abstention] REJECTED: Country '{display_name}' ({iso}) is outside CEPAL geographic scope."
+                )
+                geo_hint = (
+                    f"El país '{display_name}' ({iso}) se encuentra fuera del ámbito geográfico "
+                    f"de la CEPAL (América Latina y el Caribe)."
+                )
+                return SemanticResolutionResponse(
+                    status=ResolutionStatus.ABSTAINED,
+                    query=query_str,
+                    abstention_reason=intent.unsupported_facet,
+                    unsupported_facet=intent.unsupported_facet,
+                    conversational_hint=geo_hint,
+                    polarity_info=intent.polarity_info,
+                    execution_trace=trace,
+                    latency_ms=latency,
+                )
+            else:
+                trace.append(
+                    f"[Stage 2: Hard Abstention] REJECTED: Facet '{intent.unsupported_facet}' not supported for this indicator."
+                )
+                return SemanticResolutionResponse(
+                    status=ResolutionStatus.ABSTAINED,
+                    query=query_str,
+                    abstention_reason=intent.unsupported_facet,
+                    unsupported_facet=intent.unsupported_facet,
+                    conversational_hint=f"CEPALSTAT no dispone de desagregación para '{intent.unsupported_facet}' en este indicador.",
+                    polarity_info=intent.polarity_info,
+                    execution_trace=trace,
+                    latency_ms=latency,
+                )
+
+        if intent.unsupported_frequency:
+            latency = (time.perf_counter() - t0) * 1000.0
+            trace.append(
+                f"[Stage 2: Hard Abstention] REJECTED: Requested frequency '{getattr(intent, 'frequency', 'UNSUPPORTED')}' not published for series."
+            )
             return SemanticResolutionResponse(
                 status=ResolutionStatus.ABSTAINED,
                 query=query_str,
-                abstention_reason=intent.unsupported_facet,
-                unsupported_facet=intent.unsupported_facet,
-                conversational_hint=f"CEPALSTAT no dispone de desagregación para '{intent.unsupported_facet}' en este indicador.",
+                abstention_reason="UNSUPPORTED_FREQUENCY",
+                conversational_hint="CEPALSTAT publica series estadísticas oficiales con periodicidad anual o trimestral, no cotizaciones financieras diarias ni datos en tiempo real.",
                 polarity_info=intent.polarity_info,
                 execution_trace=trace,
                 latency_ms=latency,
@@ -321,14 +347,14 @@ class SemanticResolutionEngine:
                 latency_ms=latency,
             )
 
-        if intent.unsupported_frequency:
+        if intent.unknown_concept:
             latency = (time.perf_counter() - t0) * 1000.0
-            trace.append(f"[Stage 2: Hard Abstention] REJECTED: Requested frequency '{getattr(intent, 'frequency', 'UNSUPPORTED')}' not published for series.")
+            trace.append("[Stage 2: Hard Abstention] REJECTED: Phenomenon not in CEPALSTAT scope (LOW_CONCEPTUAL_RELEVANCE).")
             return SemanticResolutionResponse(
                 status=ResolutionStatus.ABSTAINED,
                 query=query_str,
-                abstention_reason="UNSUPPORTED_FREQUENCY",
-                conversational_hint="La periodicidad solicitada no se encuentra disponible para esta serie oficial en CEPALSTAT.",
+                abstention_reason="LOW_CONCEPTUAL_RELEVANCE",
+                conversational_hint="No se identificó un fenómeno socioeconómico cubierto por el catálogo de CEPALSTAT.",
                 polarity_info=intent.polarity_info,
                 execution_trace=trace,
                 latency_ms=latency,

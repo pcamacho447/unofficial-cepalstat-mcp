@@ -142,7 +142,15 @@ class BenchmarkEvaluator:
                         "UNSUPPORTED_FREQUENCY",
                         "UNRESOLVED_SPECIFICITY",
                     } - {None}
-                    if case.abstention_reason and response.abstention_reason not in valid_reasons:
+                    reason_ok = (
+                        response.abstention_reason in valid_reasons
+                        or (
+                            response.abstention_reason is not None
+                            and response.abstention_reason.startswith("UNSUPPORTED_")
+                            and "UNSUPPORTED_FACET" in valid_reasons
+                        )
+                    )
+                    if case.abstention_reason and not reason_ok:
                         abstention_match = False
                     else:
                         justified_abstentions += 1
