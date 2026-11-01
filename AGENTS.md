@@ -12,7 +12,7 @@ Cliente Python, catálogo SQLite offline (~2,000 indicadores), recetario anti-se
 
 ## Where things are
 
-- Editando `src/unofficial_cepalstat_mcp/semantic/`? Leer `.agents/rules/semantic-resolution-guardrails.md` primero (11 invariantes obligatorios).
+- Editando `src/unofficial_cepalstat_mcp/semantic/`? Leer `.agents/rules/semantic-resolution-guardrails.md` primero (13 invariantes obligatorios).
 - Especificación pendiente del servidor MCP: `docs/specs/2026-10-15-cepalstat-mcp-server-spec.md`.
 - Recetas certificadas de indicadores: `bitacoras/paises/`; tras editar un `.md` manualmente, ejecutar `uv run unofficial-cepalstat-mcp bitacora sync`.
 
@@ -20,7 +20,7 @@ Cliente Python, catálogo SQLite offline (~2,000 indicadores), recetario anti-se
 
 - Sincronizar entorno completo con `uv sync --all-extras --dev` (instala tanto optional-dependencies como dependency-groups).
 - Ejecutar siempre `uv run pytest -m "not integration"`; correr `pytest` sin filtro dispara pruebas `@pytest.mark.integration` contra la API viva de CEPALSTAT.
-- Al tocar `semantic/`, certificar `uv run pytest tests/test_semantic_benchmark_200.py tests/test_adversarial_benchmark_40.py -v` (**0.00% FSR**, 40/40 adversarias y p50 < 1.0 ms).
+- Al tocar `semantic/`, certificar `uv run pytest tests/test_semantic_benchmark_200.py tests/test_adversarial_benchmark_40.py tests/test_catalog_scale_benchmark_100.py tests/test_independent_holdout_benchmark_50.py tests/test_semantic_mutations.py -v` (**0.00% FSR**, 390 consultas certificadas, 100% mutaciones divergentes y p50 < 0.5 ms).
 - CI ejecuta `uv run ruff check .` y `uv build`. El código base cuenta con 0 errores de `mypy` en `src/unofficial_cepalstat_mcp/` (verificar cualquier código nuevo o firmas editadas con `uv run mypy src/unofficial_cepalstat_mcp/`).
 - Para resolución semántica con extracción empírica por CLI usar `uv run unofficial-cepalstat-mcp semantic resolve "<consulta>" --fetch` (no existe `semantic fetch`).
 
