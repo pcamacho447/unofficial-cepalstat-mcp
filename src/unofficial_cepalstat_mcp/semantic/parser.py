@@ -299,6 +299,11 @@ CURRENCY_AND_UNIT_PHRASES: tuple[str, ...] = (
     "frente al pib",
     "como porcentaje del pib",
     "en porcentaje del pib",
+    "porcentaje del pbi",
+    "sobre el pbi",
+    "frente al pbi",
+    "como porcentaje del pbi",
+    "en porcentaje del pbi",
 )
 
 
@@ -738,12 +743,20 @@ class QueryParser:
         # 5. Extract Root Concept & Controlled Ambiguities
         # ----------------------------------------------------
         facet_end_idx = len(consumed_phrases)
-        has_pib = bool(re.search(r"\bpib\b", clean) or "producto interno bruto" in clean)
+        has_pib = bool(
+            re.search(r"\b(pib|pbi)\b", clean)
+            or "producto interno bruto" in clean
+            or "producto bruto interno" in clean
+        )
         if has_pib:
             if re.search(r"\bpib\b", clean):
                 consumed_phrases.append("pib")
+            if re.search(r"\bpbi\b", clean):
+                consumed_phrases.append("pbi")
             if "producto interno bruto" in clean:
                 consumed_phrases.append("producto interno bruto")
+            if "producto bruto interno" in clean:
+                consumed_phrases.append("producto bruto interno")
 
         # Ambiguous Controlled Scenarios Upfront
         if "privacion y pobreza" in clean or ("privacion" in clean and "pobreza" in clean and not intent.year):
@@ -1095,9 +1108,9 @@ class QueryParser:
                     consumed_phrases.append(t)
 
         # Cuentas Nacionales & PIB
-        elif ("per capita" in clean and (has_pib or "riqueza" in clean)) or "pib per capita" in clean or "por habitante" in clean or "riqueza por cabeza" in clean:
+        elif ("per capita" in clean and (has_pib or "riqueza" in clean)) or "pib per capita" in clean or "pbi per capita" in clean or "por habitante" in clean or "riqueza por cabeza" in clean:
             intent.root_concept = "PIB_PER_CAPITA"
-            for t in ["per capita", "pib per capita", "por habitante", "riqueza por cabeza", "por cabeza", "riqueza"]:
+            for t in ["per capita", "pib per capita", "pbi per capita", "por habitante", "riqueza por cabeza", "por cabeza", "riqueza"]:
                 if t in clean:
                     consumed_phrases.append(t)
         elif ("trimestral" in clean and (has_pib or "actividad economica" in clean or "desempeno economico" in clean)) or "crecimiento interanual trimestral" in clean:
@@ -1110,9 +1123,9 @@ class QueryParser:
             for t in ["corrientes", "moneda nacional"]:
                 if t in clean:
                     consumed_phrases.append(t)
-        elif has_pib or any(term in clean for term in ["crecio la economia", "crecimiento del pib", "crecimiento de la economia", "aparato productivo", "consumo final del gobierno", "consumo de gobierno", "consumo del gobierno"]):
+        elif has_pib or any(term in clean for term in ["crecio la economia", "crecimiento del pib", "crecimiento del pbi", "crecimiento de la economia", "aparato productivo", "consumo final del gobierno", "consumo de gobierno", "consumo del gobierno"]):
             intent.root_concept = "PIB"
-            for t in ["crecio la economia", "crecimiento del pib", "crecimiento de la economia", "aparato productivo", "final del gobierno", "de gobierno", "del gobierno"]:
+            for t in ["crecio la economia", "crecimiento del pib", "crecimiento del pbi", "crecimiento de la economia", "aparato productivo", "final del gobierno", "de gobierno", "del gobierno"]:
                 if t in clean:
                     consumed_phrases.append(t)
 

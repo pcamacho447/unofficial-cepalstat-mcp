@@ -387,3 +387,24 @@ def test_dynamic_member_matcher_slang_handling():
     assert len(applied) == 2
     assert applied[0].member_name == "Ambos sexos"
     assert applied[1].member_name == "Rural"
+
+
+def test_regionalisms_peruvian_and_andean_pbi(parser: QueryParser, engine: SemanticResolutionEngine) -> None:
+    """Verify 'pbi' and 'producto bruto interno' resolve to GDP (2204)."""
+    intent = parser.parse("pbi del peru entre el año 2020 y 2023")
+    assert intent.root_concept == "PIB"
+    assert "pbi" not in intent.unconsumed_tokens
+
+    resp = engine.resolve("pbi del peru entre el año 2020 y 2023")
+    assert resp.status == ResolutionStatus.RESOLVED
+    assert resp.selected_candidate is not None
+    assert resp.selected_candidate.indicator_id == 2204
+    assert resp.applied_filters.country_code == "PER"
+    assert resp.applied_filters.years == [2020, 2021, 2022, 2023]
+
+    intent2 = parser.parse("producto bruto interno per capita de argentina 2021")
+    assert intent2.root_concept == "PIB_PER_CAPITA"
+
+    intent3 = parser.parse("crecimiento del pbi en peru 2022")
+    assert intent3.root_concept == "PIB"
+

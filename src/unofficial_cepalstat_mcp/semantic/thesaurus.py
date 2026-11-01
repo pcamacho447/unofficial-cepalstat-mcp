@@ -412,7 +412,18 @@ DEFAULT_CANONICAL_SYNSETS: list[Synset] = [
         canonical_id="PIB_GENERAL",
         domain="concept_macro",
         canonical_term="producto interno bruto",
-        synonyms=["pib", "producto interno bruto", "actividad economica", "crecimiento economico"],
+        synonyms=[
+            "pib",
+            "pbi",
+            "producto interno bruto",
+            "producto bruto interno",
+            "actividad economica",
+            "crecimiento economico",
+        ],
+        regional_tags={
+            "PER": ["pbi", "producto bruto interno"],
+            "ARG": ["pbi", "producto bruto interno"],
+        },
     ),
     Synset(
         canonical_id="IPC_GENERAL",
