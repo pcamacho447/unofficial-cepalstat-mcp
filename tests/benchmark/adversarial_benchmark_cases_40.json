@@ -190,10 +190,11 @@
   {
     "id": "ADV_C02",
     "cluster": "FAMILIA_C_FRONTERAS_SOCIALES_ODS",
-    "query": "esperanza de vida al nacer de los hombres en paraguay",
+    "query": "esperanza de vida saludable en paraguay",
     "expected_status": "ABSTAINED",
     "expected_indicator_id": null,
-    "rationale": "Esperanza de vida al nacer no está presente en el corte activo de 50 indicadores; abstenerse sin alucinar."
+    "forbidden_indicator_id": 4784,
+    "rationale": "La esperanza de vida saludable (HALE) es una métrica de la OMS que ajusta por años vividos con discapacidad, ausente en las proyecciones demográficas generales de CELADE. Prohibido sustituir por esperanza de vida al nacer (ID 4784)."
   },
   {
     "id": "ADV_C03",

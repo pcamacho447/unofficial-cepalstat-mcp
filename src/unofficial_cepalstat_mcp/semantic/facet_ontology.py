@@ -358,7 +358,7 @@ DEFAULT_FACETS: list[FacetDefinition] = [
         facet_key="sexo",
         description="Desagregación por sexo o género",
         synset_domain="facet_sexo",
-        known_dimension_ids=frozenset({144}),
+        known_dimension_ids=frozenset({144, 88622}),
         dimension_name_patterns=("sexo", "genero"),
         member_value_patterns={
             "FEMENINO": ("mujeres", "mujer", "femenino", "pibas", "chavas", "chicas"),

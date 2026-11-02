@@ -1331,6 +1331,33 @@ DEFAULT_CONCEPT_DEFINITIONS: list[ConceptDefinition] = [
         ),
     ),
     # --------------------------------------------------------------------------
+    # Demography: Life Expectancy (Priority 105)
+    # --------------------------------------------------------------------------
+    ConceptDefinition(
+        concept_key="ESPERANZA_DE_VIDA",
+        description="Life expectancy at birth (esperanza de vida al nacer)",
+        domain="demografia",
+        priority=105,
+        default_indicator_id=4784,
+        associated_phrases=(
+            "esperanza de vida al nacer",
+            "expectativa de vida al nacer",
+            "esperanza de vida",
+            "expectativa de vida",
+            "anios de vida al nacer",
+        ),
+        triggers=(
+            ConceptTriggerRule(
+                patterns=(
+                    "esperanza de vida al nacer",
+                    "expectativa de vida al nacer",
+                    "esperanza de vida",
+                    "expectativa de vida",
+                ),
+            ),
+        ),
+    ),
+    # --------------------------------------------------------------------------
     # Demography: Population (Priority 90)
     # --------------------------------------------------------------------------
     ConceptDefinition(

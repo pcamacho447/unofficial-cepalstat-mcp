@@ -327,6 +327,13 @@ DEFAULT_OFFICIAL_DIMENSIONS: dict[int, list[Dimension]] = {
             ],
         ),
     ],
+    4784: [
+        Dimension(
+            id=88622,
+            name="Sexo",
+            members=[Member(id=88623, name="Ambos sexos"), Member(id=88626, name="Hombres"), Member(id=88627, name="Mujeres")],
+        ),
+    ],
     417: [
         Dimension(
             id=144,
@@ -1248,6 +1255,14 @@ VERTICAL_SLICE_INDICATORS: dict[int, IndicatorMetadata] = {
             417: RelationshipType.ALTERNATIVE_MEASURE,
         },
     ),
+    4784: IndicatorMetadata(
+        indicator_id=4784,
+        name="Esperanza de vida al nacer, según sexo",
+        concept="ESPERANZA_DE_VIDA",
+        measure_type=MeasureType.ESPERANZA_VIDA,
+        unit="años",
+        supported_facets={"sexo"},
+    ),
     4788: IndicatorMetadata(
         indicator_id=4788,
         name="Población total",
@@ -1340,6 +1355,8 @@ VERTICAL_SLICE_INDICATORS: dict[int, IndicatorMetadata] = {
 # Concept to Canonical Default mappings
 OFFICIAL_25_CANONICAL_DEFAULTS: dict[str, int] = {
     "POBLACION": 4788,
+    "ESPERANZA_DE_VIDA": 4784,
+    "ESPERANZA_VIDA": 4784,
     "POBREZA": 3328,
     "POBREZA_BRECHA": 3329,
     "POBREZA_FEMINIDAD": 3330,
@@ -2163,6 +2180,12 @@ class SemanticRegistry:
                 res_quinquennial = (TemporalAvailabilityStatus.OBSERVATION_MISSING, None, None)
             self._temporal_availability[key] = res_quinquennial
             return res_quinquennial
+
+        # CELADE continuous annual demographic estimates and projections (1950-2100)
+        if indicator_id in (4784, 4788) and 1950 <= year <= 2100:
+            fallback = (TemporalAvailabilityStatus.OBSERVATION_EXISTING, None, None)
+            self._temporal_availability[key] = fallback
+            return fallback
 
         # Default: if between 1950 and current UTC year, assume existing
         current_year = datetime.now(timezone.utc).year
