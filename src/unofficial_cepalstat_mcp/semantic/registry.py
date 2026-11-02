@@ -1375,6 +1375,12 @@ BADEHOG_SURVEY_INDICATORS: tuple[int, ...] = (
     5698,
 )
 
+QUINQUENNIAL_DEMOGRAPHIC_INDICATORS: frozenset[int] = frozenset({
+    4789,
+    4793,
+    4795,
+})
+
 # Empirical observation availability for country x year x indicator
 # Maps (indicator_id, country_code, year) -> (status, prev_anchor, next_anchor)
 TEMPORAL_AVAILABILITY_MATRIX: dict[tuple[int, str, int], tuple[TemporalAvailabilityStatus, int | None, int | None]] = {
@@ -2057,6 +2063,21 @@ class SemanticRegistry:
             res_matrix = TEMPORAL_AVAILABILITY_MATRIX[key]
             self._temporal_availability[key] = res_matrix
             return res_matrix
+
+        if indicator_id in QUINQUENNIAL_DEMOGRAPHIC_INDICATORS:
+            res_quinquennial: tuple[TemporalAvailabilityStatus, int | None, int | None]
+            if 1950 <= year <= 2100:
+                if year % 5 == 0:
+                    res_quinquennial = (TemporalAvailabilityStatus.OBSERVATION_EXISTING, None, None)
+                else:
+                    prev_anchor = year - (year % 5)
+                    calc_next = prev_anchor + 5
+                    next_anchor: int | None = calc_next if calc_next <= 2100 else None
+                    res_quinquennial = (TemporalAvailabilityStatus.PERIOD_UNOBSERVED, prev_anchor, next_anchor)
+            else:
+                res_quinquennial = (TemporalAvailabilityStatus.OBSERVATION_MISSING, None, None)
+            self._temporal_availability[key] = res_quinquennial
+            return res_quinquennial
 
         # Default: if between 1950 and current UTC year, assume existing
         current_year = datetime.now(timezone.utc).year

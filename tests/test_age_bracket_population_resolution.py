@@ -57,3 +57,21 @@ def test_numeric_foreign_keys_suppressed_from_notes() -> None:
     assert _is_numeric_id_string("Total nacional") is False
     assert _is_numeric_id_string("Estimación censal 2015") is False
     assert _is_numeric_id_string("") is False
+
+
+def test_quinquennial_indicator_4789_temporal_audit_with_anchors() -> None:
+    from unofficial_cepalstat_mcp.semantic.models import TemporalAvailabilityStatus
+
+    engine = SemanticResolutionEngine(catalog_profile="full_catalog")
+    query = "poblacion de america latina  de mujeres entre 50 y 54 años del 2015 al 2022"
+    resp = engine.resolve(query)
+
+    assert resp.status == ResolutionStatus.RESOLVED_WITH_ANCHORS
+    assert resp.selected_candidate is not None
+    assert resp.selected_candidate.indicator_id == 4789
+    assert resp.temporal_info is not None
+    assert resp.temporal_info.temporal_status == TemporalAvailabilityStatus.PERIOD_UNOBSERVED
+    assert resp.temporal_info.observed_years == [2015, 2020]
+    assert resp.temporal_info.unobserved_years == [2016, 2017, 2018, 2019, 2021, 2022]
+    assert resp.temporal_info.forbid_interpolation is True
+    assert "En América Latina y el Caribe" in resp.temporal_info.disclaimer
