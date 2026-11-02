@@ -175,9 +175,9 @@ class DynamicMemberMatcher:
             if len(pattern_matched) >= 2:
                 selected_members = pattern_matched
             elif pattern_matched:
-                selected_members = list(dim.members)
-            elif not target_patterns or any(p in ("desglose", "total", "todos") for p in target_patterns):
-                selected_members = list(dim.members)
+                selected_members = non_agg_members
+            elif not target_patterns or any(p in ("desglose", "total", "todos") or "desglose" in p for p in target_patterns):
+                selected_members = non_agg_members
             else:
                 continue
 

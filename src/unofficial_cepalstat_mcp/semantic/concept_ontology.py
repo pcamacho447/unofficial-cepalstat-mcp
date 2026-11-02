@@ -1059,7 +1059,23 @@ DEFAULT_CONCEPT_DEFINITIONS: list[ConceptDefinition] = [
             ConceptTriggerRule(
                 patterns=("actividad economica en", "actividad economica"),
                 ambiguous_candidate="ECONOMIC_ACTIVITY",
-                excludes_subterms=("trimestral", "pib", "pbi"),
+                excludes_subterms=(
+                    "trimestral",
+                    "pib",
+                    "pbi",
+                    "sector",
+                    "sectores",
+                    "rama",
+                    "ramas",
+                    "ocupada",
+                    "ocupadas",
+                    "ocupado",
+                    "ocupados",
+                    "ocupacion",
+                    "empleo",
+                    "trabajadores",
+                    "poblacion",
+                ),
             ),
             ConceptTriggerRule(
                 patterns=("economia de",),
@@ -1199,6 +1215,70 @@ DEFAULT_CONCEPT_DEFINITIONS: list[ConceptDefinition] = [
             ),
         ),
     ),
+    ConceptDefinition(
+        concept_key="OCUPACION",
+        description="Employed population and occupational distribution (población ocupada)",
+        domain="laboral",
+        priority=105,
+        default_indicator_id=417,
+        associated_phrases=(
+            "distribucion de la poblacion ocupada",
+            "distribucion de poblacion ocupada",
+            "poblacion ocupada",
+        ),
+        triggers=(
+            ConceptTriggerRule(
+                patterns=(
+                    "distribucion de la poblacion ocupada",
+                    "distribucion de poblacion ocupada",
+                    "poblacion ocupada",
+                    "personas ocupadas",
+                    "tasa de ocupacion",
+                    "nivel de ocupacion",
+                    "ocupacion por sector",
+                    "ocupacion segun sector",
+                ),
+                excludes_subterms=(
+                    "carcelaria",
+                    "carcel",
+                    "penitenciaria",
+                    "hotelera",
+                    "camas",
+                    "hospitalaria",
+                    "camas uci",
+                    "hacinamiento",
+                ),
+            ),
+        ),
+        sub_concept_rules=(
+            SubConceptRule(
+                sub_concept_key="OCUPACION",
+                triggers=(
+                    "sector de actividad",
+                    "sectores de actividad",
+                    "sector economico",
+                    "sectores economicos",
+                    "grandes sectores",
+                    "rama",
+                    "ramas",
+                ),
+            ),
+            SubConceptRule(
+                sub_concept_key="OCUPACION",
+                triggers=(
+                    "categoria ocupacional",
+                    "categoria de trabajo",
+                ),
+            ),
+            SubConceptRule(
+                sub_concept_key="OCUPACION",
+                triggers=(
+                    "insercion laboral",
+                    "tipo de insercion laboral",
+                ),
+            ),
+        ),
+    ),
     # --------------------------------------------------------------------------
     # Demography: Population (Priority 90)
     # --------------------------------------------------------------------------
@@ -1217,6 +1297,19 @@ DEFAULT_CONCEPT_DEFINITIONS: list[ConceptDefinition] = [
                     "demografia",
                     "habitantes",
                     "poblacion",
+                ),
+                excludes_subterms=(
+                    "ocupada",
+                    "ocupadas",
+                    "ocupado",
+                    "ocupados",
+                    "ocupacion",
+                    "desocupada",
+                    "desocupadas",
+                    "desocupados",
+                    "activa",
+                    "activas",
+                    "economicamente activa",
                 ),
             ),
         ),

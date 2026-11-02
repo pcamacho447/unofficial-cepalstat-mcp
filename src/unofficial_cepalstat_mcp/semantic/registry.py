@@ -327,6 +327,51 @@ DEFAULT_OFFICIAL_DIMENSIONS: dict[int, list[Dimension]] = {
             ],
         ),
     ],
+    417: [
+        Dimension(
+            id=144,
+            name="Sexo__ESTANDAR",
+            members=[Member(id=146, name="Ambos sexos"), Member(id=265, name="Hombres"), Member(id=266, name="Mujeres")],
+        ),
+        Dimension(
+            id=326,
+            name="Área geográfica",
+            members=[Member(id=327, name="Nacional"), Member(id=330, name="Urbano"), Member(id=331, name="Rural")],
+        ),
+        Dimension(
+            id=1435,
+            name="Grandes sectores económicos",
+            members=[Member(id=1436, name="Agricultura"), Member(id=1437, name="Industria"), Member(id=1438, name="Servicios")],
+        ),
+    ],
+    122: [
+        Dimension(
+            id=144,
+            name="Sexo__ESTANDAR",
+            members=[Member(id=146, name="Ambos sexos"), Member(id=265, name="Hombres"), Member(id=266, name="Mujeres")],
+        ),
+        Dimension(
+            id=326,
+            name="Área geográfica",
+            members=[Member(id=327, name="Nacional"), Member(id=330, name="Urbano"), Member(id=331, name="Rural")],
+        ),
+        Dimension(
+            id=2145,
+            name="Sector actividad económica",
+            members=[
+                Member(id=2148, name="Agricultura"),
+                Member(id=2153, name="Comercio"),
+                Member(id=2151, name="Construcción"),
+                Member(id=2150, name="Electricidad, gas y agua"),
+                Member(id=2147, name="Manufactureras"),
+                Member(id=2154, name="Minería"),
+                Member(id=2155, name="No especificados"),
+                Member(id=2152, name="Otros servicios"),
+                Member(id=2149, name="Servicios financieros"),
+                Member(id=2146, name="Transporte"),
+            ],
+        ),
+    ],
     4968: [
         Dimension(
             id=48525,
@@ -1181,6 +1226,28 @@ VERTICAL_SLICE_INDICATORS: dict[int, IndicatorMetadata] = {
         ),
     ),
     # Demographic / Population Indicators
+    417: IndicatorMetadata(
+        indicator_id=417,
+        name="Distribución de la población ocupada por sexo, grandes sectores de actividad económica y área",
+        concept="OCUPACION",
+        measure_type=MeasureType.INCIDENCIA_PORCENTUAL,
+        unit="%",
+        supported_facets={"sexo", "area", "actividad"},
+        relationships={
+            122: RelationshipType.BREAKDOWN_OF,
+        },
+    ),
+    122: IndicatorMetadata(
+        indicator_id=122,
+        name="Distribución de la población ocupada por sexo,  sector de actividad económica y área",
+        concept="OCUPACION",
+        measure_type=MeasureType.INCIDENCIA_PORCENTUAL,
+        unit="%",
+        supported_facets={"sexo", "area", "actividad"},
+        relationships={
+            417: RelationshipType.ALTERNATIVE_MEASURE,
+        },
+    ),
     4788: IndicatorMetadata(
         indicator_id=4788,
         name="Población total",
@@ -1277,6 +1344,8 @@ OFFICIAL_25_CANONICAL_DEFAULTS: dict[str, int] = {
     "POBREZA_BRECHA": 3329,
     "POBREZA_FEMINIDAD": 3330,
     "DISTRIBUCION_INGRESO": 3324,
+    "OCUPACION": 417,
+    "POBLACION_OCUPADA": 417,
     "EMPLEO": 127,
     "DESEMPLEO_JUVENIL": 5097,
     "DESEMPLEO_JUVENIL_15_24": 5097,
@@ -1321,6 +1390,8 @@ LEGACY_50_CANONICAL_DEFAULTS: dict[str, int] = {
     "POBREZA_BRECHA": 3329,
     "POBREZA_FEMINIDAD": 3330,
     "DISTRIBUCION_INGRESO": 3324,
+    "OCUPACION": 417,
+    "POBLACION_OCUPADA": 417,
     "EMPLEO": 127,
     "DESEMPLEO_JUVENIL": 5097,
     "DESEMPLEO_JUVENIL_15_24": 5097,
@@ -1373,6 +1444,8 @@ BADEHOG_SURVEY_INDICATORS: tuple[int, ...] = (
     2287,
     2288,
     5698,
+    417,
+    122,
 )
 
 QUINQUENNIAL_DEMOGRAPHIC_INDICATORS: frozenset[int] = frozenset({
@@ -1410,6 +1483,16 @@ for _badehog_id in BADEHOG_SURVEY_INDICATORS:
         2022,
     )
     TEMPORAL_AVAILABILITY_MATRIX[(_badehog_id, "CHL", 2022)] = (
+        TemporalAvailabilityStatus.OBSERVATION_EXISTING,
+        None,
+        None,
+    )
+    TEMPORAL_AVAILABILITY_MATRIX[(_badehog_id, "CHL", 2023)] = (
+        TemporalAvailabilityStatus.PERIOD_UNOBSERVED,
+        2022,
+        2024,
+    )
+    TEMPORAL_AVAILABILITY_MATRIX[(_badehog_id, "CHL", 2024)] = (
         TemporalAvailabilityStatus.OBSERVATION_EXISTING,
         None,
         None,
@@ -2046,7 +2129,11 @@ class SemanticRegistry:
         """Check observation status and anchor years for an indicator, country, and year."""
         key = (indicator_id, country_code, year)
         if key in self._temporal_availability:
-            return self._temporal_availability[key]
+            rec = self._temporal_availability[key]
+            if not isinstance(rec[0], TemporalAvailabilityStatus):
+                rec = (_normalize_temporal_status(rec[0]), rec[1], rec[2])
+                self._temporal_availability[key] = rec
+            return rec
 
         if self.store is not None:
             store_rec = self.store.get_temporal_record(indicator_id, country_code, year)
