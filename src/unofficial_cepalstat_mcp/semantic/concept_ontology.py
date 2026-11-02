@@ -1253,6 +1253,56 @@ DEFAULT_CONCEPT_DEFINITIONS: list[ConceptDefinition] = [
         sub_concept_rules=(
             SubConceptRule(
                 sub_concept_key="OCUPACION",
+                triggers=("mineria", "minero", "minera"),
+                facet_updates={"actividad": "MINERIA"},
+            ),
+            SubConceptRule(
+                sub_concept_key="OCUPACION",
+                triggers=("comercio", "comercial"),
+                facet_updates={"actividad": "COMERCIO"},
+            ),
+            SubConceptRule(
+                sub_concept_key="OCUPACION",
+                triggers=("construccion",),
+                facet_updates={"actividad": "CONSTRUCCION"},
+            ),
+            SubConceptRule(
+                sub_concept_key="OCUPACION",
+                triggers=("transporte", "transportes"),
+                facet_updates={"actividad": "TRANSPORTE"},
+            ),
+            SubConceptRule(
+                sub_concept_key="OCUPACION",
+                triggers=("servicios financieros", "financiero", "financiera", "financieros"),
+                facet_updates={"actividad": "FINANCIERO"},
+            ),
+            SubConceptRule(
+                sub_concept_key="OCUPACION",
+                triggers=("electricidad, gas y agua", "electricidad"),
+                facet_updates={"actividad": "ELECTRICIDAD"},
+            ),
+            SubConceptRule(
+                sub_concept_key="OCUPACION",
+                triggers=("agricultura", "agropecuario", "agropecuaria", "agricola"),
+                facet_updates={"actividad": "AGRICULTURA"},
+            ),
+            SubConceptRule(
+                sub_concept_key="OCUPACION",
+                triggers=("industria", "industrial", "manufactura", "manufactureras", "manufacturas"),
+                facet_updates={"actividad": "INDUSTRIA"},
+            ),
+            SubConceptRule(
+                sub_concept_key="OCUPACION",
+                triggers=("otros servicios",),
+                facet_updates={"actividad": "OTROS_SERVICIOS"},
+            ),
+            SubConceptRule(
+                sub_concept_key="OCUPACION",
+                triggers=("servicios", "sector terciario"),
+                facet_updates={"actividad": "SERVICIOS"},
+            ),
+            SubConceptRule(
+                sub_concept_key="OCUPACION",
                 triggers=(
                     "sector de actividad",
                     "sectores de actividad",
@@ -1262,6 +1312,7 @@ DEFAULT_CONCEPT_DEFINITIONS: list[ConceptDefinition] = [
                     "rama",
                     "ramas",
                 ),
+                facet_updates={"actividad": "ACTIVIDAD_DESGLOSE"},
             ),
             SubConceptRule(
                 sub_concept_key="OCUPACION",

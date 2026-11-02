@@ -80,3 +80,56 @@ def test_economic_activity_labor_does_not_hijack_gdp(engine: SemanticResolutionE
     assert res.selected_candidate is not None
     assert res.selected_candidate.indicator_id == 417
     assert res.selected_candidate.indicator_id != 2204
+
+
+def test_employed_population_single_sector_mineria(engine: SemanticResolutionEngine) -> None:
+    """When a single sector like 'mineria' is specified, bind only that member (no breakdown)."""
+    query = (
+        "distribucion de la poblacion ocupada de chile, colombia y peru "
+        "sexo hombre area geografica urbana del sector mineria en el año 2022, 2023 y 2024"
+    )
+    res = engine.resolve(query)
+    assert res.status in (ResolutionStatus.RESOLVED, ResolutionStatus.RESOLVED_WITH_ANCHORS)
+    assert res.selected_candidate is not None
+    assert res.selected_candidate.indicator_id == 122
+    assert res.applied_filters.facets == {
+        "area": "URBANO",
+        "sexo": "MASCULINO",
+        "actividad": "MINERIA",
+    }
+    bound_dim_map = {d.dim_id: d for d in res.applied_filters.dimensions}
+    assert 2145 in bound_dim_map
+    assert bound_dim_map[2145].member_id == 2154
+    assert bound_dim_map[2145].member_name == "Minería"
+    assert bound_dim_map[2145].is_breakdown is False
+
+
+def test_employed_population_single_sector_comercio(engine: SemanticResolutionEngine) -> None:
+    """When a single sector like 'comercio' is specified, bind only that member (no breakdown)."""
+    query = "poblacion ocupada en el comercio en chile 2022"
+    res = engine.resolve(query)
+    assert res.status == ResolutionStatus.RESOLVED
+    assert res.selected_candidate is not None
+    assert res.selected_candidate.indicator_id == 122
+    assert res.applied_filters.facets == {"actividad": "COMERCIO"}
+    bound_dim_map = {d.dim_id: d for d in res.applied_filters.dimensions}
+    assert 2145 in bound_dim_map
+    assert bound_dim_map[2145].member_id == 2153
+    assert bound_dim_map[2145].member_name == "Comercio"
+    assert bound_dim_map[2145].is_breakdown is False
+
+
+def test_employed_population_single_sector_agricultura(engine: SemanticResolutionEngine) -> None:
+    """When a single large sector like 'agricultura' is specified, indicator 417 resolves directly."""
+    query = "poblacion ocupada en la agricultura en chile 2022"
+    res = engine.resolve(query)
+    assert res.status == ResolutionStatus.RESOLVED
+    assert res.selected_candidate is not None
+    assert res.selected_candidate.indicator_id == 417
+    assert res.applied_filters.facets == {"actividad": "AGRICULTURA"}
+    bound_dim_map = {d.dim_id: d for d in res.applied_filters.dimensions}
+    assert 1435 in bound_dim_map
+    assert bound_dim_map[1435].member_id == 1436
+    assert bound_dim_map[1435].member_name == "Agricultura"
+    assert bound_dim_map[1435].is_breakdown is False
+
