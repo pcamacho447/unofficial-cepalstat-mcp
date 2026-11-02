@@ -12,7 +12,7 @@ Cliente Python, catálogo SQLite offline (~2,000 indicadores), recetario anti-se
 
 ## Where things are
 
-- Editando `src/unofficial_cepalstat_mcp/semantic/`? Leer `.agents/rules/semantic-resolution-guardrails.md` primero (15 invariantes obligatorios).
+- Editando `src/unofficial_cepalstat_mcp/semantic/`? Leer `.agents/rules/semantic-resolution-guardrails.md` primero (16 invariantes obligatorios).
 - Especificación pendiente del servidor MCP: `docs/specs/2026-10-15-cepalstat-mcp-server-spec.md`.
 - Recetas certificadas de indicadores: `bitacoras/paises/`; tras editar un `.md` manualmente, ejecutar `uv run unofficial-cepalstat-mcp bitacora sync`.
 
@@ -30,7 +30,7 @@ Cliente Python, catálogo SQLite offline (~2,000 indicadores), recetario anti-se
 - Nunca leer las constantes `DEFAULT_DB_PATH` de `catalog/store.py` o `bitacora/store.py` para nuevas rutas; llamar a `get_cache_db_path()` o inyectar `db_path` explícito, abrir SQLite con `timeout=10.0` + `PRAGMA busy_timeout = 10000;` y cerrar en `finally`.
 - Nunca enviar miembros de `SYNTHETIC_DIMENSION_MEMBER_IDS` (ej. `79578`) como parámetro `members=` a `/records` (colisionan con IDs de países en otras tablas); todos los indicadores resuelven a IDs canónicos reales de `master_indicators` (`EMPIRICAL_INDICATOR_ID_MAP` permanece `{}` por retrocompatibilidad).
 - Prohibido interpolar años sin encuesta en `BADEHOG_SURVEY_INDICATORS`; retornar `RESOLVED_WITH_ANCHORS` con años ancla adyacentes oficiales (`is_anchor=True`).
-- Registrar nuevas facetas declarativamente en `FacetOntology` (`semantic/facet_ontology.py`), nunca con condicionales `if facet == "..."` en `engine.py`, `parser.py` o `matcher.py`, y nunca sobrescribir aristas `provenance='curated'` con `inferred`.
+- Registrar nuevas facetas declarativamente en `FacetOntology` (`semantic/facet_ontology.py`) y nuevos conceptos o disparadores en `ConceptOntology` (`semantic/concept_ontology.py`), nunca con condicionales `if concept == "..."` o `if facet == "..."` en `engine.py`, `parser.py` o `matcher.py`, y nunca sobrescribir aristas `provenance='curated'` con `inferred`.
 
 ## Known pitfalls
 
