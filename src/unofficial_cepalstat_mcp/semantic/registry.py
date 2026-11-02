@@ -1186,7 +1186,7 @@ VERTICAL_SLICE_INDICATORS: dict[int, IndicatorMetadata] = {
         name="Población total",
         concept="POBLACION",
         measure_type=MeasureType.VOLUMEN_REAL,
-        unit="personas",
+        unit="miles de personas",
         supported_facets={"sexo"},
         relationships={
             4789: RelationshipType.BREAKDOWN_OF,
@@ -1201,7 +1201,7 @@ VERTICAL_SLICE_INDICATORS: dict[int, IndicatorMetadata] = {
         name="Población, por grupos de edad, según sexo",
         concept="POBLACION",
         measure_type=MeasureType.VOLUMEN_REAL,
-        unit="personas",
+        unit="miles de personas",
         supported_facets={"sexo", "edad"},
         relationships={
             4788: RelationshipType.BREAKDOWN_OF,
@@ -1213,7 +1213,7 @@ VERTICAL_SLICE_INDICATORS: dict[int, IndicatorMetadata] = {
         name="Población, según área geográfica y sexo",
         concept="POBLACION",
         measure_type=MeasureType.VOLUMEN_REAL,
-        unit="personas",
+        unit="miles de personas",
         supported_facets={"area", "sexo"},
         relationships={
             4788: RelationshipType.BREAKDOWN_OF,
@@ -1226,7 +1226,7 @@ VERTICAL_SLICE_INDICATORS: dict[int, IndicatorMetadata] = {
         name="Población indígena y no indígena según área de residencia",
         concept="POBLACION",
         measure_type=MeasureType.VOLUMEN_REAL,
-        unit="personas",
+        unit="miles de personas",
         supported_facets={"area", "etnia"},
         relationships={
             4788: RelationshipType.BREAKDOWN_OF,
@@ -1238,7 +1238,7 @@ VERTICAL_SLICE_INDICATORS: dict[int, IndicatorMetadata] = {
         name="Población afrodescendiente según área de residencia",
         concept="POBLACION",
         measure_type=MeasureType.VOLUMEN_REAL,
-        unit="personas",
+        unit="miles de personas",
         supported_facets={"area", "etnia"},
         relationships={
             4788: RelationshipType.BREAKDOWN_OF,
@@ -2046,9 +2046,7 @@ class SemanticRegistry:
         """Check observation status and anchor years for an indicator, country, and year."""
         key = (indicator_id, country_code, year)
         if key in self._temporal_availability:
-            rec = self._temporal_availability[key]
-            status_enum = _normalize_temporal_status(rec[0])
-            return (status_enum, rec[1], rec[2])
+            return self._temporal_availability[key]
 
         if self.store is not None:
             store_rec = self.store.get_temporal_record(indicator_id, country_code, year)
