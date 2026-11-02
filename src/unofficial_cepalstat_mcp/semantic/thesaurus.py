@@ -17,6 +17,57 @@ def strip_accents(text: str) -> str:
     return "".join(c for c in normalized if unicodedata.category(c) != "Mn")
 
 
+def _edit_distance(s1: str, s2: str, max_dist: int = 2) -> int:
+    """Bounded Damerau-Levenshtein edit distance between two strings.
+
+    Returns the edit distance if <= max_dist, or max_dist + 1 if the distance exceeds max_dist.
+    """
+    if s1 == s2:
+        return 0
+    len1, len2 = len(s1), len(s2)
+    if abs(len1 - len2) > max_dist:
+        return max_dist + 1
+
+    prev_prev = [0] * (len2 + 1)
+    prev = list(range(len2 + 1))
+    curr = [0] * (len2 + 1)
+
+    for i in range(1, len1 + 1):
+        c1 = s1[i - 1]
+        c1_prev = s1[i - 2] if i > 1 else ""
+        curr[0] = i
+        min_r = i
+
+        for j in range(1, len2 + 1):
+            c2 = s2[j - 1]
+            cost = 0 if c1 == c2 else 1
+
+            del_cost = prev[j] + 1
+            ins_cost = curr[j - 1] + 1
+            sub_cost = prev[j - 1] + cost
+
+            res = del_cost if del_cost < ins_cost else ins_cost
+            if sub_cost < res:
+                res = sub_cost
+
+            if i > 1 and j > 1 and c1 == s2[j - 2] and c1_prev == c2:
+                trans_cost = prev_prev[j - 2] + 1
+                if trans_cost < res:
+                    res = trans_cost
+
+            curr[j] = res
+            if res < min_r:
+                min_r = res
+
+        if min_r > max_dist:
+            return max_dist + 1
+
+        prev_prev, prev, curr = prev, curr, prev_prev
+
+    val = prev[len2]
+    return val if val <= max_dist else max_dist + 1
+
+
 class PolarityType(str, Enum):
     """Econometric and dimensional polarity classifications."""
 
@@ -88,6 +139,10 @@ class Thesaurus:
         self._compiled_synsets: dict[str, list[tuple[Synset, str, re.Pattern[str]]]] = {}
         self._antonyms: list[AntonymRule] = []
         self._compiled_antonyms: list[tuple[AntonymRule, bool, str, re.Pattern[str]]] = []
+        self._vocabulary: set[str] = set()
+        self._sorted_vocabulary: list[str] | None = None
+        self._vocab_by_len: dict[int, list[str]] = {}
+        self._suggest_cache: dict[tuple[str, int], str | None] = {}
 
     @property
     def synsets(self) -> dict[str, list[Synset]]:
@@ -98,6 +153,28 @@ class Thesaurus:
     def antonyms(self) -> list[AntonymRule]:
         """List of registered antonym rules."""
         return self._antonyms
+
+    @property
+    def vocabulary(self) -> set[str]:
+        """Set of unique vocabulary words compiled from registered synsets."""
+        return self._vocabulary
+
+    @property
+    def sorted_vocabulary(self) -> list[str]:
+        """Sorted list of unique vocabulary words for deterministic distance checks."""
+        if self._sorted_vocabulary is None:
+            self._sorted_vocabulary = sorted(self._vocabulary)
+        return self._sorted_vocabulary
+
+    @property
+    def vocab_by_len(self) -> dict[int, list[str]]:
+        """Dictionary mapping word length to list of unique vocabulary words."""
+        if not self._vocab_by_len and self._vocabulary:
+            by_len: dict[int, list[str]] = {}
+            for w in self.sorted_vocabulary:
+                by_len.setdefault(len(w), []).append(w)
+            self._vocab_by_len = by_len
+        return self._vocab_by_len
 
     def register_synset(self, synset: Synset) -> None:
         """Register a synset and precompile its regex patterns with word boundaries."""
@@ -123,8 +200,58 @@ class Thesaurus:
             pattern = re.compile(r"\b" + re.escape(term) + r"\b")
             compiled_list.append((clean_synset, term, pattern))
 
+            # Compile vocabulary tokens for typo correction
+            for word in re.findall(r"\b[a-z0-9_]+\b", term):
+                clean_word = strip_accents(word)
+                if len(clean_word) >= 4 and not clean_word.isdigit():
+                    self._vocabulary.add(clean_word)
+
+        # Invalidate sorted cache, length index, and suggestion cache on mutation
+        self._sorted_vocabulary = None
+        self._vocab_by_len = {}
+        self._suggest_cache.clear()
+
         # Re-sort descending by term length to ensure longer phrases match first
         compiled_list.sort(key=lambda item: len(item[1]), reverse=True)
+
+    def suggest_correction(self, token: str, max_distance: int = 2) -> str | None:
+        """Suggest closest vocabulary term within bounded edit distance.
+
+        Returns None if no candidate is within min(max_distance, len(token) // 3).
+        """
+        token_clean = strip_accents(token.strip().lower())
+        if len(token_clean) < 4:
+            return None
+
+        threshold = min(max_distance, len(token_clean) // 3)
+        if threshold < 1:
+            return None
+
+        cache_key = (token_clean, threshold)
+        if cache_key in self._suggest_cache:
+            return self._suggest_cache[cache_key]
+
+        best_word: str | None = None
+        best_key = (threshold + 1, 999)
+
+        by_len = self.vocab_by_len
+        min_l = max(4, len(token_clean) - threshold)
+        max_l = len(token_clean) + threshold
+
+        for word_len in range(min_l, max_l + 1):
+            candidates = by_len.get(word_len)
+            if not candidates:
+                continue
+            for w in candidates:
+                d = _edit_distance(token_clean, w, threshold)
+                if d <= threshold:
+                    key = (d, abs(len(w) - len(token_clean)))
+                    if key < best_key:
+                        best_key = key
+                        best_word = w
+
+        self._suggest_cache[cache_key] = best_word
+        return best_word
 
     def register_antonym_rule(self, rule: AntonymRule) -> None:
         """Register an antonym rule and precompile word-bounded regex patterns."""

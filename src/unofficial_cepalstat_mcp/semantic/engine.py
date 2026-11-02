@@ -35,6 +35,11 @@ from unofficial_cepalstat_mcp.semantic.registry import (
     IndicatorMetadata,
     SemanticRegistry,
 )
+from unofficial_cepalstat_mcp.semantic.thesaurus import (
+    Thesaurus,
+    _edit_distance,
+    get_default_thesaurus,
+)
 
 CRITICAL_SPECIFICITY_TOKENS: frozenset[str] = frozenset({
     "manufacturero", "manufactura", "industrial", "industria",
@@ -183,6 +188,7 @@ class SemanticResolutionEngine:
         ontology: FacetOntology | None = None,
         store: CatalogStore | None = None,
         enable_tier2_catalog: bool | None = None,
+        thesaurus: Thesaurus | None = None,
     ):
         if store is None and catalog_profile == "full_catalog":
             from unofficial_cepalstat_mcp.catalog.store import CatalogStore
@@ -190,6 +196,7 @@ class SemanticResolutionEngine:
         self.catalog_profile = catalog_profile
         self.ontology = ontology or DEFAULT_FACET_ONTOLOGY
         self.parser = parser or QueryParser(catalog_profile=catalog_profile, ontology=self.ontology)
+        self.thesaurus = thesaurus or getattr(self.parser, "thesaurus", None) or get_default_thesaurus()
         self.registry = registry or SemanticRegistry(store=store, catalog_profile=catalog_profile, ontology=self.ontology)
         self.matcher = matcher or DynamicMemberMatcher(ontology=self.ontology)
         self.store = store or getattr(self.registry, "store", None)
@@ -201,6 +208,31 @@ class SemanticResolutionEngine:
                 or catalog_profile == "full_catalog"
                 or (registry is not None and getattr(registry, "store", None) is not None)
             )
+
+    def _build_low_conceptual_relevance_hint(self, intent: ParsedIntent, query_str: str) -> str:
+        """Construct conversational hint for LOW_CONCEPTUAL_RELEVANCE, offering non-substituting typo hints."""
+        candidate_tokens = intent.concept_tokens or intent.unconsumed_tokens
+        if not candidate_tokens and query_str:
+            candidate_tokens = [w for w in re.findall(r"\b[a-zA-ZáéíóúüñÁÉÍÓÚÜÑ0-9_]+\b", query_str)]
+
+        suggestion: str | None = None
+        best_key = (999, 999)
+
+        for tok in candidate_tokens:
+            s = self.thesaurus.suggest_correction(tok)
+            if s and strip_accents(tok) != strip_accents(s):
+                d = _edit_distance(strip_accents(tok), strip_accents(s), 2)
+                key = (d, abs(len(tok) - len(s)))
+                if key < best_key:
+                    best_key = key
+                    suggestion = s
+
+        if suggestion:
+            return (
+                f"No se identificó un fenómeno socioeconómico cubierto por el catálogo de CEPALSTAT. "
+                f"¿Quisiste decir '{suggestion}'?"
+            )
+        return "No se identificó un fenómeno socioeconómico cubierto por el catálogo de CEPALSTAT."
 
     @staticmethod
     def _route_population_indicator(facets: dict[str, str]) -> int:
@@ -364,11 +396,12 @@ class SemanticResolutionEngine:
         if intent.unknown_concept:
             latency = (time.perf_counter() - t0) * 1000.0
             trace.append("[Stage 2: Hard Abstention] REJECTED: Phenomenon not in CEPALSTAT scope (LOW_CONCEPTUAL_RELEVANCE).")
+            hint = self._build_low_conceptual_relevance_hint(intent, query_str)
             return SemanticResolutionResponse(
                 status=ResolutionStatus.ABSTAINED,
                 query=query_str,
                 abstention_reason="LOW_CONCEPTUAL_RELEVANCE",
-                conversational_hint="No se identificó un fenómeno socioeconómico cubierto por el catálogo de CEPALSTAT.",
+                conversational_hint=hint,
                 polarity_info=intent.polarity_info,
                 execution_trace=trace,
                 latency_ms=latency,
@@ -388,11 +421,12 @@ class SemanticResolutionEngine:
 
             latency = (time.perf_counter() - t0) * 1000.0
             trace.append("[Stage 2: Hard Abstention] REJECTED: No root concept recognized.")
+            hint = self._build_low_conceptual_relevance_hint(intent, query_str)
             return SemanticResolutionResponse(
                 status=ResolutionStatus.ABSTAINED,
                 query=query_str,
                 abstention_reason="LOW_CONCEPTUAL_RELEVANCE",
-                conversational_hint="No se identificó un fenómeno socioeconómico cubierto por el catálogo de CEPALSTAT.",
+                conversational_hint=hint,
                 polarity_info=intent.polarity_info,
                 execution_trace=trace,
                 latency_ms=latency,
