@@ -1443,6 +1443,10 @@ class SemanticRegistry:
         self._inverted_index: dict[str, list[tuple[int, float]]] = {}
         self._restricted_country_scope: dict[int, set[str]] = {}
         self._synonym_stem_map: dict[str, list[str]] = {}
+        self._title_word_counts: dict[int, int] = {}
+        self._headline_indicators: set[int] = set()
+        self._order_nums: dict[int, int] = {}
+        self._ranking_factors: dict[int, float] = {}
 
         self._build_in_memory_index(explicit_dimensions=dimensions, explicit_relationships=relationships)
 
@@ -1614,11 +1618,31 @@ class SemanticRegistry:
             if ar
         }
 
+        order_nums: dict[int, int] = {}
+        if master_indicators:
+            for row in master_indicators:
+                ind_id = int(row["indicator_id"])
+                o_num = row.get("order_num")
+                if o_num is not None:
+                    try:
+                        order_nums[ind_id] = int(o_num)
+                    except (ValueError, TypeError):
+                        pass
+        self._order_nums = order_nums
+
+        headline_ids = set(OFFICIAL_25_CANONICAL_DEFAULTS.values()) | set(LEGACY_50_CANONICAL_DEFAULTS.values())
+        for ind_id, o_num in self._order_nums.items():
+            if o_num <= 20:
+                headline_ids.add(ind_id)
+        self._headline_indicators = headline_ids
+
         self._restricted_country_scope = {}
         cleaned_names_by_ind: dict[int, str] = {}
+        title_word_counts: dict[int, int] = {}
         for ind_id, meta in self._indicators_cache.items():
             name_clean = meta.name.upper().translate(_ACCENT_TRANS)
             cleaned_names_by_ind[ind_id] = name_clean.lower()
+            title_word_counts[ind_id] = len(name_clean.split())
             parts = name_clean.split(None, 2)
             c_code = None
             if parts:
@@ -1635,6 +1659,18 @@ class SemanticRegistry:
                 self._restricted_country_scope[ind_id] = {
                     "BLZ", "CRI", "SLV", "GTM", "HND", "NIC", "PAN", "MEX", "CAM"
                 }
+
+        self._title_word_counts = title_word_counts
+
+        # Precompute static Tier-2 ranking factors (damping, headline boost, verbose penalty)
+        ranking_factors: dict[int, float] = {}
+        for ind_id, wc in title_word_counts.items():
+            damping = 1.0 / (1.0 + 0.3 * max(0, wc - 6) / 6.0)
+            hl_boost = 1.35 if ind_id in self._headline_indicators else 1.0
+            o_num = self._order_nums.get(ind_id)
+            penalty = 0.85 if (o_num is not None and o_num >= 100 and wc > 15) else 1.0
+            ranking_factors[ind_id] = damping * hl_boost * penalty
+        self._ranking_factors = ranking_factors
 
         sub_stems = {
             sub: [
@@ -1789,7 +1825,20 @@ class SemanticRegistry:
                         if f_key in meta.supported_facets:
                             candidate_scores[ind_id] += 2.0
 
-        # 4. Return top_k sorted descending
+        # 4. Length damping and headline indicator prioritization
+        for ind_id in candidate_scores:
+            factor = self._ranking_factors.get(ind_id)
+            if factor is None:
+                wc = self._title_word_counts.get(ind_id, 6)
+                damping = 1.0 / (1.0 + 0.3 * max(0, wc - 6) / 6.0)
+                hl_boost = 1.35 if ind_id in self._headline_indicators else 1.0
+                o_num = self._order_nums.get(ind_id)
+                penalty = 0.85 if (o_num is not None and o_num >= 100 and wc > 15) else 1.0
+                factor = damping * hl_boost * penalty
+                self._ranking_factors[ind_id] = factor
+            candidate_scores[ind_id] *= factor
+
+        # 5. Return top_k sorted descending
         return heapq.nlargest(top_k, candidate_scores.items(), key=lambda item: item[1])
 
     def reload_from_store(self) -> None:

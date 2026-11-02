@@ -19,7 +19,7 @@
     "id": "SCALE_003",
     "area": "Protección, gestión y participación ambiental",
     "query": "Empresas con certificación ISO 14001 en Brasil 2021",
-    "expected_status": "ALTERNATIVE_PROPOSED",
+    "expected_status": "RESOLVED",
     "expected_indicator_id": 1763,
     "rationale": "Serie de empresas certificadas bajo el estándar de gestión ambiental ISO 14001."
   },
@@ -161,7 +161,7 @@
     "id": "SCALE_020",
     "area": "Condiciones y calidad ambiental",
     "query": "Variación de la temperatura media en Argentina 2021",
-    "expected_status": "ALTERNATIVE_PROPOSED",
+    "expected_status": "RESOLVED",
     "expected_indicator_id": 3381,
     "rationale": "Anomalías térmicas medias respecto al promedio de referencia."
   },
@@ -649,7 +649,7 @@
     "id": "SCALE_081",
     "area": "Objetivos de Desarrollo Sostenible (ODS)",
     "query": "Proporción de países que han registrado al menos el 90% de los nacimientos en Chile 2020",
-    "expected_status": "ALTERNATIVE_PROPOSED",
+    "expected_status": "RESOLVED",
     "expected_indicator_id": 3676,
     "rationale": "ODS 16: Cobertura universal de registro civil en recién nacidos."
   },
@@ -657,7 +657,7 @@
     "id": "SCALE_082",
     "area": "Objetivos de Desarrollo Sostenible (ODS)",
     "query": "Proporción de países que han registrado al menos el 75% de las defunciones en Chile 2020",
-    "expected_status": "ALTERNATIVE_PROPOSED",
+    "expected_status": "RESOLVED",
     "expected_indicator_id": 3677,
     "rationale": "ODS 16: Completitud de estadísticas vitales de mortalidad."
   },
@@ -673,7 +673,7 @@
     "id": "SCALE_084",
     "area": "Objetivos de Desarrollo Sostenible (ODS)",
     "query": "Número de personas afectadas por los desastres en Chile 2020",
-    "expected_status": "ALTERNATIVE_PROPOSED",
+    "expected_status": "RESOLVED",
     "expected_indicator_id": 3702,
     "rationale": "ODS 11: Impacto humano directo de siniestros y emergencias naturales."
   },
