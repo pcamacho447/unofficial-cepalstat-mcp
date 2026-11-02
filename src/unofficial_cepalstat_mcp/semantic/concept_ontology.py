@@ -53,6 +53,7 @@ class ConceptDefinition(BaseModel):
     triggers: tuple[ConceptTriggerRule, ...] = ()
     sub_concept_rules: tuple[SubConceptRule, ...] = ()
     controlled_ambiguities: dict[str, str] = Field(default_factory=dict)
+    associated_phrases: tuple[str, ...] = ()
 
 
 class ConceptMatchResult(BaseModel):
@@ -124,9 +125,6 @@ DEFAULT_CONCEPT_DEFINITIONS: list[ConceptDefinition] = [
                     "gasto social",
                     "gasto publico en salud",
                     "gasto en salud",
-                    "gasto publico en medicamentos",
-                    "gasto en medicamentos",
-                    "medicamentos y salud",
                     "gasto publico",
                 ),
             ),
@@ -149,7 +147,6 @@ DEFAULT_CONCEPT_DEFINITIONS: list[ConceptDefinition] = [
             ),
         ),
     ),
-
     # --------------------------------------------------------------------------
     # Fiscal: Debt, Primary Balance, Tax Revenues (Priority 150)
     # --------------------------------------------------------------------------
@@ -159,6 +156,7 @@ DEFAULT_CONCEPT_DEFINITIONS: list[ConceptDefinition] = [
         domain="fiscal",
         priority=150,
         default_indicator_id=1240,
+        associated_phrases=("gobierno central", "gobierno", "estado"),
         controlled_ambiguities={
             "cuentas fiscales": "FISCAL_ACCOUNTS",
             "situacion hacendaria": "FISCAL_HEALTH",
@@ -192,6 +190,7 @@ DEFAULT_CONCEPT_DEFINITIONS: list[ConceptDefinition] = [
         domain="fiscal",
         priority=150,
         default_indicator_id=1246,
+        associated_phrases=("gobierno central", "gobierno", "pago de intereses"),
         triggers=(
             ConceptTriggerRule(
                 patterns=(
@@ -217,6 +216,7 @@ DEFAULT_CONCEPT_DEFINITIONS: list[ConceptDefinition] = [
         domain="fiscal",
         priority=150,
         default_indicator_id=821,
+        associated_phrases=("gobierno central", "gobierno", "el fisco"),
         triggers=(
             ConceptTriggerRule(
                 patterns=(
@@ -267,7 +267,6 @@ DEFAULT_CONCEPT_DEFINITIONS: list[ConceptDefinition] = [
             ),
         ),
     ),
-
     # --------------------------------------------------------------------------
     # External Sector (Priorities 145 & 140)
     # --------------------------------------------------------------------------
@@ -346,6 +345,7 @@ DEFAULT_CONCEPT_DEFINITIONS: list[ConceptDefinition] = [
         domain="externo",
         priority=140,
         default_indicator_id=883,
+        associated_phrases=("bienes", "comercio exterior"),
         triggers=(
             ConceptTriggerRule(
                 patterns=(
@@ -361,7 +361,6 @@ DEFAULT_CONCEPT_DEFINITIONS: list[ConceptDefinition] = [
             ),
         ),
     ),
-
     # --------------------------------------------------------------------------
     # Labor & Gender: Wage Gap (Priority 135)
     # --------------------------------------------------------------------------
@@ -371,6 +370,27 @@ DEFAULT_CONCEPT_DEFINITIONS: list[ConceptDefinition] = [
         domain="laboral",
         priority=135,
         default_indicator_id=2288,
+        associated_phrases=(
+            "brecha salarial",
+            "brecha de ingresos",
+            "brecha de ingreso",
+            "brecha de genero",
+            "relacion de ingreso",
+            "relacion de ingresos",
+            "relacion del ingreso",
+            "diferencia de ingresos entre",
+            "diferencia salarial entre",
+            "diferencia de salario entre",
+            "genero",
+            "mujeres",
+            "hombres",
+            "sexo",
+            "laboral",
+            "laborales",
+            "salarial",
+            "salariales",
+            "trabajadores",
+        ),
         triggers=(
             ConceptTriggerRule(
                 patterns=(
@@ -388,7 +408,6 @@ DEFAULT_CONCEPT_DEFINITIONS: list[ConceptDefinition] = [
             ),
         ),
     ),
-
     # --------------------------------------------------------------------------
     # Environment: Renewable Energy, GHG Emissions, Freshwater (Priority 130)
     # --------------------------------------------------------------------------
@@ -398,6 +417,7 @@ DEFAULT_CONCEPT_DEFINITIONS: list[ConceptDefinition] = [
         domain="ambiental",
         priority=130,
         default_indicator_id=3154,
+        associated_phrases=("generacion electrica", "electrica", "contaminamos"),
         triggers=(
             ConceptTriggerRule(
                 patterns=(
@@ -421,6 +441,7 @@ DEFAULT_CONCEPT_DEFINITIONS: list[ConceptDefinition] = [
         domain="ambiental",
         priority=130,
         default_indicator_id=5681,
+        associated_phrases=("carbono",),
         controlled_ambiguities={
             "emisiones de gases de efecto invernadero en": "EMISSIONS_LULUCF_CHOICE",
             "matriz energetica y contaminacion": "ENERGY_POLLUTION",
@@ -499,7 +520,6 @@ DEFAULT_CONCEPT_DEFINITIONS: list[ConceptDefinition] = [
             ),
         ),
     ),
-
     # --------------------------------------------------------------------------
     # Prices & Inflation (Priorities 125 & 120)
     # --------------------------------------------------------------------------
@@ -546,16 +566,22 @@ DEFAULT_CONCEPT_DEFINITIONS: list[ConceptDefinition] = [
         concept_key="IPC_ALIMENTOS",
         description="Consumer price index: food and non-alcoholic beverages",
         domain="precios",
-        priority=125,
+        priority=126,
         default_indicator_id=2929,
         default_facets={"canasta": "ALIMENTOS"},
+        associated_phrases=(
+            "corrientazo",
+            "alimentos y bebidas",
+            "canasta alimentaria",
+            "morfi",
+            "carestia de la comida",
+        ),
         triggers=(
             ConceptTriggerRule(
                 patterns=(
                     "alimentos y bebidas",
                     "canasta alimentaria",
                     "carestia de la comida",
-                    "carestia de comida",
                     "corrientazo",
                     "morfi",
                 ),
@@ -573,13 +599,31 @@ DEFAULT_CONCEPT_DEFINITIONS: list[ConceptDefinition] = [
         priority=125,
         default_indicator_id=2929,
         default_facets={"canasta": "ALIMENTOS"},
+        associated_phrases=(
+            "inflacion de alimentos",
+            "doce meses",
+            "interanual",
+            "carestia de comida",
+            "alimentos",
+        ),
         triggers=(
             ConceptTriggerRule(
-                patterns=("inflacion de alimentos",),
+                patterns=(
+                    "inflacion de alimentos",
+                    "carestia de comida",
+                    "doce meses",
+                ),
+                excludes_subterms=("pib", "pbi"),
+            ),
+            ConceptTriggerRule(
+                patterns=("interanual",),
+                requires_subterms=("alimentos", "ipc", "canasta", "comida"),
+                excludes_subterms=("pib", "pbi", "trimestral"),
             ),
             ConceptTriggerRule(
                 patterns=("alimentos",),
                 requires_subterms=("inflacion", "interanual", "doce meses"),
+                excludes_subterms=("pib", "pbi"),
             ),
         ),
     ),
@@ -610,6 +654,7 @@ DEFAULT_CONCEPT_DEFINITIONS: list[ConceptDefinition] = [
         domain="precios",
         priority=120,
         default_indicator_id=2484,
+        associated_phrases=("precios",),
         controlled_ambiguities={
             "inflacion sectorial": "SECTORAL_INFLATION",
             "precios en": "GENERAL_PRICES",
@@ -637,7 +682,6 @@ DEFAULT_CONCEPT_DEFINITIONS: list[ConceptDefinition] = [
             ),
         ),
     ),
-
     # --------------------------------------------------------------------------
     # Labor: Youth Unemployment & Poverty Gap (Priority 115)
     # --------------------------------------------------------------------------
@@ -682,7 +726,6 @@ DEFAULT_CONCEPT_DEFINITIONS: list[ConceptDefinition] = [
             ),
         ),
     ),
-
     # --------------------------------------------------------------------------
     # Inequality & Income Distribution (Priority 110)
     # --------------------------------------------------------------------------
@@ -756,7 +799,6 @@ DEFAULT_CONCEPT_DEFINITIONS: list[ConceptDefinition] = [
             ),
         ),
     ),
-
     # --------------------------------------------------------------------------
     # National Accounts: GDP Sub-Concepts (Priority 105)
     # --------------------------------------------------------------------------
@@ -766,6 +808,7 @@ DEFAULT_CONCEPT_DEFINITIONS: list[ConceptDefinition] = [
         domain="macro",
         priority=105,
         default_indicator_id=2206,
+        associated_phrases=("por cabeza", "riqueza"),
         triggers=(
             ConceptTriggerRule(
                 patterns=(
@@ -786,6 +829,12 @@ DEFAULT_CONCEPT_DEFINITIONS: list[ConceptDefinition] = [
         domain="macro",
         priority=105,
         default_indicator_id=286,
+        associated_phrases=(
+            "trimestral",
+            "crecimiento interanual trimestral",
+            "actividad economica",
+            "desempeno economico",
+        ),
         triggers=(
             ConceptTriggerRule(
                 patterns=(
@@ -793,6 +842,14 @@ DEFAULT_CONCEPT_DEFINITIONS: list[ConceptDefinition] = [
                     "pib trimestral",
                     "pbi trimestral",
                 ),
+            ),
+            ConceptTriggerRule(
+                patterns=("actividad economica", "desempeno economico"),
+                requires_subterms=("trimestral",),
+            ),
+            ConceptTriggerRule(
+                patterns=("trimestral",),
+                requires_subterms=("actividad economica", "desempeno economico", "pib", "pbi"),
             ),
         ),
     ),
@@ -815,7 +872,6 @@ DEFAULT_CONCEPT_DEFINITIONS: list[ConceptDefinition] = [
             ),
         ),
     ),
-
     # --------------------------------------------------------------------------
     # Labor: Wages & Income (Priority 105)
     # --------------------------------------------------------------------------
@@ -880,6 +936,21 @@ DEFAULT_CONCEPT_DEFINITIONS: list[ConceptDefinition] = [
         domain="laboral",
         priority=105,
         default_indicator_id=341,
+        associated_phrases=(
+            "salario",
+            "sueldo",
+            "plata",
+            "guita",
+            "lana",
+            "lucas",
+            "ingreso",
+            "ingresos",
+            "remuneracion",
+            "remuneraciones",
+            "billete",
+            "por cabeza",
+            "per capita",
+        ),
         controlled_ambiguities={
             "remuneraciones": "INCOME_MEASURES",
             "salario": "INCOME_MEASURES",
@@ -928,11 +999,19 @@ DEFAULT_CONCEPT_DEFINITIONS: list[ConceptDefinition] = [
         sub_concept_rules=(
             SubConceptRule(
                 sub_concept_key="SALARIO_MINIMO",
-                triggers=("minima", "minimo", "por ley", "sueldo basico", "salario basico", "basico de ley", "basico"),
+                triggers=(
+                    "minima",
+                    "minimo",
+                    "por ley",
+                    "sueldo basico",
+                    "salario basico",
+                    "basico de ley",
+                    "basico",
+                ),
             ),
             SubConceptRule(
                 sub_concept_key="INGRESO_HOGARES",
-                triggers=("hogar", "hogares", "familias", "familia"),
+                triggers=("hogar", "hogares", "familias", "familia", "por cabeza", "per capita"),
             ),
             SubConceptRule(
                 sub_concept_key="INGRESO_LABORAL",
@@ -956,7 +1035,6 @@ DEFAULT_CONCEPT_DEFINITIONS: list[ConceptDefinition] = [
             ),
         ),
     ),
-
     # --------------------------------------------------------------------------
     # Macro & Labor & Poverty: Base Concepts (Priority 100)
     # --------------------------------------------------------------------------
@@ -966,6 +1044,7 @@ DEFAULT_CONCEPT_DEFINITIONS: list[ConceptDefinition] = [
         domain="macro",
         priority=100,
         default_indicator_id=2204,
+        associated_phrases=("final del gobierno", "de gobierno", "del gobierno"),
         controlled_ambiguities={
             "actividad economica en": "ECONOMIC_ACTIVITY",
             "actividad economica": "ECONOMIC_ACTIVITY",
@@ -1048,15 +1127,12 @@ DEFAULT_CONCEPT_DEFINITIONS: list[ConceptDefinition] = [
                     "tasa de desocupacion",
                     "desocupacion abierta",
                     "tasa de desempleo",
-                    "tasa de ocupacion",
                     "sin laburo",
                     "sin pega",
                     "desocupacion",
                     "desempleo",
                     "camello",
                     "chamba",
-                    "ocupacion",
-                    "empleo",
                     "jale",
                     "paro",
                 ),
@@ -1123,7 +1199,6 @@ DEFAULT_CONCEPT_DEFINITIONS: list[ConceptDefinition] = [
             ),
         ),
     ),
-
     # --------------------------------------------------------------------------
     # Demography: Population (Priority 90)
     # --------------------------------------------------------------------------
@@ -1153,6 +1228,7 @@ DEFAULT_CONCEPT_DEFINITIONS: list[ConceptDefinition] = [
 # Concept Ontology Engine
 # ==============================================================================
 
+
 class ConceptOntology:
     """Declarative ontology and classification registry for CEPALSTAT concepts."""
 
@@ -1174,7 +1250,7 @@ class ConceptOntology:
         # Index associated phrases per concept for consumed_phrases collection
         self._concept_associated_phrases: dict[str, tuple[str, ...]] = {}
         for cdef in self._definitions:
-            phrases: list[str] = []
+            phrases: list[str] = list(cdef.associated_phrases)
             for tr in cdef.triggers:
                 if not tr.is_regex:
                     phrases.extend(tr.patterns)
@@ -1235,6 +1311,9 @@ class ConceptOntology:
         clean_query: str,
         thesaurus: Any | None = None,
         facets: dict[str, str] | None = None,
+        year: int | None = None,
+        catalog_profile: str = "official_25",
+        polarity_info: Any | None = None,
     ) -> ConceptMatchResult | None:
         """Extract canonical concept, sub-concepts, and controlled ambiguities.
 
@@ -1242,11 +1321,28 @@ class ConceptOntology:
             clean_query: Normalized lowercase query string without diacritics.
             thesaurus: Optional semantic thesaurus for synset queries.
             facets: Optional extracted facet mappings.
+            year: Optional detected reference year for disambiguation.
+            catalog_profile: Profile name ('official_25' or 'legacy_50').
+            polarity_info: Optional resolved polarity metadata.
 
         Returns:
             ConceptMatchResult if a concept matches, otherwise None.
         """
         clean = clean_query.strip().lower()
+        active_facets = dict(facets or {})
+
+        if (
+            polarity_info is None
+            and thesaurus is not None
+            and hasattr(thesaurus, "resolve_polarity")
+        ):
+            polarity_info = thesaurus.resolve_polarity(clean)
+
+        has_pib = bool(
+            re.search(r"\b(pib|pbi)\b", clean)
+            or "producto interno bruto" in clean
+            or "producto bruto interno" in clean
+        )
 
         for compiled_tr in self._compiled_rules:
             m = compiled_tr.compiled_regex.search(clean)
@@ -1277,10 +1373,82 @@ class ConceptOntology:
             is_ambiguous = rule.ambiguous_candidate is not None
             ambiguous_candidate = rule.ambiguous_candidate
 
+            # Apply domain-specific guards to trigger-level ambiguity
+            if is_ambiguous:
+                if ambiguous_candidate == "PRIVATION_GAP":
+                    if "privacion y pobreza" not in clean and year is not None:
+                        is_ambiguous = False
+                        ambiguous_candidate = None
+                elif ambiguous_candidate in ("INEQUALITY_INCOME", "DISTRIBUTIVE_GAP"):
+                    if "estrato" in active_facets:
+                        is_ambiguous = False
+                        ambiguous_candidate = None
+                elif ambiguous_candidate == "ECONOMIC_ACTIVITY":
+                    if "trimestral" in clean or has_pib:
+                        is_ambiguous = False
+                        ambiguous_candidate = None
+                        if "trimestral" in clean:
+                            concept_key = "PIB_TRIMESTRAL"
+                elif ambiguous_candidate == "MACRO_ECONOMY":
+                    if has_pib or any(t in clean for t in ["crecio", "crecimiento"]):
+                        is_ambiguous = False
+                        ambiguous_candidate = None
+                elif ambiguous_candidate == "EMISSIONS_LULUCF_CHOICE":
+                    if (
+                        polarity_info
+                        and str(getattr(polarity_info, "polarity_type", ""))
+                        == "INCLUSION_EXCLUSION"
+                    ):
+                        is_ambiguous = False
+                        ambiguous_candidate = None
+
             # Check definition-level controlled ambiguities if not already flagged
             if not is_ambiguous and cdef.controlled_ambiguities:
                 for phrase, cand in cdef.controlled_ambiguities.items():
                     if phrase in clean:
+                        # Validate domain guards before flagging ambiguity
+                        if cand == "FEMININITY_INDEX":
+                            if (
+                                year is not None
+                                or "edad" in active_facets
+                                or active_facets.get("area", "NACIONAL") != "NACIONAL"
+                            ):
+                                continue
+                        elif cand == "URBAN_UNEMPLOYMENT":
+                            if year is not None or "edad" in active_facets:
+                                continue
+                        elif cand in ("INEQUALITY_INCOME", "DISTRIBUTIVE_GAP"):
+                            if "estrato" in active_facets:
+                                continue
+                        elif cand == "ECONOMIC_ACTIVITY":
+                            if "trimestral" in clean or has_pib:
+                                continue
+                        elif cand == "MACRO_ECONOMY":
+                            if has_pib or any(t in clean for t in ["crecio", "crecimiento"]):
+                                continue
+                        elif cand == "GENERAL_PRICES":
+                            if not re.search(r"\bprecios en\b", clean) or any(
+                                t in clean
+                                for t in [
+                                    "alimentos",
+                                    "transporte",
+                                    "energia",
+                                    "morfi",
+                                    "consumidor",
+                                ]
+                            ):
+                                continue
+                        elif cand == "PRIVATION_GAP":
+                            if "privacion y pobreza" not in clean and year is not None:
+                                continue
+                        elif cand == "EMISSIONS_LULUCF_CHOICE":
+                            if any(t in clean for t in ["sin", "excluyendo", "con uso"]) or (
+                                polarity_info
+                                and str(getattr(polarity_info, "polarity_type", ""))
+                                == "INCLUSION_EXCLUSION"
+                            ):
+                                continue
+
                         is_ambiguous = True
                         ambiguous_candidate = cand
                         consumed.append(phrase)
@@ -1289,23 +1457,84 @@ class ConceptOntology:
             # Initialize suggested facets from definition defaults
             suggested_facets: dict[str, str] = dict(cdef.default_facets)
 
+            # Special catalog_profile handling for EMPLEO default sexo facet
+            if cdef.concept_key == "EMPLEO":
+                suggested_facets["sexo"] = "TOTAL" if catalog_profile == "legacy_50" else "AMBOS"
+
             # Check sub-concept refinement rules
             sub_rules = self._compiled_sub_rules.get(cdef.concept_key, [])
             for sub in sub_rules:
                 sub_m = sub.compiled_regex.search(clean)
                 if sub_m:
+                    sub_cand = sub.rule.ambiguous_candidate
+                    # Domain guards on sub-concept ambiguity
+                    sub_is_ambiguous = sub.rule.is_ambiguous or sub_cand is not None
+                    if sub_cand == "URBAN_UNEMPLOYMENT" and (
+                        year is not None or "edad" in active_facets
+                    ):
+                        sub_is_ambiguous = False
+                        sub_cand = None
+                    elif sub_cand == "FEMININITY_INDEX" and (
+                        year is not None
+                        or "edad" in active_facets
+                        or active_facets.get("area", "NACIONAL") != "NACIONAL"
+                    ):
+                        sub_is_ambiguous = False
+                        sub_cand = None
+
+                    # Special case: CUENTA_CORRIENTE_740 only if "balanza de pagos" not in clean
+                    if (
+                        sub.rule.sub_concept_key == "CUENTA_CORRIENTE_740"
+                        and "balanza de pagos" in clean
+                    ):
+                        continue
+
                     consumed.append(sub_m.group(0))
                     concept_key = sub.rule.sub_concept_key
-                    if sub.rule.is_ambiguous or sub.rule.ambiguous_candidate is not None:
+
+                    if sub_is_ambiguous:
                         is_ambiguous = True
-                        ambiguous_candidate = sub.rule.ambiguous_candidate
-                    elif rule.ambiguous_candidate is None:
-                        # Clear ambiguity if sub-concept is explicit and base wasn't intrinsically ambiguous
+                        ambiguous_candidate = sub_cand
+                    else:
+                        # Refining to a non-ambiguous sub-concept resolves base trigger ambiguity
                         is_ambiguous = False
                         ambiguous_candidate = None
 
                     suggested_facets.update(sub.rule.facet_updates)
                     break
+
+            # Polarity-based refinement for emissions (indicator 5682)
+            if concept_key == "EMISIONES_GEI_LULUCF":
+                if polarity_info and getattr(polarity_info, "canonical_indicator_id", None) == 5682:
+                    concept_key = "EMISIONES_GEI_SIN_LULUCF"
+
+            # Contextual facet-based refinements:
+            # 1. DISTRIBUCION_INGRESO with etnia or demographic terms -> POBLACION
+            if concept_key == "DISTRIBUCION_INGRESO":
+                if "etnia" in active_facets or any(
+                    term in clean
+                    for term in [
+                        "poblacion",
+                        "habitantes",
+                        "personas",
+                        "indigena",
+                        "afrodescendiente",
+                        "demografia",
+                        "demografico",
+                        "demograficos",
+                    ]
+                ):
+                    concept_key = "POBLACION"
+                    if "estrato" not in active_facets and any(
+                        term in clean for term in ["quintil", "quintiles"]
+                    ):
+                        suggested_facets["estrato"] = "QUINTIL"
+
+            # 2. SALARIO_REAL with edad == JUVENTUD -> SALARIO
+            if concept_key == "SALARIO_REAL" and active_facets.get("edad") == "JUVENTUD":
+                concept_key = "SALARIO"
+                is_ambiguous = False
+                ambiguous_candidate = None
 
             # Collect associated concept phrases that appear in query
             for p in self._concept_associated_phrases.get(cdef.concept_key, ()):
@@ -1316,6 +1545,15 @@ class ConceptOntology:
             if concept_key != cdef.concept_key:
                 for p in self._concept_associated_phrases.get(concept_key, ()):
                     if p in clean and p not in consumed:
+                        consumed.append(p)
+
+            # Invariant: if has_pib in query, consume standard pib phrases so they are never unconsumed tokens
+            if has_pib:
+                for p in ("producto interno bruto", "producto bruto interno"):
+                    if p in clean and p not in consumed:
+                        consumed.append(p)
+                for p in ("pib", "pbi"):
+                    if re.search(rf"\b{p}\b", clean) and p not in consumed:
                         consumed.append(p)
 
             # Deduplicate consumed phrases preserving order

@@ -5,13 +5,16 @@ import unicodedata
 
 from pydantic import BaseModel, Field
 
+from unofficial_cepalstat_mcp.semantic.concept_ontology import (
+    DEFAULT_CONCEPT_ONTOLOGY,
+    ConceptOntology,
+)
 from unofficial_cepalstat_mcp.semantic.facet_ontology import (
     DEFAULT_FACET_ONTOLOGY,
     FacetOntology,
 )
 from unofficial_cepalstat_mcp.semantic.thesaurus import (
     PolarityResolution,
-    PolarityType,
     Thesaurus,
     get_default_thesaurus,
 )
@@ -212,10 +215,14 @@ NON_LAC_COUNTRIES: dict[str, str] = {
 }
 
 _LAC_COUNTRY_PATTERN = re.compile(
-    r"\b(?:" + "|".join(re.escape(c) for c in sorted(COUNTRY_LEXICON.keys(), key=len, reverse=True)) + r")\b"
+    r"\b(?:"
+    + "|".join(re.escape(c) for c in sorted(COUNTRY_LEXICON.keys(), key=len, reverse=True))
+    + r")\b"
 )
 _NON_LAC_PATTERN = re.compile(
-    r"\b(?:" + "|".join(re.escape(c) for c in sorted(NON_LAC_COUNTRIES.keys(), key=len, reverse=True)) + r")\b"
+    r"\b(?:"
+    + "|".join(re.escape(c) for c in sorted(NON_LAC_COUNTRIES.keys(), key=len, reverse=True))
+    + r")\b"
 )
 
 
@@ -262,65 +269,258 @@ _RE_RANGE_C = re.compile(r"\b(1\d{3}|20\d{2})\s*[-–]\s*(1\d{3}|20\d{2})\b")
 _RE_YEAR = re.compile(r"\b(1\d{3}|20\d{2})\b")
 _RE_FALLBACK_YEAR = re.compile(r"\b(?:ano|el\s+ano)\s+(\d{1,4})\b")
 
-SPANISH_STOPWORDS: frozenset[str] = frozenset({
-    # Grammatical articles and contractions
-    "el", "la", "los", "las", "un", "una", "unos", "unas", "lo", "al", "del",
-    # Prepositions
-    "a", "ante", "bajo", "cabe", "con", "contra", "de", "desde", "durante",
-    "en", "entre", "hacia", "hasta", "mediante", "para", "por", "segun",
-    "sin", "so", "sobre", "tras", "versus", "vs", "frente", "per",
-    # Conjunctions, negations and connectives
-    "y", "e", "ni", "no", "o", "u", "pero", "mas", "sino", "aunque", "que", "como", "si",
-    # Pronouns and inquiry words
-    "cual", "cuales", "quien", "quienes", "donde", "cuando", "cuanto", "cuanta",
-    "cuantos", "cuantas", "me", "te", "se", "nos", "os", "le", "les",
-    # Demonstratives and possessives
-    "este", "esta", "estos", "estas", "esto", "ese", "esa", "esos", "esas", "eso",
-    "aquel", "aquella", "aquellos", "aquellas", "aquello",
-    "mi", "mis", "tu", "tus", "su", "sus", "nuestro", "nuestra", "nuestros", "nuestras",
-    # Inquiry verbs and conversational terms
-    "dame", "dime", "quiero", "ver", "busca", "buscar", "buscame", "mostrar",
-    "muestra", "muestrame", "consultar", "consulta", "obtener", "traer", "traeme",
-    "saber", "conocer", "dar", "des", "decir", "revisar", "revisa", "deseo", "quisiera",
-    "favor", "porfavor", "porfa",
-    # Common verbs / copulas
-    "es", "son", "fue", "fueron", "era", "eran", "ha", "han", "hay", "hubo",
-    "habia", "esta", "estan", "estuvo", "estuvieron", "tener", "tiene", "tienen",
-    "tenia", "tuvo", "ando", "anduvo", "entra", "entran", "entrado", "entron",
-    "salen", "salieron", "cobra", "cobran", "crecio",
-    # Generic statistical filler nouns, adjectives, and inquiry terms
-    "saldo", "saldos",
-    "comparacion", "comparaciones",
-    "personas", "persona", "gente",
-    # Generic statistical filler nouns and adjectives
-    "tasa", "tasas",
-    "nivel", "niveles",
-    "indicador", "indicadores",
-    "datos", "dato",
-    "serie", "series",
-    "cifra", "cifras",
-    "estadistica", "estadisticas",
-    "estimacion", "estimaciones",
-    "valor", "valores",
-    "indice", "indices",
-    "ano", "anos",
-    "trimestre", "trimestres",
-    "mes", "meses",
-    "periodo", "periodos",
-    "promedio", "promedios",
-    "medio", "medios", "media", "medias",
-    "porcentaje", "porcentajes", "%",
-    "oficial", "oficiales",
-    "total", "totales",
-    "agregado", "agregada", "agregados", "agregadas",
-    "incidencia", "participacion", "proporcion", "evolucion", "desempeno",
-    "variacion", "variaciones", "situacion", "medicion", "medida", "medidas",
-    "registro", "registros", "historico", "historica", "historicos", "historicas",
-    "reciente", "recientes", "actual", "actuales", "ultimo", "ultima", "ultimos", "ultimas",
-    "nacional", "nacionales", "pais", "todo", "toda", "todos", "todas",
-    "medido", "medidos", "calculado", "calculada",
-    "relacion", "diferencia",
-})
+SPANISH_STOPWORDS: frozenset[str] = frozenset(
+    {
+        # Grammatical articles and contractions
+        "el",
+        "la",
+        "los",
+        "las",
+        "un",
+        "una",
+        "unos",
+        "unas",
+        "lo",
+        "al",
+        "del",
+        # Prepositions
+        "a",
+        "ante",
+        "bajo",
+        "cabe",
+        "con",
+        "contra",
+        "de",
+        "desde",
+        "durante",
+        "en",
+        "entre",
+        "hacia",
+        "hasta",
+        "mediante",
+        "para",
+        "por",
+        "segun",
+        "sin",
+        "so",
+        "sobre",
+        "tras",
+        "versus",
+        "vs",
+        "frente",
+        "per",
+        # Conjunctions, negations and connectives
+        "y",
+        "e",
+        "ni",
+        "no",
+        "o",
+        "u",
+        "pero",
+        "mas",
+        "sino",
+        "aunque",
+        "que",
+        "como",
+        "si",
+        # Pronouns and inquiry words
+        "cual",
+        "cuales",
+        "quien",
+        "quienes",
+        "donde",
+        "cuando",
+        "cuanto",
+        "cuanta",
+        "cuantos",
+        "cuantas",
+        "me",
+        "te",
+        "se",
+        "nos",
+        "os",
+        "le",
+        "les",
+        # Demonstratives and possessives
+        "este",
+        "esta",
+        "estos",
+        "estas",
+        "esto",
+        "ese",
+        "esa",
+        "esos",
+        "esas",
+        "eso",
+        "aquel",
+        "aquella",
+        "aquellos",
+        "aquellas",
+        "aquello",
+        "mi",
+        "mis",
+        "tu",
+        "tus",
+        "su",
+        "sus",
+        "nuestro",
+        "nuestra",
+        "nuestros",
+        "nuestras",
+        # Inquiry verbs and conversational terms
+        "dame",
+        "dime",
+        "quiero",
+        "ver",
+        "busca",
+        "buscar",
+        "buscame",
+        "mostrar",
+        "muestra",
+        "muestrame",
+        "consultar",
+        "consulta",
+        "obtener",
+        "traer",
+        "traeme",
+        "saber",
+        "conocer",
+        "dar",
+        "des",
+        "decir",
+        "revisar",
+        "revisa",
+        "deseo",
+        "quisiera",
+        "favor",
+        "porfavor",
+        "porfa",
+        # Common verbs / copulas
+        "es",
+        "son",
+        "fue",
+        "fueron",
+        "era",
+        "eran",
+        "ha",
+        "han",
+        "hay",
+        "hubo",
+        "habia",
+        "esta",
+        "estan",
+        "estuvo",
+        "estuvieron",
+        "tener",
+        "tiene",
+        "tienen",
+        "tenia",
+        "tuvo",
+        "ando",
+        "anduvo",
+        "entra",
+        "entran",
+        "entrado",
+        "entron",
+        "salen",
+        "salieron",
+        "cobra",
+        "cobran",
+        "crecio",
+        # Generic statistical filler nouns, adjectives, and inquiry terms
+        "saldo",
+        "saldos",
+        "comparacion",
+        "comparaciones",
+        "personas",
+        "persona",
+        "gente",
+        # Generic statistical filler nouns and adjectives
+        "tasa",
+        "tasas",
+        "nivel",
+        "niveles",
+        "indicador",
+        "indicadores",
+        "datos",
+        "dato",
+        "serie",
+        "series",
+        "cifra",
+        "cifras",
+        "estadistica",
+        "estadisticas",
+        "estimacion",
+        "estimaciones",
+        "valor",
+        "valores",
+        "indice",
+        "indices",
+        "ano",
+        "anos",
+        "trimestre",
+        "trimestres",
+        "mes",
+        "meses",
+        "periodo",
+        "periodos",
+        "promedio",
+        "promedios",
+        "medio",
+        "medios",
+        "media",
+        "medias",
+        "porcentaje",
+        "porcentajes",
+        "%",
+        "oficial",
+        "oficiales",
+        "total",
+        "totales",
+        "agregado",
+        "agregada",
+        "agregados",
+        "agregadas",
+        "incidencia",
+        "participacion",
+        "proporcion",
+        "evolucion",
+        "desempeno",
+        "variacion",
+        "variaciones",
+        "situacion",
+        "medicion",
+        "medida",
+        "medidas",
+        "registro",
+        "registros",
+        "historico",
+        "historica",
+        "historicos",
+        "historicas",
+        "reciente",
+        "recientes",
+        "actual",
+        "actuales",
+        "ultimo",
+        "ultima",
+        "ultimos",
+        "ultimas",
+        "nacional",
+        "nacionales",
+        "pais",
+        "todo",
+        "toda",
+        "todos",
+        "todas",
+        "medido",
+        "medidos",
+        "calculado",
+        "calculada",
+        "relacion",
+        "diferencia",
+    }
+)
 
 CURRENCY_AND_UNIT_PHRASES: tuple[str, ...] = (
     "moneda nacional",
@@ -359,10 +559,12 @@ class QueryParser:
         catalog_profile: str = "official_25",
         thesaurus: Thesaurus | None = None,
         ontology: FacetOntology | None = None,
+        concept_ontology: ConceptOntology | None = None,
     ):
         self.catalog_profile = catalog_profile
         self.thesaurus = thesaurus or get_default_thesaurus()
         self.ontology = ontology or DEFAULT_FACET_ONTOLOGY
+        self.concept_ontology = concept_ontology or DEFAULT_CONCEPT_ONTOLOGY
 
     def parse(self, query: str) -> ParsedIntent:
         clean = strip_accents(query)
@@ -376,7 +578,6 @@ class QueryParser:
         for cur in CURRENCY_AND_UNIT_PHRASES:
             if cur in clean:
                 consumed_phrases.append(cur)
-
 
         # ----------------------------------------------------
         # 1. Detection of Out-of-Scope / Unsupported cases
@@ -406,7 +607,11 @@ class QueryParser:
         if "astronauta" in clean or "astronautas" in clean:
             intent.unsupported_facet = "UNSUPPORTED_SECTOR"
 
-        if "coeficiencia intelectual" in clean or "coeficiente intelectual" in clean or re.search(r"\biq\b", clean):
+        if (
+            "coeficiencia intelectual" in clean
+            or "coeficiente intelectual" in clean
+            or re.search(r"\biq\b", clean)
+        ):
             intent.unsupported_facet = "UNSUPPORTED_FACET_IQ"
 
         if any(term in clean for term in ["milmillonarios", "forbes", "riqueza de los"]):
@@ -424,19 +629,39 @@ class QueryParser:
         if any(term in clean for term in ["telepatia", "telequinesis"]):
             intent.unsupported_facet = "UNSUPPORTED_FACET_TELEPATHY"
 
-        if any(term in clean for term in ["tipo de sangre", "tipos de sangre", "grupo sanguineo", "factor rh"]):
+        if any(
+            term in clean
+            for term in ["tipo de sangre", "tipos de sangre", "grupo sanguineo", "factor rh"]
+        ):
             intent.unsupported_facet = "UNSUPPORTED_FACET_BLOOD_TYPE"
 
-        if any(term in clean for term in ["religion", "religiones", "credo", "afiliacion religiosa"]):
+        if any(
+            term in clean for term in ["religion", "religiones", "credo", "afiliacion religiosa"]
+        ):
             intent.unsupported_facet = "UNSUPPORTED_FACET_RELIGION"
 
         if "trimestral" in clean and "gini" in clean:
             intent.unsupported_frequency = True
 
-        if any(term in clean for term in ["por segundo", "minuto a minuto", "al minuto", "en tiempo real", "tiempo real"]):
+        if any(
+            term in clean
+            for term in [
+                "por segundo",
+                "minuto a minuto",
+                "al minuto",
+                "en tiempo real",
+                "tiempo real",
+            ]
+        ):
             intent.unsupported_frequency = True
             intent.frequency = "REALTIME"
-            for t in ["por segundo", "minuto a minuto", "al minuto", "en tiempo real", "tiempo real"]:
+            for t in [
+                "por segundo",
+                "minuto a minuto",
+                "al minuto",
+                "en tiempo real",
+                "tiempo real",
+            ]:
                 if t in clean:
                     consumed_phrases.append(t)
         elif any(term in clean for term in ["diaria", "diario", "semana pasada"]):
@@ -550,7 +775,6 @@ class QueryParser:
                         if year_val < 1950 or year_val > 2030:
                             intent.period_out_of_range = True
 
-
         # ----------------------------------------------------
         # 3. Extract Country (Single or Multi-Country in Query Order)
         # ----------------------------------------------------
@@ -594,17 +818,41 @@ class QueryParser:
             if area_match:
                 facets["area"] = area_match.canonical_id
                 consumed_phrases.append(area_match.matched_term)
-            elif any(term in clean for term in ["el campo", "rural", "campo", "zona rural", "area rural"]):
+            elif any(
+                term in clean for term in ["el campo", "rural", "campo", "zona rural", "area rural"]
+            ):
                 facets["area"] = "RURAL"
                 for t in ["el campo", "rural", "campo", "zona rural", "area rural"]:
                     if t in clean:
                         consumed_phrases.append(t)
-            elif any(term in clean for term in ["ciudades", "urbano", "ciudad", "urbana", "zona urbana", "area urbana", "villas"]):
+            elif any(
+                term in clean
+                for term in [
+                    "ciudades",
+                    "urbano",
+                    "ciudad",
+                    "urbana",
+                    "zona urbana",
+                    "area urbana",
+                    "villas",
+                ]
+            ):
                 facets["area"] = "URBANO"
-                for t in ["ciudades", "urbano", "ciudad", "urbana", "zona urbana", "area urbana", "villas"]:
+                for t in [
+                    "ciudades",
+                    "urbano",
+                    "ciudad",
+                    "urbana",
+                    "zona urbana",
+                    "area urbana",
+                    "villas",
+                ]:
                     if t in clean:
                         consumed_phrases.append(t)
-            elif any(term in clean for term in ["area nacional", "total nacional", "todo el pais", "nivel nacional"]):
+            elif any(
+                term in clean
+                for term in ["area nacional", "total nacional", "todo el pais", "nivel nacional"]
+            ):
                 facets["area"] = "NACIONAL"
                 for t in ["area nacional", "total nacional", "todo el pais", "nivel nacional"]:
                     if t in clean:
@@ -618,12 +866,18 @@ class QueryParser:
         if sexo_match:
             facets["sexo"] = sexo_match.canonical_id
             consumed_phrases.append(sexo_match.matched_term)
-        elif any(term in clean for term in ["pibas", "chicas", "mujeres", "femenina", "femenino", "mujer"]):
+        elif any(
+            term in clean
+            for term in ["pibas", "chicas", "mujeres", "femenina", "femenino", "mujer"]
+        ):
             facets["sexo"] = "FEMENINO"
             for t in ["pibas", "chicas", "mujeres", "femenina", "femenino", "mujer"]:
                 if t in clean:
                     consumed_phrases.append(t)
-        elif any(term in clean for term in ["pibes", "chicos", "hombres", "masculino", "varones", "hombre"]):
+        elif any(
+            term in clean
+            for term in ["pibes", "chicos", "hombres", "masculino", "varones", "hombre"]
+        ):
             facets["sexo"] = "MASCULINO"
             for t in ["pibes", "chicos", "hombres", "masculino", "varones", "hombre"]:
                 if t in clean:
@@ -650,19 +904,53 @@ class QueryParser:
             for t in ["ninos", "ninas", "infancia", "0 a 14", "infantil"]:
                 if t in clean:
                     consumed_phrases.append(t)
-        elif any(term in clean for term in ["cabros", "pibes", "chavos", "chavas", "jovenes", "juventud", "15 a 24", "juvenil"]):
+        elif any(
+            term in clean
+            for term in [
+                "cabros",
+                "pibes",
+                "chavos",
+                "chavas",
+                "jovenes",
+                "juventud",
+                "15 a 24",
+                "juvenil",
+            ]
+        ):
             if "edad" not in facets:
                 facets["edad"] = "JUVENTUD"
-            for t in ["cabros", "pibes", "chavos", "chavas", "jovenes", "juventud", "15 a 24", "juvenil"]:
+            for t in [
+                "cabros",
+                "pibes",
+                "chavos",
+                "chavas",
+                "jovenes",
+                "juventud",
+                "15 a 24",
+                "juvenil",
+            ]:
                 if t in clean:
                     consumed_phrases.append(t)
-        elif any(term in clean for term in ["tercera edad", "abuelos", "ancianos", "adultos mayores", "65 y mas"]):
+        elif any(
+            term in clean
+            for term in ["tercera edad", "abuelos", "ancianos", "adultos mayores", "65 y mas"]
+        ):
             if "edad" not in facets:
                 facets["edad"] = "ADULTOS_MAYORES"
-            for t in ["tercera edad", "abuelos", "ancianos", "adultos mayores", "65 y mas", "65 anos y mas", "65 anos"]:
+            for t in [
+                "tercera edad",
+                "abuelos",
+                "ancianos",
+                "adultos mayores",
+                "65 y mas",
+                "65 anos y mas",
+                "65 anos",
+            ]:
                 if t in clean:
                     consumed_phrases.append(t)
-        if "pibas" in clean and any(term in clean for term in ["pobreza", "desempleo", "desocupacion", "paro"]):
+        if "pibas" in clean and any(
+            term in clean for term in ["pobreza", "desempleo", "desocupacion", "paro"]
+        ):
             facets["edad"] = "JUVENTUD"
 
         # Severidad de pobreza
@@ -686,7 +974,9 @@ class QueryParser:
             consumed_phrases.append(formalidad_match.matched_term)
             if formalidad_match.canonical_id == "INFORMAL" and "pobreza" in clean:
                 intent.unsupported_facet = "FORMALIDAD_LABORAL"
-        elif any(term in clean for term in ["en negro", "informal", "informalidad", "chamba informal"]):
+        elif any(
+            term in clean for term in ["en negro", "informal", "informalidad", "chamba informal"]
+        ):
             facets["formalidad"] = "INFORMAL"
             for t in ["en negro", "informal", "informalidad", "chamba informal"]:
                 if t in clean:
@@ -696,30 +986,84 @@ class QueryParser:
 
         # Estrato (Income distribution quintiles/deciles)
         for t in [
-            "quintil 5 versus quintil 1", "q5 versus q1", "quintil 5 vs quintil 1",
-            "primer quintil", "q1", "quintil 1", "quintil mas pobre", "los de abajo",
-            "quinto quintil", "q5", "quintil 5", "20 por ciento mas rico",
-            "decil 10", "decil mas rico", "los mas ricos",
-            "decil 1", "decil mas pobre", "decil 1 mas vulnerable",
-            "por quintiles", "los quintiles", "entre los quintiles", "entre quintiles", "quintiles", "quintil",
-            "por deciles", "los deciles", "entre los deciles", "entre deciles", "deciles", "decil",
+            "quintil 5 versus quintil 1",
+            "q5 versus q1",
+            "quintil 5 vs quintil 1",
+            "primer quintil",
+            "q1",
+            "quintil 1",
+            "quintil mas pobre",
+            "los de abajo",
+            "quinto quintil",
+            "q5",
+            "quintil 5",
+            "20 por ciento mas rico",
+            "decil 10",
+            "decil mas rico",
+            "los mas ricos",
+            "decil 1",
+            "decil mas pobre",
+            "decil 1 mas vulnerable",
+            "por quintiles",
+            "los quintiles",
+            "entre los quintiles",
+            "entre quintiles",
+            "quintiles",
+            "quintil",
+            "por deciles",
+            "los deciles",
+            "entre los deciles",
+            "entre deciles",
+            "deciles",
+            "decil",
         ]:
             if t in clean:
                 consumed_phrases.append(t)
 
-        if any(term in clean for term in ["quintil 5 versus quintil 1", "q5 versus q1", "quintil 5 vs quintil 1"]):
+        if any(
+            term in clean
+            for term in ["quintil 5 versus quintil 1", "q5 versus q1", "quintil 5 vs quintil 1"]
+        ):
             facets["estrato"] = "RELACION_Q5_Q1"
-        elif any(term in clean for term in ["primer quintil", "q1", "quintil 1", "quintil mas pobre", "los de abajo"]):
+        elif any(
+            term in clean
+            for term in ["primer quintil", "q1", "quintil 1", "quintil mas pobre", "los de abajo"]
+        ):
             facets["estrato"] = "QUINTIL_1"
-        elif any(term in clean for term in ["quinto quintil", "q5", "quintil 5", "20 por ciento mas rico"]):
+        elif any(
+            term in clean
+            for term in ["quinto quintil", "q5", "quintil 5", "20 por ciento mas rico"]
+        ):
             facets["estrato"] = "QUINTIL_5"
         elif any(term in clean for term in ["decil 10", "decil mas rico", "los mas ricos"]):
             facets["estrato"] = "DECIL_10"
-        elif any(term in clean for term in ["decil 1", "decil mas pobre", "decil 1 mas vulnerable"]):
+        elif any(
+            term in clean for term in ["decil 1", "decil mas pobre", "decil 1 mas vulnerable"]
+        ):
             facets["estrato"] = "DECIL_1"
-        elif any(term in clean for term in ["por quintiles", "los quintiles", "entre los quintiles", "entre quintiles", "quintiles", "quintil"]):
+        elif any(
+            term in clean
+            for term in [
+                "por quintiles",
+                "los quintiles",
+                "entre los quintiles",
+                "entre quintiles",
+                "quintiles",
+                "quintil",
+            ]
+        ):
             facets["estrato"] = "QUINTIL"
-        elif any(term in clean for term in ["por deciles", "los deciles", "entre los deciles", "entre deciles", "deciles", "decil"]):
+        elif any(
+            term in clean
+            for term in [
+                "por deciles",
+                "los deciles",
+                "entre los deciles",
+                "entre deciles",
+                "deciles",
+                "decil",
+            ]
+        ):
             facets["estrato"] = "DECIL"
 
         # Canasta alimentos & rubros
@@ -727,13 +1071,35 @@ class QueryParser:
         if canasta_match and canasta_match.canonical_id == "CANASTA_ALIMENTOS":
             facets["canasta"] = "ALIMENTOS"
             consumed_phrases.append(canasta_match.matched_term)
-        elif any(term in clean for term in ["carestia de comida", "alimentos", "comida", "alimentos y bebidas", "corrientazo", "morfi", "canasta alimentaria"]):
+        elif any(
+            term in clean
+            for term in [
+                "carestia de comida",
+                "alimentos",
+                "comida",
+                "alimentos y bebidas",
+                "corrientazo",
+                "morfi",
+                "canasta alimentaria",
+            ]
+        ):
             facets["canasta"] = "ALIMENTOS"
-            for t in ["carestia de comida", "alimentos", "comida", "alimentos y bebidas", "corrientazo", "morfi", "canasta alimentaria"]:
+            for t in [
+                "carestia de comida",
+                "alimentos",
+                "comida",
+                "alimentos y bebidas",
+                "corrientazo",
+                "morfi",
+                "canasta alimentaria",
+            ]:
                 if t in clean:
                     consumed_phrases.append(t)
         if "salud" in clean:
-            if any(term in clean for term in ["gasto", "presupuesto", "inversion publica", "cofog", "sector publico"]):
+            if any(
+                term in clean
+                for term in ["gasto", "presupuesto", "inversion publica", "cofog", "sector publico"]
+            ):
                 facets["funcion"] = "SALUD"
             else:
                 facets["rubro"] = "SALUD"
@@ -744,9 +1110,20 @@ class QueryParser:
             for t in ["moneda nacional", "moneda local"]:
                 if t in clean:
                     consumed_phrases.append(t)
-        elif any(term in clean for term in ["dolares constantes", "a precios constantes en dolares", "precios constantes en dolares"]):
+        elif any(
+            term in clean
+            for term in [
+                "dolares constantes",
+                "a precios constantes en dolares",
+                "precios constantes en dolares",
+            ]
+        ):
             facets["moneda"] = "DOLARES_CONSTANTES"
-            for t in ["dolares constantes", "a precios constantes en dolares", "precios constantes en dolares"]:
+            for t in [
+                "dolares constantes",
+                "a precios constantes en dolares",
+                "precios constantes en dolares",
+            ]:
                 if t in clean:
                     consumed_phrases.append(t)
 
@@ -776,559 +1153,34 @@ class QueryParser:
                     continue
                 facets[k] = v
 
-
         # ----------------------------------------------------
         # 5. Extract Root Concept & Controlled Ambiguities
         # ----------------------------------------------------
         facet_end_idx = len(consumed_phrases)
-        has_pib = bool(
-            re.search(r"\b(pib|pbi)\b", clean)
-            or "producto interno bruto" in clean
-            or "producto bruto interno" in clean
+
+        concept_match = self.concept_ontology.extract_concept(
+            clean,
+            thesaurus=self.thesaurus,
+            facets=facets,
+            year=intent.year,
+            catalog_profile=self.catalog_profile,
+            polarity_info=intent.polarity_info,
         )
-        if has_pib:
-            if re.search(r"\bpib\b", clean):
-                consumed_phrases.append("pib")
-            if re.search(r"\bpbi\b", clean):
-                consumed_phrases.append("pbi")
-            if "producto interno bruto" in clean:
-                consumed_phrases.append("producto interno bruto")
-            if "producto bruto interno" in clean:
-                consumed_phrases.append("producto bruto interno")
-
-        # Ambiguous Controlled Scenarios Upfront
-        if "privacion y pobreza" in clean or ("privacion" in clean and "pobreza" in clean and not intent.year):
-            intent.root_concept = "POBREZA"
-            intent.is_ambiguous_measure = True
-            intent.ambiguous_candidate = "PRIVATION_GAP"
-            for t in ["privacion y pobreza", "privacion", "pobreza"]:
-                if t in clean:
-                    consumed_phrases.append(t)
-        elif "desigualdad del ingreso" in clean and not any(k in facets for k in ["estrato"]):
-            intent.root_concept = "DISTRIBUCION_INGRESO"
-            intent.is_ambiguous_measure = True
-            intent.ambiguous_candidate = "INEQUALITY_INCOME"
-            consumed_phrases.append("desigualdad del ingreso")
-        elif "brecha distributiva" in clean and not any(k in facets for k in ["estrato"]):
-            intent.root_concept = "DISTRIBUCION_INGRESO"
-            intent.is_ambiguous_measure = True
-            intent.ambiguous_candidate = "DISTRIBUTIVE_GAP"
-            consumed_phrases.append("brecha distributiva")
-        elif "situacion laboral" in clean:
-            intent.root_concept = "EMPLEO"
-            intent.is_ambiguous_measure = True
-            intent.ambiguous_candidate = "LABOR_SITUATION"
-            consumed_phrases.append("situacion laboral")
-        elif "paro y salarios" in clean or ("desempleo y salarios" in clean):
-            intent.root_concept = "EMPLEO"
-            intent.is_ambiguous_measure = True
-            intent.ambiguous_candidate = "UNEMPLOYMENT_AND_WAGES"
-            for t in ["paro y salarios", "desempleo y salarios", "paro", "salarios", "desempleo"]:
-                if t in clean:
-                    consumed_phrases.append(t)
-        elif "economia de" in clean and not has_pib and not any(t in clean for t in ["crecio", "crecimiento"]):
-            intent.root_concept = "PIB"
-            intent.is_ambiguous_measure = True
-            intent.ambiguous_candidate = "MACRO_ECONOMY"
-            consumed_phrases.append("economia")
-        elif "actividad economica en" in clean and "trimestral" not in clean and not has_pib:
-            intent.root_concept = "PIB"
-            intent.is_ambiguous_measure = True
-            intent.ambiguous_candidate = "ECONOMIC_ACTIVITY"
-            consumed_phrases.append("actividad economica")
-        elif "inflacion sectorial" in clean:
-            intent.root_concept = "IPC_GENERAL"
-            intent.is_ambiguous_measure = True
-            intent.ambiguous_candidate = "SECTORAL_INFLATION"
-            consumed_phrases.append("inflacion sectorial")
-        elif re.search(r"\bprecios en\b", clean) and not any(t in clean for t in ["alimentos", "transporte", "energia", "morfi", "consumidor"]):
-            intent.root_concept = "IPC_GENERAL"
-            intent.is_ambiguous_measure = True
-            intent.ambiguous_candidate = "GENERAL_PRICES"
-            consumed_phrases.append("precios")
-        elif "cuentas fiscales" in clean:
-            intent.root_concept = "DEUDA_PUBLICA"
-            intent.is_ambiguous_measure = True
-            intent.ambiguous_candidate = "FISCAL_ACCOUNTS"
-            consumed_phrases.append("cuentas fiscales")
-        elif "situacion hacendaria" in clean:
-            intent.root_concept = "DEUDA_PUBLICA"
-            intent.is_ambiguous_measure = True
-            intent.ambiguous_candidate = "FISCAL_HEALTH"
-            consumed_phrases.append("situacion hacendaria")
-        elif "sector externo en" in clean:
-            intent.root_concept = "CUENTA_CORRIENTE"
-            intent.is_ambiguous_measure = True
-            intent.ambiguous_candidate = "EXTERNAL_SECTOR"
-            consumed_phrases.append("sector externo")
-        elif "comercio internacional y pagos" in clean:
-            intent.root_concept = "CUENTA_CORRIENTE"
-            intent.is_ambiguous_measure = True
-            intent.ambiguous_candidate = "INTERNATIONAL_TRADE_PAYMENTS"
-            consumed_phrases.append("comercio internacional y pagos")
-        elif (
-            "emisiones de gases de efecto invernadero en" in clean
-            and not any(t in clean for t in ["sin", "excluyendo", "con uso"])
-            and not (intent.polarity_info and intent.polarity_info.polarity_type == PolarityType.INCLUSION_EXCLUSION)
-        ):
-            intent.root_concept = "EMISIONES_GEI_LULUCF"
-            intent.is_ambiguous_measure = True
-            intent.ambiguous_candidate = "EMISSIONS_LULUCF_CHOICE"
-            consumed_phrases.append("emisiones de gases de efecto invernadero")
-        elif "matriz energetica y contaminacion" in clean:
-            intent.root_concept = "EMISIONES_GEI_LULUCF"
-            intent.is_ambiguous_measure = True
-            intent.ambiguous_candidate = "ENERGY_POLLUTION"
-            consumed_phrases.append("matriz energetica y contaminacion")
-        elif "situacion socioeconomica y bienestar" in clean:
-            intent.root_concept = "POBREZA"
-            intent.is_ambiguous_measure = True
-            intent.ambiguous_candidate = "SOCIOECONOMIC_WELLBEING"
-            consumed_phrases.append("situacion socioeconomica y bienestar")
-        elif "panorama macroeconomico y fiscal" in clean:
-            intent.root_concept = "PIB"
-            intent.is_ambiguous_measure = True
-            intent.ambiguous_candidate = "MACRO_FISCAL_PANORAMA"
-            consumed_phrases.append("panorama macroeconomico y fiscal")
-
-        # Sector Público & Finanzas Públicas (checked first so "... % del PIB" does not shadow)
-        elif any(term in clean for term in ["deuda", "endeudamiento"]):
-            intent.root_concept = "DEUDA_PUBLICA"
-            for t in ["deuda", "endeudamiento", "endeudamiento soberano", "deuda publica", "gobierno central", "gobierno", "estado"]:
-                if t in clean:
-                    consumed_phrases.append(t)
-        elif any(
-            term in clean
-            for term in [
-                "balance primario",
-                "superavit primario",
-                "deficit primario",
-                "superavit fiscal",
-                "deficit fiscal",
-                "rojo fiscal",
-                "rojo primario",
-                "resultado fiscal primario",
-            ]
-        ) or (
-            intent.polarity_info
-            and intent.polarity_info.canonical_indicator_id == 1246
-            and not any(term in clean for term in ["cuenta corriente", "comercial", "balanza", "comercio"])
-        ):
-            intent.root_concept = "BALANCE_PRIMARIO"
-            for t in [
-                "balance primario", "superavit primario", "deficit primario",
-                "superavit fiscal", "deficit fiscal", "rojo fiscal", "rojo primario",
-                "resultado fiscal primario", "balance primario fiscal", "pago de intereses",
-                "gobierno central", "gobierno",
-            ]:
-                if t in clean:
-                    consumed_phrases.append(t)
-        elif any(term in clean for term in ["ingresos tributarios", "recaudacion tributaria", "recaudacion", "tributar", "carga tributaria", "presion fiscal", "dian", "cuantos impuestos", "impuestos", "el fisco"]):
-            if any(term in clean for term in ["moneda nacional", "precios corrientes", "moneda local", "en pesos", "en soles", "en reales", "nominales", "nominal"]):
-                intent.root_concept = "INGRESOS_TRIBUTARIOS_CORRIENTES"
-            else:
-                intent.root_concept = "INGRESOS_TRIBUTARIOS"
-            for t in ["ingresos tributarios", "recaudacion tributaria", "recaudacion", "tributar", "carga tributaria", "presion fiscal", "presion fiscal tributaria", "dian", "cuantos impuestos", "impuestos", "el fisco", "gobierno central", "gobierno"]:
-                if t in clean:
-                    consumed_phrases.append(t)
-        elif any(term in clean for term in ["gasto social", "gasto publico social", "gasto en salud", "gasto publico en salud", "gasto en medicamentos", "gasto publico en medicamentos", "medicamentos y salud"]):
-            intent.root_concept = "GASTO_SOCIAL"
-            for t in ["gasto social", "gasto publico social", "gasto publico", "gasto en medicamentos"]:
-                if t in clean:
-                    consumed_phrases.append(t)
-        elif "gasto publico en educacion" in clean or ("gasto" in clean and "educacion" in clean):
-            intent.root_concept = "GASTO_EDUCACION"
-            for t in ["gasto publico en educacion", "gasto", "educacion", "presupuesto"]:
-                if t in clean:
-                    consumed_phrases.append(t)
-
-        # Sector Externo (checked first so "... % del PIB" does not shadow)
-        elif "balanza comercial" in clean:
-            intent.root_concept = "BALANZA_COMERCIAL"
-            consumed_phrases.append("balanza comercial")
-        elif any(term in clean for term in ["cuenta corriente", "transacciones corrientes", "deficit externo en cuenta corriente", "balanza en cuenta corriente"]):
-            if "costa rica" in clean and "balanza de pagos" not in clean:
-                intent.root_concept = "CUENTA_CORRIENTE_740"
-            else:
-                intent.root_concept = "CUENTA_CORRIENTE"
-            for t in ["cuenta corriente", "transacciones corrientes", "deficit externo en cuenta corriente", "balanza en cuenta corriente", "balanza de pagos", "deficit externo"]:
-                if t in clean:
-                    consumed_phrases.append(t)
-        elif "inversion extranjera" in clean or re.search(r"\bied\b", clean):
-            intent.root_concept = "INVERSION_EXTRANJERA_DIRECTA"
-            for t in ["inversion extranjera directa", "inversion extranjera", "ied"]:
-                if t in clean:
-                    consumed_phrases.append(t)
-        elif any(term in clean for term in [
-            "terminos de intercambio",
-            "intercambio comercial",
-            "relacion de precios del comercio exterior",
-            "terminos del comercio exterior",
-            "exportaciones versus importaciones",
-            "lo que vendemos versus lo que compramos",
-        ]):
-            intent.root_concept = "TERMINOS_INTERCAMBIO"
-            for t in [
-                "terminos de intercambio comercial", "terminos de intercambio",
-                "intercambio comercial", "relacion de precios del comercio exterior",
-                "terminos del comercio exterior", "exportaciones versus importaciones",
-                "lo que vendemos versus lo que compramos", "relacion de intercambio",
-                "bienes", "comercio exterior",
-            ]:
-                if t in clean:
-                    consumed_phrases.append(t)
-
-        # Medio Ambiente
-        elif any(term in clean for term in [
-            "renovable",
-            "renovables",
-            "energia limpia",
-            "energias limpias",
-            "matriz electrica",
-            "luz verde",
-            "enchufes",
-            "generacion electrica renovable",
-            "porcentaje de energias limpias",
-            "proporcion de renovables",
-        ]):
-            intent.root_concept = "ENERGIA_RENOVABLE"
-            for t in [
-                "renovable", "renovables", "energia limpia", "energias limpias",
-                "matriz electrica", "luz verde", "enchufes", "generacion electrica renovable",
-                "porcentaje de energias limpias", "proporcion de renovables",
-                "generacion electrica", "electrica", "contaminamos",
-            ]:
-                if t in clean:
-                    consumed_phrases.append(t)
-        elif (
-            "emisiones" in clean
-            or "gei" in clean
-            or "gases de invernadero" in clean
-            or "huella de carbono" in clean
-            or (intent.polarity_info and intent.polarity_info.polarity_type == PolarityType.INCLUSION_EXCLUSION)
-        ):
-            if (intent.polarity_info and intent.polarity_info.canonical_indicator_id == 5682) or any(
-                term in clean
-                for term in [
-                    "sin lulucf",
-                    "sin utcuts",
-                    "excluyendo utcuts",
-                    "excluyendo sector utcuts",
-                    "sin uso de la tierra",
-                    "sin cambio de uso",
-                    "sin considerar bosques",
-                    "excluyendo el sector uso de la tierra",
-                ]
-            ):
-                intent.root_concept = "EMISIONES_GEI_SIN_LULUCF"
-            else:
-                intent.root_concept = "EMISIONES_GEI_LULUCF"
-            for t in [
-                "emisiones", "gei", "gases de invernadero", "huella de carbono",
-                "gases de efecto invernadero", "emisiones totales", "emisiones netas",
-                "emisiones brutas", "sin lulucf", "sin utcuts", "excluyendo utcuts",
-                "excluyendo sector utcuts", "sin uso de la tierra", "sin cambio de uso",
-                "sin considerar bosques", "excluyendo el sector uso de la tierra",
-                "con lulucf", "incluyendo utcuts", "deforestacion y cambio de uso de suelo",
-                "carbono",
-            ]:
-                if t in clean:
-                    consumed_phrases.append(t)
-        elif any(term in clean for term in ["agua dulce", "recursos hidricos", "extraccion de agua"]):
-            intent.root_concept = "AGUA_DULCE"
-            for t in ["agua dulce", "recursos hidricos", "extraccion de agua"]:
-                if t in clean:
-                    consumed_phrases.append(t)
-
-        # Precios e Inflación
-        elif any(
-            term in clean
-            for term in [
-                "transporte",
-                "energia",
-                "transporte y energia",
-                "combustible",
-                "combustibles",
-                "gasolina",
-                "nafta",
-                "bencina",
-                "diesel",
-                "gasoil",
-                "electricidad",
-                "tarifas de luz",
-            ]
-        ) or (
-            (canasta_syn := self.thesaurus.match_synset("facet_canasta", clean))
-            and canasta_syn.canonical_id == "CANASTA_COMBUSTIBLES"
-        ):
-            if any(
-                term in clean
-                for term in [
-                    "ipc",
-                    "precios",
-                    "precio",
-                    "inflacion",
-                    "golpe al bolsillo",
-                    "variacion de precios",
-                    "variacion",
-                    "aumento",
-                    "suba",
-                    "alza",
-                    "carestia",
-                    "costo",
-                ]
-            ):
-                intent.root_concept = "IPC_TRANSPORTE_ENERGIA"
-            for t in [
-                "transporte", "energia", "transporte y energia", "combustible",
-                "combustibles", "gasolina", "nafta", "bencina", "diesel", "gasoil",
-                "electricidad", "tarifas de luz", "ipc", "precios", "precio",
-                "inflacion", "golpe al bolsillo", "variacion de precios", "variacion",
-                "aumento", "suba", "alza", "carestia", "costo",
-            ]:
-                if t in clean:
-                    consumed_phrases.append(t)
-
-        elif "corrientazo" in clean or "alimentos y bebidas" in clean or "canasta alimentaria" in clean or "morfi" in clean or "carestia de la comida" in clean:
-            intent.root_concept = "IPC_ALIMENTOS"
-            facets["canasta"] = "ALIMENTOS"
-            for t in ["corrientazo", "alimentos y bebidas", "canasta alimentaria", "morfi", "carestia de la comida", "carestia de comida"]:
-                if t in clean:
-                    consumed_phrases.append(t)
-        elif ("inflacion de alimentos" in clean or any(term in clean for term in ["doce meses", "interanual", "carestia de comida"])) and not has_pib:
-            intent.root_concept = "INFLACION_ALIMENTOS"
-            for t in ["inflacion de alimentos", "doce meses", "interanual", "carestia de comida", "alimentos"]:
-                if t in clean:
-                    consumed_phrases.append(t)
-        elif "alimentos" in clean and any(term in clean for term in ["ipc", "inflacion", "precios"]):
-            intent.root_concept = "INFLACION_ALIMENTOS" if "inflacion" in clean else "IPC_ALIMENTOS"
-            for t in ["alimentos", "ipc", "inflacion", "precios"]:
-                if t in clean:
-                    consumed_phrases.append(t)
-        elif any(
-            term in clean
-            for term in [
-                "subyacente",
-                "inflacion subyacente",
-                "ipc subyacente",
-                "inflacion basica",
-                "inflacion core",
-                "core anual",
-                "core inflation",
-                "precios subyacentes",
-            ]
-        ):
-            intent.root_concept = "IPC_SUBYACENTE"
-            for t in [
-                "subyacente", "inflacion subyacente", "ipc subyacente", "inflacion basica",
-                "inflacion core", "core anual", "core inflation", "precios subyacentes",
-            ]:
-                if t in clean:
-                    consumed_phrases.append(t)
-        elif any(
-            term in clean
-            for term in [
-                "ipc",
-                "precios al consumidor",
-                "costo de la vida",
-                "costo de vida",
-                "inflacion general",
-                "tasa de inflacion",
-                "inflacion",
-            ]
-        ):
-            intent.root_concept = "IPC_GENERAL"
-            for t in [
-                "ipc", "precios al consumidor", "costo de la vida", "costo de vida",
-                "inflacion general", "tasa de inflacion", "inflacion", "precios",
-            ]:
-                if t in clean:
-                    consumed_phrases.append(t)
-
-        # Cuentas Nacionales & PIB
-        elif ("per capita" in clean and (has_pib or "riqueza" in clean)) or "pib per capita" in clean or "pbi per capita" in clean or "por habitante" in clean or "riqueza por cabeza" in clean:
-            intent.root_concept = "PIB_PER_CAPITA"
-            for t in ["per capita", "pib per capita", "pbi per capita", "por habitante", "riqueza por cabeza", "por cabeza", "riqueza"]:
-                if t in clean:
-                    consumed_phrases.append(t)
-        elif ("trimestral" in clean and (has_pib or "actividad economica" in clean or "desempeno economico" in clean)) or "crecimiento interanual trimestral" in clean:
-            intent.root_concept = "PIB_TRIMESTRAL"
-            for t in ["trimestral", "crecimiento interanual trimestral", "actividad economica", "desempeno economico"]:
-                if t in clean:
-                    consumed_phrases.append(t)
-        elif ("corrientes" in clean or "moneda nacional" in clean) and has_pib:
-            intent.root_concept = "PIB_CORRIENTE"
-            for t in ["corrientes", "moneda nacional"]:
-                if t in clean:
-                    consumed_phrases.append(t)
-        elif has_pib or any(term in clean for term in ["crecio la economia", "crecimiento del pib", "crecimiento del pbi", "crecimiento de la economia", "aparato productivo", "consumo final del gobierno", "consumo de gobierno", "consumo del gobierno"]):
-            intent.root_concept = "PIB"
-            for t in ["crecio la economia", "crecimiento del pib", "crecimiento del pbi", "crecimiento de la economia", "aparato productivo", "final del gobierno", "de gobierno", "del gobierno"]:
-                if t in clean:
-                    consumed_phrases.append(t)
-
-        # Pobreza Brecha
-        elif "brecha de pobreza" in clean or ("brecha" in clean and "pobreza" in clean and "salarial" not in clean):
-            intent.root_concept = "POBREZA_BRECHA"
-            if "area" not in facets:
-                facets["area"] = "NACIONAL"
-            for t in ["brecha de pobreza", "brecha", "pobreza"]:
-                if t in clean:
-                    consumed_phrases.append(t)
-
-        # Distribución del Ingreso / Quintiles / Deciles
-        elif any(term in clean for term in [
-            "distribucion del ingreso",
-            "distribucion de la lana",
-            "distribucion de los ingresos",
-            "concentracion del ingreso",
-            "los de abajo",
-            "deciles",
-            "decil",
-            "quintiles",
-            "quintil",
-            "brecha distributiva",
-            "cuanta torta",
-            "reparto del billete",
-            "20 por ciento mas rico",
-        ]):
-            for t in [
-                "distribucion del ingreso", "distribucion de la lana", "distribucion de los ingresos",
-                "concentracion del ingreso", "los de abajo", "deciles", "decil",
-                "quintiles", "quintil", "brecha distributiva", "cuanta torta",
-                "reparto del billete", "20 por ciento mas rico",
-            ]:
-                if t in clean:
-                    consumed_phrases.append(t)
-            if any(term in clean for term in ["poblacion", "habitantes", "personas", "indigena", "afrodescendiente", "demografia", "demografico", "demograficos"]) or "etnia" in facets:
-                intent.root_concept = "POBLACION"
-                if "estrato" not in facets and any(term in clean for term in ["quintil", "quintiles"]):
-                    facets["estrato"] = "QUINTIL"
-            else:
-                intent.root_concept = "DISTRIBUCION_INGRESO"
-
-        # Mercado Laboral & Pobreza & Brecha Salarial
-        elif any(
-            term in clean
-            for term in [
-                "brecha salarial",
-                "brecha de ingresos",
-                "brecha de ingreso",
-                "brecha de genero",
-                "relacion de ingreso",
-                "relacion de ingresos",
-                "relacion del ingreso",
-                "diferencia de ingresos entre",
-                "diferencia salarial entre",
-                "diferencia de salario entre",
-            ]
-        ) and (
-            any(term in clean for term in ["genero", "mujeres", "hombres", "sexo", "laboral", "laborales", "salarial", "salariales", "trabajadores"])
-            or "brecha salarial" in clean
-        ):
-            intent.root_concept = "BRECHA_SALARIAL"
-            for t in [
-                "brecha salarial", "brecha de ingresos", "brecha de ingreso", "brecha de genero",
-                "relacion de ingreso", "relacion de ingresos", "relacion del ingreso",
-                "diferencia de ingresos entre", "diferencia salarial entre", "diferencia de salario entre",
-                "genero", "mujeres", "hombres", "sexo", "laboral", "laborales", "salarial", "salariales", "trabajadores",
-            ]:
-                if t in clean:
-                    consumed_phrases.append(t)
-        elif any(term in clean for term in ["cabros", "desocupacion de los pibes", "chavos sin chamba"]) and any(term in clean for term in ["sin pega", "desempleo", "desocupacion", "paro", "sin chamba"]):
-            intent.root_concept = "DESEMPLEO_JUVENIL_15_24"
-            facets["edad"] = "JUVENTUD"
-            for t in ["cabros", "desocupacion de los pibes", "chavos sin chamba", "sin pega", "desempleo", "desocupacion", "paro", "sin chamba"]:
-                if t in clean:
-                    consumed_phrases.append(t)
-        elif any(term in clean for term in [
-            "desempleo juvenil",
-            "desempleo de los jovenes",
-            "desempleo de mujeres jovenes",
-            "desempleo juvenil masculino",
-            "jovenes sin chamba",
-        ]):
-            intent.root_concept = "DESEMPLEO_JUVENIL"
-            facets["edad"] = "JUVENTUD"
-            for t in ["desempleo juvenil", "desempleo de los jovenes", "desempleo de mujeres jovenes", "desempleo juvenil masculino", "jovenes sin chamba", "desempleo", "desocupacion", "paro"]:
-                if t in clean:
-                    consumed_phrases.append(t)
-        elif any(term in clean for term in ["chamba", "camello", "sin pega", "sin laburo", "jale"]):
-            intent.root_concept = "EMPLEO"
-            if "sexo" not in facets:
-                facets["sexo"] = "TOTAL" if self.catalog_profile == "legacy_50" else "AMBOS"
-            for t in ["chamba", "camello", "sin pega", "sin laburo", "jale"]:
-                if t in clean:
-                    consumed_phrases.append(t)
-        elif any(term in clean for term in ["pobreza", "miseria", "indigencia", "no tienen un sope", "malaria economica"]):
-            intent.root_concept = "POBREZA"
-            if "area" not in facets:
-                facets["area"] = "NACIONAL"
-            if "femenina" in clean and "edad" not in facets and facets.get("area") == "NACIONAL" and not intent.year:
-                intent.is_ambiguous_measure = True
-                intent.ambiguous_candidate = "FEMININITY_INDEX"
-            for t in ["pobreza", "miseria", "indigencia", "no tienen un sope", "malaria economica", "femenina"]:
-                if t in clean:
-                    consumed_phrases.append(t)
-        elif any(term in clean for term in ["desempleo", "desocupacion", "paro", "desocupacion abierta"]):
-            intent.root_concept = "EMPLEO"
-            if "sexo" not in facets:
-                facets["sexo"] = "TOTAL" if self.catalog_profile == "legacy_50" else "AMBOS"
-            if "urbano" in clean and "edad" not in facets and not intent.year:
-                intent.is_ambiguous_measure = True
-                intent.ambiguous_candidate = "URBAN_UNEMPLOYMENT"
-            for t in ["desempleo", "desocupacion", "paro", "desocupacion abierta"]:
-                if t in clean:
-                    consumed_phrases.append(t)
-
-        # Income Modifiers & Deconstruction
-        elif any(term in clean for term in ["salario", "sueldo", "plata", "guita", "lana", "lucas", "ingreso", "ingresos", "remuneracion", "remuneraciones", "billete"]):
-            for t in ["salario", "sueldo", "plata", "guita", "lana", "lucas", "ingreso", "ingresos", "remuneracion", "remuneraciones", "billete"]:
-                if t in clean:
-                    consumed_phrases.append(t)
-            if any(term in clean for term in ["minima", "minimo", "por ley", "sueldo basico", "salario basico", "basico de ley", "basico"]):
-                intent.root_concept = "SALARIO_MINIMO"
-                for t in ["minima", "minimo", "por ley", "sueldo basico", "salario basico", "basico de ley", "basico"]:
-                    if t in clean:
-                        consumed_phrases.append(t)
-            elif any(term in clean for term in ["hogar", "hogares", "familias", "familia", "por cabeza", "per capita"]) and not has_pib:
-                intent.root_concept = "INGRESO_HOGARES"
-                for t in ["hogar", "hogares", "familias", "familia", "por cabeza", "per capita"]:
-                    if t in clean:
-                        consumed_phrases.append(t)
-            elif "laboral" in clean:
-                intent.root_concept = "INGRESO_LABORAL"
-                consumed_phrases.append("laboral")
-            elif facets.get("edad") == "JUVENTUD":
-                intent.root_concept = "SALARIO"
-            elif any(term in clean for term in ["salario real", "sueldo real", "salarios reales", "real", "reales", "laburantes", "trabajadores", "trabajadores rasos", "asalariados", "medio", "remuneraciones", "promedio"]):
-                intent.root_concept = "SALARIO_REAL"
-                for t in ["salario real", "sueldo real", "salarios reales", "real", "reales", "laburantes", "trabajadores", "trabajadores rasos", "asalariados", "medio", "remuneraciones", "promedio"]:
-                    if t in clean:
-                        consumed_phrases.append(t)
-            else:
-                # Unmodified slang or broad income query
-                intent.root_concept = "SALARIO_REAL"
-                intent.is_ambiguous_measure = True
-                intent.ambiguous_candidate = "INCOME_MEASURES"
-
-        elif "gini" in clean or "desigualdad" in clean:
-            intent.root_concept = "GINI"
-            for t in ["gini", "desigualdad"]:
-                if t in clean:
-                    consumed_phrases.append(t)
-        elif any(term in clean for term in ["poblacion", "habitantes", "demografia", "demografico", "demograficos"]):
-            intent.root_concept = "POBLACION"
-            for t in ["poblacion", "habitantes", "demografia", "demografico", "demograficos"]:
-                if t in clean:
-                    consumed_phrases.append(t)
+        if concept_match:
+            intent.root_concept = concept_match.concept_key
+            intent.is_ambiguous_measure = concept_match.is_ambiguous_measure
+            intent.ambiguous_candidate = concept_match.ambiguous_candidate
+            for phrase in concept_match.consumed_phrases:
+                consumed_phrases.append(phrase)
+            for f_k, f_v in concept_match.suggested_facets.items():
+                if f_k not in facets:
+                    facets[f_k] = f_v
 
         # Ensure gender ratio / comparison concepts don't unilaterally filter to a single sex
         if intent.root_concept == "BRECHA_SALARIAL":
             facets.pop("sexo", None)
-        elif (
-            any(t in clean for t in ["mujeres", "mujer", "femenin"])
-            and any(t in clean for t in ["hombres", "hombre", "masculin"])
+        elif any(t in clean for t in ["mujeres", "mujer", "femenin"]) and any(
+            t in clean for t in ["hombres", "hombre", "masculin"]
         ):
             facets["sexo"] = "SEXO_DESGLOSE"
 
@@ -1344,17 +1196,24 @@ class QueryParser:
                 elif "proteccion social" in clean or "seguridad social" in clean:
                     facets["funcion"] = "PROTECCION_SOCIAL"
 
-        if intent.root_concept in (
-            "IPC_GENERAL",
-            "IPC_ALIMENTOS",
-            "IPC_SUBYACENTE",
-            "INFLACION_ALIMENTOS",
-            "IPC_TRANSPORTE_ENERGIA",
-        ) or "rubro" in facets:
+        if (
+            intent.root_concept
+            in (
+                "IPC_GENERAL",
+                "IPC_ALIMENTOS",
+                "IPC_SUBYACENTE",
+                "INFLACION_ALIMENTOS",
+                "IPC_TRANSPORTE_ENERGIA",
+            )
+            or "rubro" in facets
+        ):
             facets.pop("funcion", None)
 
         if "moneda nacional" in clean and facets.get("area") == "NACIONAL":
-            if not any(term in clean for term in ["area nacional", "nivel nacional", "total nacional", "todo el pais"]):
+            if not any(
+                term in clean
+                for term in ["area nacional", "nivel nacional", "total nacional", "todo el pais"]
+            ):
                 facets.pop("area", None)
 
         # ----------------------------------------------------
@@ -1382,7 +1241,9 @@ class QueryParser:
 
         geo_words = {w for phrase in geo_phrases for w in re.findall(r"\b[a-z0-9_]+\b", phrase)}
         facet_words = {w for phrase in facet_phrases for w in re.findall(r"\b[a-z0-9_]+\b", phrase)}
-        temporal_words = {w for phrase in temporal_phrases for w in re.findall(r"\b[a-z0-9_]+\b", phrase)}
+        temporal_words = {
+            w for phrase in temporal_phrases for w in re.findall(r"\b[a-z0-9_]+\b", phrase)
+        }
 
         concept_tokens: list[str] = []
         seen_concepts: set[str] = set()
@@ -1404,4 +1265,3 @@ class QueryParser:
         intent.concept_tokens = concept_tokens
         intent.facets = facets
         return intent
-
