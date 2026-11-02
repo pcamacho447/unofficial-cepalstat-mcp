@@ -1097,10 +1097,12 @@ class SemanticDataFetcher:
                         row_year = int(response.applied_filters.year or 0)
 
                     row_notes = ""
-                    for n_col in ("notes_ids", "notes", "notas", "notes_id"):
+                    for n_col in ("notes", "notas", "nota", "notes_ids", "notes_id"):
                         if n_col in row and not pd.isna(row[n_col]):
-                            row_notes = str(row[n_col])
-                            break
+                            val_str = str(row[n_col]).strip()
+                            if val_str and not val_str.isdigit():
+                                row_notes = val_str
+                                break
 
                     item_dict: dict[str, Any] = {
                         "year": row_year,
@@ -1235,10 +1237,12 @@ class SemanticDataFetcher:
                         row_year = int(response.applied_filters.year or 0)
 
                     notes_val = ""
-                    for n_col in ("notes_ids", "notes", "notas", "notes_id"):
+                    for n_col in ("notes", "notas", "nota", "notes_ids", "notes_id"):
                         if n_col in row and not pd.isna(row[n_col]):
-                            notes_val = str(row[n_col])
-                            break
+                            val_str = str(row[n_col]).strip()
+                            if val_str and not val_str.isdigit():
+                                notes_val = val_str
+                                break
 
                     single_item: dict[str, Any] = {
                         "year": row_year,
