@@ -12,7 +12,7 @@ Cliente Python, catálogo SQLite offline (~2,000 indicadores), recetario anti-se
 
 ## Where things are
 
-- Editando `src/unofficial_cepalstat_mcp/semantic/`? Leer `.agents/rules/semantic-resolution-guardrails.md` primero (13 invariantes obligatorios).
+- Editando `src/unofficial_cepalstat_mcp/semantic/`? Leer `.agents/rules/semantic-resolution-guardrails.md` primero (15 invariantes obligatorios).
 - Especificación pendiente del servidor MCP: `docs/specs/2026-10-15-cepalstat-mcp-server-spec.md`.
 - Recetas certificadas de indicadores: `bitacoras/paises/`; tras editar un `.md` manualmente, ejecutar `uv run unofficial-cepalstat-mcp bitacora sync`.
 
