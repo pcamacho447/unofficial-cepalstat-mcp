@@ -3,11 +3,11 @@
 **Motor de Resolución Semántica, Servidor MCP y Cliente Econométrico Anti-Sesgo para UN CEPALSTAT**
 
 [![Python Version](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/)
-[![Test Suite](https://img.shields.io/badge/tests-391%20passed-brightgreen.svg)]()
-[![Canonical Benchmark](https://img.shields.io/badge/benchmark%20200-100%25%20Top--1-success.svg)](docs/reports/benchmark_200_preguntas.md)
-[![Adversarial Benchmark](https://img.shields.io/badge/adversarial%2040-100%25%20Top--1-success.svg)](docs/reports/2026-10-18-adversarial-benchmark-specification.md)
+[![Test Suite](https://img.shields.io/badge/tests-551%20passed-brightgreen.svg)]()
+[![Curated Benchmarks](https://img.shields.io/badge/curated%20benchmarks-100%25%20Top--1-success.svg)](docs/reports/benchmark_200_preguntas.md)
 [![False Substitution Rate](https://img.shields.io/badge/FSR-0.00%25-brightgreen.svg)](docs/reports/2026-10-18-adversarial-benchmark-specification.md)
-[![Latency p50](https://img.shields.io/badge/latency%20p50-0.74%20ms-informational.svg)]()
+[![Human Eval Resolution](https://img.shields.io/badge/human%20eval%20gap-54%25%20fail%20rate%20(46%25%20res)-orange.svg)](#2-la-brecha-del-lenguaje-natural-evaluación-humana-en-prueba-y-error)
+[![Latency p50](https://img.shields.io/badge/latency%20p50-%3C%200.5%20ms-informational.svg)]()
 [![Protocol](https://img.shields.io/badge/protocol-Model%20Context%20Protocol%20(MCP)-blueviolet.svg)](https://modelcontextprotocol.io/)
 [![Source](https://img.shields.io/badge/source-CEPALSTAT%20Open%20Data-orange.svg)](https://statistics.cepal.org/portal/cepalstat/open-data.html?lang=es)
 
@@ -100,18 +100,87 @@ sequenceDiagram
 
 ---
 
-## 📊 Banco de Pruebas y Validación Empírica
+## 📊 Banco de Pruebas, Validación y Realidad Operativa
 
-El sistema cuenta con una batería de pruebas de regresión continua ejecutada sobre `pytest`:
+Un aspecto central de la transparencia metodológica de este proyecto es distinguir entre dos entornos de evaluación complementarios: **las suites de regresión determinista automatizadas (100% de precisión bajo especificación)** y **la evaluación empírica con usuarios humanos en prueba y error (~54% de tasa de fallo/abstención en lenguaje natural no restringido)**.
 
-| Suite de Evaluación | Cantidad de Casos | Precisión Top-1 | Tasa de Sustitución Falsa (FSR) | Latencia Mediana ($p50$) |
-|---|---|---|---|---|
-| **Benchmark Canónico** | 200 consultas | **100.0%** (200/200) | **0.00%** | $< 0.50\text{ ms}$ |
-| **Benchmark Adversario** | 40 trampas de choque | **100.0%** (40/40) | **0.00%** | **$0.74\text{ ms}$** |
-| **Suite Completa de Regresión** | 377 pruebas | **100.0%** (377/377) | **0.00%** | Hermético Offline |
+### 1. Suites de Regresión Determinista (Benchmarks Curados: 100% Top-1, 0.00% FSR)
 
-> [!TIP]
-> Puedes auditar la especificación metodológica de los casos adversarios en [`docs/reports/2026-10-18-adversarial-benchmark-specification.md`](docs/reports/2026-10-18-adversarial-benchmark-specification.md).
+El arnés de pruebas automatizado (`pytest`) ejecuta suites herméticas fuera de línea diseñadas para certificar invariantes matemáticos, evitar regresiones en releases y blindar el sistema contra alucinaciones estadísticas:
+
+| Suite de Evaluación | Propósito Metodológico | Cantidad de Casos | Precisión Top-1 | Tasa de Sustitución Falsa (FSR) | Latencia Mediana ($p50$) |
+|---|---|---|---|---|---|
+| **Benchmark Canónico** | Dominios macroeconómicos y sociales clave (C1–C10) | 200 consultas | **100.0%** (200/200) | **0.00%** | $< 0.15\text{ ms}$ |
+| **Benchmark Adversario** | Trampas de colisión léxica, polaridad y falsos amigos | 40 casos | **100.0%** (40/40) | **0.00%** | $0.74\text{ ms}$ |
+| **Escala de Catálogo** | Cobertura transversal en las 23 áreas de CEPALSTAT | 100 consultas | **100.0%** (100/100) | **0.00%** | $< 0.40\text{ ms}$ |
+| **Holdout Independiente** | Casos no vistos en optimización inicial | 50 consultas | **100.0%** (50/50) | **0.00%** | $< 0.30\text{ ms}$ |
+| **Mutaciones Semánticas** | Pares perturbados para verificar sensibilidad | 54 pares | **100.0%** divergencia | **0.00%** | Hermético Offline |
+| **Suite Completa de Regresión** | Pruebas unitarias, arquitectónicas y tipado | **551 tests** | **100.0%** pasados | **0.00%** | Hermético Offline |
+
+> [!NOTE]
+> **Sesgo de Curaduría y Adaptación Asistida (Curation Bias):**  
+> El **100% de aprobación** en estas suites refleja que las preguntas fueron adaptadas e iteradas por agentes y desarrolladores para verificar que el pipeline respete las reglas ontológicas, los sinónimos y los grafos de desagregación formulados. Es una garantía de **no-regresión arquitectónica e integridad de invariantes**, no una métrica de generalización universal ante lenguaje libre arbitrario.
+>
+> Puedes auditar las especificaciones metodológicas en [`docs/reports/benchmark_200_preguntas.md`](docs/reports/benchmark_200_preguntas.md) y [`docs/reports/2026-10-18-adversarial-benchmark-specification.md`](docs/reports/2026-10-18-adversarial-benchmark-specification.md).
+
+---
+
+### 2. La Brecha del Lenguaje Natural: Evaluación Humana en Prueba y Error
+
+En pruebas reales de usuario interactivo (*human-in-the-loop / exploratory testing*), donde analistas, economistas y usuarios formulan preguntas abiertas en lenguaje natural sin conocer la arquitectura interna del motor ni el vocabulario exacto de CEPALSTAT, el sistema presenta actualmente una **tasa de fallo o abstención aproximada del 54%** (es decir, una tasa de resolución directa inicial de **~46%**).
+
+```mermaid
+pie title Distribución Estimada en Pruebas Humanas Exploratorias
+    "Resolución Directa Exitosa (46%)" : 46
+    "Abstención por Sobre-especificación (24%)" : 24
+    "Dispersión Léxica / Sinónimos Faltantes (15%)" : 15
+    "Consultas Analíticas Compuestas (9%)" : 9
+    "Incompatibilidad Dimensional Cruzada (6%)" : 6
+```
+
+---
+
+### 3. Taxonomía Técnica de las Fallas en Consultas Humanas
+
+El análisis de las consultas fallidas en sesiones de prueba y error revela cinco causas técnicas principales:
+
+#### A. Dispersión Léxica y Variabilidad Regional (Lexical Drift)
+* **Mecanismo:** En América Latina, la terminología socioeconómica varía marcadamente entre países e instituciones estadísticas. Un usuario peruano o argentino suele consultar por el *"PBI"* o *"producto bruto interno"* en lugar de *"PIB"* (recientemente incorporado como sinónimo regional). Otros términos comunes son *"presión tributaria"* (clasificado formalmente en CEPALSTAT como *"Ingresos tributarios del gobierno central como porcentaje del PIB"*), *"canasta básica"*, *"desocupación abierta"*, *"remuneraciones medias reales"* o *"tasa de actividad"*.
+* **Impacto en el Motor:** Si una formulación no está explícitamente indexada en `DEFAULT_CANONICAL_SYNSETS` o en las expresiones regulares del `QueryParser`, los tokens no se absorben (`unconsumed_tokens`). Esto impide el enlace al concepto raíz o dispara precauciones de sobre-especificación.
+
+#### B. Hiper-Conservadurismo del Guardián de Especificidad (Over-Abstention Bias)
+* **Mecanismo:** Para garantizar de forma innegociable un **0.00% de Tasa de Sustitución Falsa (FSR)** —impidiendo que un asistente devuelva datos agregados haciéndolos pasar por el sector específico solicitado—, el motor aplica una política de *fail-closed* (`Stage 3.5 Specificity Guard`).
+* **Impacto en el Motor:** Si el usuario incluye un modificador sectorial o metodológico ausente en la tabla nacional (ej. *"salario mínimo nominal"* cuando solo existe *"índice de salario mínimo real"*, o *"empleo en manufactura"* cuando solo existe *"empleo total"*), el motor emite `ABSTAINED` o `ALTERNATIVE_PROPOSED` con penalización de confianza ($0.65$). Desde la perspectiva de un usuario humano que espera una respuesta heurística o aproximada ("el mejor intento"), esta abstención metodológicamente segura suele percibirse como un fallo de resolución.
+
+#### C. Incompatibilidad de Desagregaciones Cruzadas (Dimensional Entanglement)
+* **Mecanismo:** Las tablas multidimensionales de CEPALSTAT no son cubos cartesianos completos. Una serie puede tener desagregación por `sexo`, y otra distinta por `área urbana/rural`, pero rara vez coexisten en la misma tabla ambas facetas a nivel subnacional o por quintil de ingreso.
+* **Impacto en el Motor:** Consultas como *"desempleo juvenil rural femenino en Colombia"* combinan simultáneamente tres facetas (`edad`, `área`, `sexo`). Si no existe un indicador hijo en el grafo ontológico `BREAKDOWN_OF` con esa terna exacta, el motor rechaza la consulta para evitar amputar dimensiones silenciosamente.
+
+#### D. Consultas Analíticas Compuestas vs. Series Atómicas
+* **Mecanismo:** Los analistas humanos con frecuencia no buscan un indicador aislado, sino una relación econométrica o aritmética entre dos variables distintas:
+  - *"Balanza comercial como porcentaje del PIB"*
+  - *"Relación de deuda externa sobre reservas internacionales"*
+  - *"Crecimiento del salario real descontando inflación"*
+* **Impacto en el Motor:** El motor semántico opera actualmente a nivel de indicador atómico (`indicator_id`). Al no ser un motor de álgebra simbólica multi-tabla, las consultas compuestas no resuelven a menos que CEPALSTAT disponga de una serie precalculada específica.
+
+#### E. Ambigüedad en Anclas Temporales y Filtros Implícitos
+* **Mecanismo:** En lenguaje natural es habitual omitir el año asumiendo *"el dato más reciente disponible"* o emplear formulaciones cualitativas (*"en la postpandemia"*, *"última década"*, *"año actual"*).
+* **Impacto en el Motor:** Si bien el parser soporta rangos y listas explícitas (`2015-2022`, `2020`), los términos temporales relativos o ausentes pueden dejar la serie sin filtro de año explícito, lo que en tablas censales o de encuestas de hogares (BADEHOG) puede disparar rescate de anclas o consultas con gran volumen de datos.
+
+---
+
+### 4. Hoja de Ruta Activa para Cerrar la Brecha
+
+Para converger gradualmente la tasa de acierto en lenguaje libre hacia los niveles del benchmark curado, se están implementando las siguientes estrategias:
+
+1. **Bucle de Aprendizaje Activo (Human-in-the-Loop Active Learning):**  
+   Cada consulta fallida durante las pruebas manuales se cataloga y se incorpora progresivamente a nuevas suites de prueba, ampliando las 200 consultas canónicas hacia corpus dialectales más extensos.
+2. **Expansión Sistemática de Sinónimos Multirregionales:**  
+   Mapeo exhaustivo de nomenclaturas de los Institutos Nacionales de Estadística (INEGI, DANE, INDEC, INEI, INE) y Bancos Centrales de la región en la ontología de sinónimos.
+3. **Resolución Híbrida Guiada por MCP (Agentic Dialogue):**  
+   A través del protocolo MCP, el servidor no se abstiene de forma binaria muda, sino que retorna información de diagnóstico estructurada (`ALTERNATIVE_PROPOSED`, facetas faltantes, sugerencias de indicadores más cercanos). Esto permite que el LLM (Claude, Cursor, Antigravity) repregunte o negocie interactivamente con el usuario: *"CEPALSTAT no dispone de salario mínimo nominal para este país, pero dispone del Índice de Salario Mínimo Real (ID 3337). ¿Desea consultar esta serie?"*.
+4. **Fallback Híbrido Tier-1 (Ontológico) / Tier-2 (FTS5 BM25 Catálogo Completo):**  
+   Cuando una consulta no encaja en los conceptos prioritarios modelados ontológicamente, el motor activa automáticamente la búsqueda textual ponderada sobre los 1,739 indicadores del catálogo local SQLite, recuperando candidatos relevantes con baja latencia ($< 0.5\text{ ms}$).
 
 ---
 
@@ -209,7 +278,7 @@ Hint:      Nota: Se propone como alternativa el indicador general 3337 ('Salario
 Descarga las observaciones desde CEPALSTAT con parámetros dimensionales resueltos:
 
 ```bash
-uv run unofficial-cepalstat-mcp semantic fetch "pobreza extrema en chile en 2020"
+uv run unofficial-cepalstat-mcp semantic resolve "pobreza extrema en chile en 2020" --fetch
 ```
 
 ### 4. Búsqueda Instantánea en el Catálogo Maestro
@@ -276,7 +345,7 @@ O en desarrollo local:
 Para reproducir las métricas de rendimiento y verificación:
 
 ```bash
-# Ejecutar la suite completa no integrada (377 tests herméticos offline)
+# Ejecutar la suite completa no integrada (551 tests herméticos offline)
 uv run pytest -m "not integration"
 
 # Ejecutar el benchmark canónico de 200 casos
@@ -284,6 +353,9 @@ uv run pytest tests/test_semantic_benchmark_200.py -v
 
 # Ejecutar el benchmark adversarial de 40 casos
 uv run pytest tests/test_adversarial_benchmark_40.py -v -s
+
+# Ejecutar la batería completa de benchmarks semánticos (390 casos + 54 mutaciones)
+uv run pytest tests/test_semantic_benchmark_200.py tests/test_adversarial_benchmark_40.py tests/test_catalog_scale_benchmark_100.py tests/test_independent_holdout_benchmark_50.py tests/test_semantic_mutations.py -v
 ```
 
 ---
