@@ -17,6 +17,14 @@ from unofficial_cepalstat_mcp.semantic.registry import (
     SYNTHETIC_DIMENSION_MEMBER_IDS,
 )
 
+
+def _is_numeric_id_string(val: str) -> bool:
+    """Return True if string consists solely of digits, commas, semicolons, and whitespace (foreign key lists)."""
+    if not val:
+        return False
+    return bool(re.fullmatch(r"[\d,\s;]+", val.strip()))
+
+
 DIM_NAME_ALIASES: dict[str, list[str]] = {
     "estrato de ingreso": [
         "quintil",
@@ -1100,7 +1108,7 @@ class SemanticDataFetcher:
                     for n_col in ("notes", "notas", "nota", "notes_ids", "notes_id"):
                         if n_col in row and not pd.isna(row[n_col]):
                             val_str = str(row[n_col]).strip()
-                            if val_str and not val_str.isdigit():
+                            if val_str and not _is_numeric_id_string(val_str):
                                 row_notes = val_str
                                 break
 
@@ -1240,7 +1248,7 @@ class SemanticDataFetcher:
                     for n_col in ("notes", "notas", "nota", "notes_ids", "notes_id"):
                         if n_col in row and not pd.isna(row[n_col]):
                             val_str = str(row[n_col]).strip()
-                            if val_str and not val_str.isdigit():
+                            if val_str and not _is_numeric_id_string(val_str):
                                 notes_val = val_str
                                 break
 

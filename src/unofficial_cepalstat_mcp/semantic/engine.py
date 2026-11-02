@@ -253,7 +253,10 @@ class SemanticResolutionEngine:
         # 3. Area breakdown without ethnicity -> 28 (Población según área geográfica y sexo)
         if has_area:
             return 28
-        # 4. Canonical total population -> 4788
+        # 4. Age breakdown -> 4789 (Población, por grupos de edad, según sexo)
+        if "edad" in facets:
+            return 4789
+        # 5. Canonical total population -> 4788
         return 4788
 
     def _has_dimension_for_facet(self, dims: list[Dimension], facet_key: str) -> bool:

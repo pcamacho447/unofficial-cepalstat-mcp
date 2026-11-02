@@ -26,6 +26,13 @@ from unofficial_cepalstat_mcp.semantic.facet_ontology import DEFAULT_FACET_ONTOL
 from unofficial_cepalstat_mcp.thematic_tree import ThematicTree
 
 
+def _is_numeric_id_string(val: str) -> bool:
+    """Return True if string consists solely of digits, commas, semicolons, and whitespace (foreign key lists)."""
+    if not val:
+        return False
+    return bool(re.fullmatch(r"[\d,\s;]+", val.strip()))
+
+
 def _handle_catalog_build_graph(args: argparse.Namespace) -> int:
     """Handle the 'catalog build-graph' command."""
     store = CatalogStore()
@@ -828,7 +835,7 @@ def main(args: Sequence[str] | None = None, prog: str | None = None) -> int:
                                 year_val = item.get("year", "")
                                 year_str = f"{year_val}*" if item.get("is_anchor") else str(year_val)
                                 notes_val = str(item.get("notes", "")).strip() if item.get("notes") else ""
-                                if notes_val.isdigit():
+                                if _is_numeric_id_string(notes_val):
                                     notes_val = ""
                                 if item.get("is_anchor") and "[Ancla" not in notes_val:
                                     notes_val = f"{notes_val} [Ancla]".strip()
@@ -850,7 +857,7 @@ def main(args: Sequence[str] | None = None, prog: str | None = None) -> int:
                                 year_val = item.get("year", "")
                                 year_str = f"{year_val}*" if item.get("is_anchor") else str(year_val)
                                 notes_val = str(item.get("notes", "")).strip() if item.get("notes") else ""
-                                if notes_val.isdigit():
+                                if _is_numeric_id_string(notes_val):
                                     notes_val = ""
                                 if item.get("is_anchor") and "[Ancla" not in notes_val:
                                     notes_val = f"{notes_val} [Ancla]".strip()
@@ -872,7 +879,7 @@ def main(args: Sequence[str] | None = None, prog: str | None = None) -> int:
                                 year_val = item.get("year", "")
                                 year_str = f"{year_val}*" if item.get("is_anchor") else str(year_val)
                                 notes_val = str(item.get("notes", "")).strip() if item.get("notes") else ""
-                                if notes_val.isdigit():
+                                if _is_numeric_id_string(notes_val):
                                     notes_val = ""
                                 if item.get("is_anchor") and "[Ancla" not in notes_val:
                                     notes_val = f"{notes_val} [Ancla]".strip()
@@ -893,7 +900,7 @@ def main(args: Sequence[str] | None = None, prog: str | None = None) -> int:
                                 year_val = item.get("year", "")
                                 year_str = f"{year_val}*" if item.get("is_anchor") else str(year_val)
                                 notes_val = str(item.get("notes", "")).strip() if item.get("notes") else ""
-                                if notes_val.isdigit():
+                                if _is_numeric_id_string(notes_val):
                                     notes_val = ""
                                 if item.get("is_anchor") and "[Ancla" not in notes_val:
                                     notes_val = f"{notes_val} [Ancla]".strip()
@@ -911,7 +918,7 @@ def main(args: Sequence[str] | None = None, prog: str | None = None) -> int:
                         print(f"Value:     {val}{unit_str}")
                         print(f"Year:      {emp.get('year')}")
                         notes_val = str(emp.get("notes", "")).strip() if emp.get("notes") else ""
-                        if notes_val.isdigit():
+                        if _is_numeric_id_string(notes_val):
                             notes_val = ""
                         print(f"Notes:     {notes_val}")
                     else:

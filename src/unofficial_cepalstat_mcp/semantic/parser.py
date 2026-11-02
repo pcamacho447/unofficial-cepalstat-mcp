@@ -953,6 +953,40 @@ class QueryParser:
         ):
             facets["edad"] = "JUVENTUD"
 
+        # Age brackets / intervals (e.g. "entre 50 y 54 anos", "de 50 a 54 anos", "50-54 anos")
+        _re_age_interval = re.search(
+            r"\b(?:entre|de)\s+(\d{1,2})\s+(?:y|a|-|–)\s+(\d{1,2})\s*(?:anos?|de edad)?\b"
+            r"|\b(\d{1,2})\s*[-–]\s*(\d{1,2})\s*(?:anos?|de edad)?\b"
+            r"|\b(\d{1,2})\s+a\s+(\d{1,2})\s*(?:anos|de edad)\b",
+            clean,
+        )
+        if _re_age_interval:
+            _groups = [g for g in _re_age_interval.groups() if g is not None]
+            if len(_groups) >= 2:
+                a1, a2 = int(_groups[0]), int(_groups[1])
+                _m_text = _re_age_interval.group(0).strip()
+                consumed_phrases.append(_m_text)
+                for _st in [_m_text, f"{a1} a {a2}", f"{a1}-{a2}", f"{a1} y {a2}"]:
+                    consumed_phrases.append(_st)
+                if a1 == 15 and a2 == 24:
+                    if "edad" not in facets:
+                        facets["edad"] = "JUVENTUD"
+                elif a1 == 0 and a2 == 14:
+                    if "edad" not in facets:
+                        facets["edad"] = "INFANCIA"
+                else:
+                    if "edad" not in facets:
+                        facets["edad"] = f"{a1}-{a2}"
+
+        _re_age_100_plus = re.search(
+            r"\b100\s*(?:anos?\s+)?(?:y\s+mas|\+|o\s+mas)\b",
+            clean,
+        )
+        if _re_age_100_plus:
+            consumed_phrases.append(_re_age_100_plus.group(0).strip())
+            if "edad" not in facets:
+                facets["edad"] = "100 y más"
+
         # Severidad de pobreza
         severidad_match = self.thesaurus.match_synset("facet_severidad", clean)
         if severidad_match:
