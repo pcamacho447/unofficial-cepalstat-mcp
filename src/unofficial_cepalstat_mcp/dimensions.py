@@ -13,6 +13,20 @@ if TYPE_CHECKING:
     from unofficial_cepalstat_mcp.catalog.store import CatalogStore
 
 
+# Synthetic member IDs defined in DEFAULT_OFFICIAL_DIMENSIONS for offline Stage 4 matching
+# that must not be sent as raw integer filters to the live CEPALSTAT API records endpoint.
+SYNTHETIC_DIMENSION_MEMBER_IDS: frozenset[int] = frozenset({
+    300, 301, 302,
+    327, 330, 331,
+    412, 413, 414, 415,
+    501, 502,
+    601, 602, 603, 604, 605, 610, 611, 612, 613,
+    701,
+    29282, 29283,
+    79578, 79580,
+})
+
+
 class Member(BaseModel):
     """A member element inside a dimension (e.g. Chile, 2020, Ambos sexos)."""
 
@@ -21,6 +35,7 @@ class Member(BaseModel):
     order: int | None = None
     parent: int | None = None
     selected: int | None = None
+    is_synthetic: bool = False
 
 
 class Dimension(BaseModel):
@@ -70,6 +85,7 @@ class DimensionManager:
                         order=m.get("order"),
                         parent=m.get("parent"),
                         selected=m.get("selected"),
+                        is_synthetic=int(m["id"]) in SYNTHETIC_DIMENSION_MEMBER_IDS,
                     )
                     for m in raw_dim.get("members", [])
                     if isinstance(m, dict) and "id" in m

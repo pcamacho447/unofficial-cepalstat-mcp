@@ -16,7 +16,11 @@ import pandas as pd
 from unofficial_cepalstat_mcp.catalog.models import CatalogIndicator, CatalogStats
 from unofficial_cepalstat_mcp.client import CepalStatClient
 from unofficial_cepalstat_mcp.config import get_cache_db_path
-from unofficial_cepalstat_mcp.dimensions import Dimension, Member
+from unofficial_cepalstat_mcp.dimensions import (
+    SYNTHETIC_DIMENSION_MEMBER_IDS,
+    Dimension,
+    Member,
+)
 from unofficial_cepalstat_mcp.thematic_tree import ThematicTree
 
 DEFAULT_DB_PATH = get_cache_db_path()
@@ -211,11 +215,44 @@ class CatalogStore:
                 )
             """)
         self.init_semantic_tables()
+        self.init_staging_tables()
 
     def init_tables(self) -> None:
         """Initialize all catalog and semantic database tables."""
         self._init_db()
         self.init_semantic_tables()
+        self.init_staging_tables()
+
+    def init_staging_tables(self) -> None:
+        """Create staging SQLite tables if not present."""
+        with self._get_connection() as conn:
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS staging_indicators (
+                    indicator_id INTEGER PRIMARY KEY,
+                    name TEXT NOT NULL,
+                    order_num INTEGER,
+                    theme TEXT NOT NULL,
+                    area TEXT NOT NULL,
+                    subarea TEXT,
+                    full_path TEXT NOT NULL,
+                    updated_at TEXT,
+                    provenance TEXT DEFAULT 'inferred'
+                )
+            """)
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS staging_dimension_members (
+                    indicator_id INTEGER,
+                    dim_id INTEGER,
+                    member_id INTEGER,
+                    member_name TEXT,
+                    is_synthetic INTEGER DEFAULT 0,
+                    PRIMARY KEY (indicator_id, dim_id, member_id)
+                )
+            """)
+
+    def initialize_schema(self) -> None:
+        """Initialize all catalog, semantic, and staging database tables."""
+        self.init_tables()
 
     def init_semantic_tables(self) -> None:
         """Create relational semantic metadata tables in SQLite."""
@@ -243,9 +280,14 @@ class CatalogStore:
                     dim_id INTEGER,
                     member_id INTEGER,
                     member_name TEXT,
+                    is_synthetic INTEGER DEFAULT 0,
                     PRIMARY KEY (indicator_id, dim_id, member_id)
                 )
             """)
+            cur_dm = conn.execute("PRAGMA table_info(dimension_members)")
+            existing_dm_cols = {row["name"] for row in cur_dm.fetchall()}
+            if "is_synthetic" not in existing_dm_cols:
+                conn.execute("ALTER TABLE dimension_members ADD COLUMN is_synthetic INTEGER DEFAULT 0")
             conn.execute("""
                 CREATE TABLE IF NOT EXISTS indicator_relationships (
                     indicator_a INTEGER,
@@ -667,12 +709,13 @@ class CatalogStore:
                     (indicator_id, dim.id, dim.name, pos, harvested_at, content_hash),
                 )
                 for member in dim.members:
+                    is_synth = 1 if (getattr(member, "is_synthetic", False) or member.id in SYNTHETIC_DIMENSION_MEMBER_IDS) else 0
                     conn.execute(
                         """
-                        INSERT OR REPLACE INTO dimension_members (indicator_id, dim_id, member_id, member_name)
-                        VALUES (?, ?, ?, ?)
+                        INSERT OR REPLACE INTO dimension_members (indicator_id, dim_id, member_id, member_name, is_synthetic)
+                        VALUES (?, ?, ?, ?, ?)
                         """,
-                        (indicator_id, dim.id, member.id, member.name),
+                        (indicator_id, dim.id, member.id, member.name, is_synth),
                     )
             self._update_indicator_fts(conn, indicator_id)
 
@@ -695,6 +738,127 @@ class CatalogStore:
                 "total_dimensions": int(d_count or 0),
                 "total_members": int(m_count or 0),
             }
+
+    def upsert_indicator(
+        self,
+        indicator_id: int,
+        name: str,
+        provenance: str = "inferred",
+        order_num: int | None = None,
+        theme: str = "",
+        area: str = "",
+        subarea: str = "",
+        full_path: str = "",
+        updated_at: str | None = None,
+        staging: bool = False,
+    ) -> None:
+        """Insert or update an indicator, strictly respecting curated provenance immutability."""
+        now_str = updated_at or datetime.now(timezone.utc).isoformat()
+        with self._get_connection() as conn:
+            # Check if this indicator already exists with 'curated' provenance in staging_indicators
+            curated_existing = False
+            try:
+                row = conn.execute(
+                    "SELECT provenance FROM staging_indicators WHERE indicator_id = ?",
+                    (indicator_id,),
+                ).fetchone()
+                if row and row["provenance"] == "curated":
+                    curated_existing = True
+            except sqlite3.OperationalError:
+                pass
+
+            target_provenance = "curated" if (curated_existing and provenance == "inferred") else provenance
+
+            conn.execute(
+                """
+                INSERT INTO staging_indicators (indicator_id, name, order_num, theme, area, subarea, full_path, updated_at, provenance)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(indicator_id) DO UPDATE SET
+                    name = excluded.name,
+                    order_num = coalesce(excluded.order_num, staging_indicators.order_num),
+                    theme = case when excluded.theme != '' then excluded.theme else staging_indicators.theme end,
+                    area = case when excluded.area != '' then excluded.area else staging_indicators.area end,
+                    subarea = case when excluded.subarea != '' then excluded.subarea else staging_indicators.subarea end,
+                    full_path = case when excluded.full_path != '' then excluded.full_path else staging_indicators.full_path end,
+                    updated_at = excluded.updated_at,
+                    provenance = case when staging_indicators.provenance = 'curated' and excluded.provenance = 'inferred' then 'curated' else excluded.provenance end
+                """,
+                (indicator_id, name, order_num, theme, area, subarea, full_path, now_str, target_provenance),
+            )
+
+            conn.execute(
+                """
+                INSERT INTO master_indicators (indicator_id, name, order_num, theme, area, subarea, full_path, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(indicator_id) DO UPDATE SET
+                    name = excluded.name,
+                    order_num = coalesce(excluded.order_num, master_indicators.order_num),
+                    theme = case when excluded.theme != '' then excluded.theme else master_indicators.theme end,
+                    area = case when excluded.area != '' then excluded.area else master_indicators.area end,
+                    subarea = case when excluded.subarea != '' then excluded.subarea else master_indicators.subarea end,
+                    full_path = case when excluded.full_path != '' then excluded.full_path else master_indicators.full_path end,
+                    updated_at = excluded.updated_at
+                """,
+                (indicator_id, name, order_num, theme, area, subarea, full_path, now_str),
+            )
+
+    def get_indicator(self, indicator_id: int) -> CatalogIndicator | None:
+        """Retrieve an indicator with its provenance from staging or master catalog."""
+        with self._get_connection() as conn:
+            try:
+                row_stg = conn.execute(
+                    "SELECT * FROM staging_indicators WHERE indicator_id = ?",
+                    (indicator_id,),
+                ).fetchone()
+                if row_stg:
+                    d = dict(row_stg)
+                    return CatalogIndicator(
+                        indicator_id=int(d["indicator_id"]),
+                        name=str(d["name"]),
+                        order_num=d.get("order_num"),
+                        theme=str(d.get("theme") or ""),
+                        area=str(d.get("area") or ""),
+                        subarea=str(d.get("subarea") or ""),
+                        full_path=str(d.get("full_path") or ""),
+                        updated_at=str(d.get("updated_at") or ""),
+                        provenance=str(d.get("provenance") or "inferred"),
+                    )
+            except sqlite3.OperationalError:
+                pass
+
+            row = conn.execute(
+                "SELECT * FROM master_indicators WHERE indicator_id = ?",
+                (indicator_id,),
+            ).fetchone()
+            if not row:
+                return None
+            d = dict(row)
+            return CatalogIndicator(
+                indicator_id=int(d["indicator_id"]),
+                name=str(d["name"]),
+                order_num=d.get("order_num"),
+                theme=str(d.get("theme") or ""),
+                area=str(d.get("area") or ""),
+                subarea=str(d.get("subarea") or ""),
+                full_path=str(d.get("full_path") or ""),
+                updated_at=str(d.get("updated_at") or ""),
+                provenance="curated",
+            )
+
+    def has_synthetic_member_flag(self, member_id: int) -> bool:
+        """Check if a dimension member ID is flagged as synthetic in database or registry."""
+        with self._get_connection() as conn:
+            for tbl in ("dimension_members", "staging_dimension_members"):
+                try:
+                    row = conn.execute(
+                        f"SELECT 1 FROM {tbl} WHERE member_id = ? AND is_synthetic = 1 LIMIT 1",
+                        (member_id,),
+                    ).fetchone()
+                    if row:
+                        return True
+                except sqlite3.OperationalError:
+                    pass
+        return False
 
     def get_distinct_harvested_dimensions(self) -> list[dict[str, Any]]:
         """Return distinct harvested dimensions grouped by dim_id and dim_name with frequencies."""
@@ -942,9 +1106,9 @@ class CatalogStore:
         self,
         indicator_id: int,
         name: str,
-        concept: str,
-        measure_type: str,
-        unit: str,
+        concept: str = "",
+        measure_type: str = "",
+        unit: str = "",
         supported_facets: set[str] | list[str] | None = None,
         definition: str = "",
         periodicity: str = "",

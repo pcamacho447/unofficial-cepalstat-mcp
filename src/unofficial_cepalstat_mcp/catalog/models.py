@@ -14,6 +14,7 @@ class CatalogIndicator(BaseModel):
     subarea: str = ""
     full_path: str = ""
     updated_at: str = ""
+    provenance: str = "curated"
 
 
 class CatalogStats(BaseModel):
@@ -41,6 +42,8 @@ class HarvestSummary(BaseModel):
     total_target: int = 0
     already_harvested: int = 0
     newly_harvested: int = 0
+    inferred_count: int = 0
+    curated_count: int = 0
     failed_ids: list[int] = Field(default_factory=list)
     duration_seconds: float = 0.0
 

@@ -10,7 +10,13 @@ from collections.abc import Mapping, Sequence
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING, Any
 
-from unofficial_cepalstat_mcp.dimensions import Dimension, Member
+from unofficial_cepalstat_mcp.dimensions import (
+    SYNTHETIC_DIMENSION_MEMBER_IDS as SYNTHETIC_DIMENSION_MEMBER_IDS,
+)
+from unofficial_cepalstat_mcp.dimensions import (
+    Dimension,
+    Member,
+)
 from unofficial_cepalstat_mcp.semantic.facet_ontology import DEFAULT_FACET_ONTOLOGY, FacetOntology
 from unofficial_cepalstat_mcp.semantic.models import (
     AppliedDimensionFilter,
@@ -614,18 +620,8 @@ DEFAULT_OFFICIAL_DIMENSIONS: dict[int, list[Dimension]] = {
 }
 
 
-# Synthetic member IDs defined in DEFAULT_OFFICIAL_DIMENSIONS for offline Stage 4 matching
-# that must not be sent as raw integer filters to the live CEPALSTAT API records endpoint.
-SYNTHETIC_DIMENSION_MEMBER_IDS: frozenset[int] = frozenset({
-    300, 301, 302,
-    327, 330, 331,
-    412, 413, 414, 415,
-    501, 502,
-    601, 602, 603, 604, 605, 610, 611, 612, 613,
-    701,
-    29282, 29283,
-    79578, 79580,
-})
+# SYNTHETIC_DIMENSION_MEMBER_IDS is imported from unofficial_cepalstat_mcp.dimensions
+# and re-exported here for backward compatibility.
 
 # Mapping from synthetic/placeholder official_25 indicator IDs to real CEPALSTAT master_indicators IDs.
 # Post-migration, all indicators use real CEPALSTAT IDs directly (empty map for backward compatibility).
