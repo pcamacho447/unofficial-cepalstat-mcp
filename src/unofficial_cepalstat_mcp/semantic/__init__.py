@@ -1,7 +1,11 @@
 """CEPALSTAT Semantic Intent Disambiguation Engine and Statistical Validator."""
 
 from unofficial_cepalstat_mcp.semantic.engine import SemanticResolutionEngine
-from unofficial_cepalstat_mcp.semantic.evaluator import BenchmarkEvaluator
+from unofficial_cepalstat_mcp.semantic.evaluator import (
+    BenchmarkEvaluator,
+    SpecificityEvaluationResult,
+    SpecificityGuard,
+)
 from unofficial_cepalstat_mcp.semantic.fetcher import SemanticDataFetcher
 from unofficial_cepalstat_mcp.semantic.graph_builder import (
     GraphBuilder,
@@ -64,6 +68,8 @@ __all__ = [
     "SemanticRegistry",
     "SemanticResolutionEngine",
     "SemanticResolutionResponse",
+    "SpecificityEvaluationResult",
+    "SpecificityGuard",
     "Synset",
     "SynsetMatch",
     "TemporalAnchorInfo",

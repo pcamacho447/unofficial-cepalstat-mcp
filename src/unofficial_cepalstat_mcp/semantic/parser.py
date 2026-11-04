@@ -814,10 +814,18 @@ class QueryParser:
                 if t in clean:
                     consumed_phrases.append(t)
         else:
-            area_match = self.thesaurus.match_synset("facet_area", clean)
-            if area_match:
-                facets["area"] = area_match.canonical_id
-                consumed_phrases.append(area_match.matched_term)
+            area_matches = self.thesaurus.match_all_synsets("facet_area", clean)
+            chosen_area_m = None
+            for am in area_matches:
+                if am.canonical_id != "NACIONAL":
+                    chosen_area_m = am
+                    break
+            if chosen_area_m is None and area_matches:
+                chosen_area_m = area_matches[0]
+
+            if chosen_area_m:
+                facets["area"] = chosen_area_m.canonical_id
+                consumed_phrases.append(chosen_area_m.matched_term)
             elif any(
                 term in clean for term in ["el campo", "rural", "campo", "zona rural", "area rural"]
             ):
@@ -1185,6 +1193,12 @@ class QueryParser:
                     continue
                 if k in facets and self.ontology.is_critical_unhandled_facet(k, facets[k]):
                     continue
+                facets[k] = v
+            elif (
+                k in facets
+                and not self.ontology.is_critical_unhandled_facet(k, facets[k])
+                and self.ontology.is_critical_unhandled_facet(k, v)
+            ):
                 facets[k] = v
 
         # ----------------------------------------------------

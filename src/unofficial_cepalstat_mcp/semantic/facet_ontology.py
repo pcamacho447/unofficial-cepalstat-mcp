@@ -10,9 +10,12 @@ import re
 import unicodedata
 from collections.abc import Mapping, Sequence
 from functools import lru_cache
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel, ConfigDict, Field
+
+if TYPE_CHECKING:
+    from unofficial_cepalstat_mcp.dimensions import Dimension
 
 
 @lru_cache(maxsize=4096)
@@ -238,6 +241,26 @@ class FacetOntology:
                     if p not in result[member_key]:
                         result[member_key].append(p)
         return result
+
+    def get_unmatched_facets(
+        self, dimensions: Sequence[Dimension], facets: set[str] | Sequence[str]
+    ) -> set[str]:
+        """Return the subset of facets that are NOT covered by the given dimensions."""
+        if not facets:
+            return set()
+        covered_facets: set[str] = set()
+        for d in dimensions:
+            fkey = self.classify_dimension(d.id, d.name)
+            if fkey and fkey != "__structural__":
+                covered_facets.add(strip_accents(fkey).lower())
+        req_norm = {strip_accents(f).lower() for f in facets if f}
+        return req_norm - covered_facets
+
+    def validate_dimensions(
+        self, dimensions: Sequence[Dimension], facets: set[str] | Sequence[str]
+    ) -> bool:
+        """Validate whether the given dimensions cover all required facet keys."""
+        return len(self.get_unmatched_facets(dimensions, facets)) == 0
 
     def audit_dimensions(self, dimension_rows: list[dict[str, Any]]) -> FacetAuditReport:
         """Audit harvested dimension rows against this ontology."""

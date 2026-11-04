@@ -791,7 +791,7 @@ DEFAULT_ANTONYM_RULES: list[AntonymRule] = [
         canonical_indicator_id=1246,
         positive_sign=ExpectedSign.POSITIVE,
         negative_sign=ExpectedSign.NEGATIVE,
-        explanation="Signo contable de finanzas públicas en Balance Fiscal / Primario (1246): superávit positivo, déficit negativo.",
+        explanation="Signo contable en Balance Fiscal (1246): superávit (+), déficit (-).",
     ),
     AntonymRule(
         rule_id="FISCAL_BALANCE_SIGN",
@@ -801,7 +801,7 @@ DEFAULT_ANTONYM_RULES: list[AntonymRule] = [
         canonical_indicator_id=1246,
         positive_sign=ExpectedSign.POSITIVE,
         negative_sign=ExpectedSign.NEGATIVE,
-        explanation="Signo contable general en Balance Primario / Fiscal (1246): superávit positivo, déficit negativo.",
+        explanation="Signo contable en Balance Fiscal (1246): superávit (+), déficit (-).",
     ),
     AntonymRule(
         rule_id="TRADE_BALANCE_SIGN",

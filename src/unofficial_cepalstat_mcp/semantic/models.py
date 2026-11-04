@@ -167,10 +167,22 @@ class SemanticResolutionResponse(BaseModel):
     polarity_info: PolarityResolution | None = None
     abstention_reason: str | None = None
     unsupported_facet: str | None = None
+    unmatched_facets: set[str] = Field(default_factory=set, description="Explicit requested facets not supported by candidate indicators")
     conversational_hint: str | None = None
     empirical_data: dict[str, Any] | None = Field(default=None, description="Observation payload fetched from CEPALSTAT")
     execution_trace: list[str] = Field(default_factory=list, description="Step-by-step reasoning trace")
     latency_ms: float = 0.0
+
+    def model_post_init(self, __context: Any) -> None:
+        if self.unsupported_facet and not self.unmatched_facets:
+            self.unmatched_facets = {self.unsupported_facet}
+        elif self.unmatched_facets and not self.unsupported_facet:
+            self.unsupported_facet = sorted(self.unmatched_facets)[0]
+
+    @property
+    def indicator_id(self) -> int | None:
+        """Convenience property returning the primary selected indicator ID if resolved."""
+        return self.selected_candidate.indicator_id if self.selected_candidate else None
 
 
 class BenchmarkCase(BaseModel):

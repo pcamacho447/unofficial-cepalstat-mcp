@@ -15,6 +15,7 @@ from pathlib import Path
 import pytest
 
 from unofficial_cepalstat_mcp.semantic import (
+    ResolutionStatus,
     SemanticResolutionEngine,
 )
 
@@ -181,3 +182,21 @@ def test_individual_adversarial_case(case: dict, engine: SemanticResolutionEngin
         f"score={result['actual_score']}, reason={result['actual_reason']}, hint={result['actual_hint']}. "
         f"Forbidden violation: {result['forbidden_violation']}"
     )
+
+
+def test_adversarial_alternative_proposed_payload_tokens(
+    adversarial_cases: list[dict], engine: SemanticResolutionEngine
+) -> None:
+    """Verifies that all ALTERNATIVE_PROPOSED responses strictly stay under 250 tokens."""
+    for case in adversarial_cases:
+        if case.get("expected_status") == "ALTERNATIVE_PROPOSED":
+            resp = engine.resolve(case["query"])
+            assert resp.status == ResolutionStatus.ALTERNATIVE_PROPOSED
+            payload_str = resp.model_dump_json(
+                exclude={"execution_trace"}, exclude_none=True, exclude_defaults=True
+            )
+            approx_tokens = max(len(payload_str.split()), len(payload_str) // 4)
+            assert approx_tokens < 250, (
+                f"Payload tokens exceed 250 in {case['id']}: approx {approx_tokens} tokens"
+            )
+

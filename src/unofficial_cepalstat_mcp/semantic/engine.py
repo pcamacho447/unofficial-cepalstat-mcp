@@ -4,8 +4,10 @@ import re
 import time
 from typing import Any
 
+from unofficial_cepalstat_mcp.catalog.models import CatalogCandidate
 from unofficial_cepalstat_mcp.catalog.store import CatalogStore
 from unofficial_cepalstat_mcp.dimensions import Dimension
+from unofficial_cepalstat_mcp.semantic.evaluator import SpecificityGuard
 from unofficial_cepalstat_mcp.semantic.facet_ontology import (
     DEFAULT_FACET_ONTOLOGY,
     FacetOntology,
@@ -200,6 +202,7 @@ class SemanticResolutionEngine:
         self.registry = registry or SemanticRegistry(store=store, catalog_profile=catalog_profile, ontology=self.ontology)
         self.matcher = matcher or DynamicMemberMatcher(ontology=self.ontology)
         self.store = store or getattr(self.registry, "store", None)
+        self.specificity_guard = SpecificityGuard(ontology=self.ontology)
         if enable_tier2_catalog is not None:
             self.enable_tier2_catalog = enable_tier2_catalog
         else:
@@ -833,13 +836,11 @@ class SemanticResolutionEngine:
                     selected.relevance_score = 0.65
                     uncovered_str = ", ".join(uncovered_critical)
                     selected.selection_reason = (
-                        f"El indicador {selected.indicator_id} cubre el concepto general ('{selected.name}'), "
-                        f"pero no desagrega la especificidad solicitada: '{uncovered_str}'."
+                        f"ID {selected.indicator_id} no desagrega '{uncovered_str}'."
                     )
                     conversational_hint = (
-                        f"Nota: Se propone como alternativa el indicador general {selected.indicator_id} ('{selected.name}'), "
-                        f"pero la consulta solicitaba la especificidad: '{uncovered_str}'. "
-                        f"Para el indicador sectorial consulte el catálogo de CEPALSTAT."
+                        f"Alternativa general: ID {selected.indicator_id} ('{selected.name[:35]}'). "
+                        f"Especificidad no cubierta: '{uncovered_str}'."
                     )
                     trace.append(
                         f"[Stage 3: Specificity Audit] DOWNGRADED to ALTERNATIVE_PROPOSED (Score: 0.65): Uncovered specificity: {uncovered_critical}."
@@ -883,17 +884,14 @@ class SemanticResolutionEngine:
                 selected.relevance_score = 0.65
                 freq_str = intent.frequency.lower()
                 freq_reason = (
-                    f"El indicador {selected.indicator_id} ('{selected.name}') se publica con frecuencia anual; "
-                    f"CEPALSTAT no dispone de frecuencia {freq_str} para esta serie en este corte."
+                    f"ID {selected.indicator_id} ('{selected.name[:35]}') es anual; "
+                    f"no dispone de frecuencia {freq_str}."
                 )
                 freq_hint = (
-                    f"Nota: Se propone como alternativa el indicador anual {selected.indicator_id} ('{selected.name}'), "
-                    f"pero la consulta solicitaba periodicidad {freq_str}. CEPALSTAT publica la serie con frecuencia anual."
+                    f"Alternativa anual: ID {selected.indicator_id} ('{selected.name[:35]}'). "
+                    f"No disponible en {freq_str}."
                 )
-                if selected.selection_reason:
-                    selected.selection_reason = f"{selected.selection_reason} | {freq_reason}"
-                else:
-                    selected.selection_reason = freq_reason
+                selected.selection_reason = freq_reason
 
                 if conversational_hint:
                     conversational_hint = f"{conversational_hint} {freq_hint}"
@@ -1224,14 +1222,14 @@ class SemanticResolutionEngine:
             trace.append("[Stage 3: Tier-2 Search] No candidate indicators retrieved.")
             return None
 
-        surviving: list[tuple[int, float, IndicatorMetadata, list[Dimension]]] = []
+        cands_for_guard: list[CatalogCandidate] = []
         syn_map = getattr(self.registry, "_synonym_stem_map", None)
 
         for cand_id, score in candidates:
             meta = self.registry.get_indicator(cand_id)
             if not meta:
                 continue
-            dims = self.registry.get_dimensions(cand_id)
+            dims = self.registry.get_dimensions(cand_id) or []
 
             # Strict Filter 1: Every concept token must be covered
             all_tokens_covered = True
@@ -1242,39 +1240,47 @@ class SemanticResolutionEngine:
             if not all_tokens_covered:
                 continue
 
-            # Strict Filter 2: Zero Facet Loss - all critical requested facets must be supported & bound
-            if intent.facets:
-                critical_facets = {
-                    fk: fv for fk, fv in intent.facets.items()
-                    if self.ontology.is_critical_unhandled_facet(fk, fv)
-                }
-                if critical_facets:
-                    if dims:
-                        cand_ok, matched_dims, unhandled = self.matcher.match_facets_to_dimensions(
-                            cand_id, dims, critical_facets
-                        )
-                        crit_unhandled = [
-                            f for f in unhandled
-                            if self.ontology.is_critical_unhandled_facet(f, critical_facets.get(f, ""))
-                        ]
-                        if crit_unhandled:
-                            continue
-                    else:
-                        supported = meta.supported_facets or self.registry.get_supported_facets(cand_id)
-                        if not set(critical_facets.keys()).issubset(supported):
-                            continue
+            cands_for_guard.append(
+                CatalogCandidate(
+                    indicator_id=cand_id,
+                    name=meta.name,
+                    score=score,
+                    dimensions=dims,
+                    unit=meta.unit or "",
+                )
+            )
 
-            surviving.append((cand_id, score, meta, dims))
-
-        if not surviving:
-            trace.append("[Stage 3: Tier-2 Search] All candidates filtered out by token coverage or Zero Facet Loss.")
+        if not cands_for_guard:
+            trace.append("[Stage 3: Tier-2 Search] All candidates filtered out by token coverage.")
             return None
 
-        top_id, top_score, top_meta, top_dims = surviving[0]
-        second_score = surviving[1][1] if len(surviving) > 1 else 0.0
+        is_agg = any(not self.ontology.is_critical_unhandled_facet(fk, fv) for fk, fv in intent.facets.items()) or "total" in intent.clean_query.split()
+        guard_res = self.specificity_guard.evaluate(
+            cands_for_guard,
+            intent_facets=intent.facets,
+            require_aggregate=is_agg,
+        )
 
-        normalized_margin = (top_score - second_score) / top_score if top_score > 0 else 0.0
-        is_competing = len(surviving) >= 2 and normalized_margin < 0.15
+        if guard_res.status == ResolutionStatus.ABSTAINED:
+            trace.append(f"[Stage 3: Tier-2 Search] ABSTAINED via Specificity Guard: {guard_res.abstention_reason}")
+            latency = (time.perf_counter() - t0) * 1000.0
+            return SemanticResolutionResponse(
+                status=ResolutionStatus.ABSTAINED,
+                query=query_str,
+                abstention_reason=guard_res.abstention_reason,
+                unsupported_facet=sorted(guard_res.unmatched_facets)[0] if guard_res.unmatched_facets else None,
+                unmatched_facets=guard_res.unmatched_facets,
+                conversational_hint=guard_res.conversational_hint,
+                polarity_info=intent.polarity_info,
+                execution_trace=trace,
+                latency_ms=latency,
+            )
+
+        assert guard_res.selected_candidate is not None
+        top_cand = guard_res.selected_candidate
+        top_id = top_cand.indicator_id
+        top_meta = self.registry.get_indicator(top_id)
+        top_dims = top_cand.dimensions
 
         # Build applied filters for top candidate
         top_applied_filters = applied_filters.model_copy(deep=True)
@@ -1284,38 +1290,30 @@ class SemanticResolutionEngine:
             )
             top_applied_filters.dimensions = matched_dims
 
-        if top_meta.mandatory_filters:
+        if top_meta and top_meta.mandatory_filters:
             bound_names = {d.dim_name.lower() for d in top_applied_filters.dimensions}
             for mf in top_meta.mandatory_filters:
                 if mf.dim_name.lower() not in bound_names:
                     top_applied_filters.dimensions.insert(0, mf)
                     bound_names.add(mf.dim_name.lower())
 
-        if is_competing:
+        if guard_res.status == ResolutionStatus.ALTERNATIVE_PROPOSED:
             alternatives: list[AlternativeCandidate] = []
-            for alt_id, _, alt_meta, _ in surviving[1:4]:
+            for alt in guard_res.alternatives:
                 alternatives.append(
                     AlternativeCandidate(
-                        indicator_id=alt_id,
-                        name=alt_meta.name,
+                        indicator_id=alt.indicator_id,
+                        name=alt.name,
                         relationship=RelationshipType.ALTERNATIVE_MEASURE,
-                        note=f"Serie competidora en catálogo ({alt_meta.unit or 'unidad no especificada'}).",
+                        note=f"Serie competidora en catálogo ({alt.unit or 'unidad no especificada'}).",
                     )
                 )
 
-            alt_summaries = [f"ID {a.indicator_id} ('{a.name[:50]}')" for a in alternatives]
-            hint = (
-                f"Se seleccionó como candidato primario el indicador {top_id} ('{top_meta.name[:60]}'). "
-                f"Existen series alternativas compatibles en el catálogo: {', '.join(alt_summaries)}."
-            )
-            if len(hint) > 550:
-                hint = hint[:547] + "..."
-
             selected = SelectedCandidate(
                 indicator_id=top_id,
-                name=top_meta.name,
-                measure_type=top_meta.measure_type,
-                unit=top_meta.unit,
+                name=top_cand.name,
+                measure_type=top_meta.measure_type if top_meta else "INCIDENCIA",
+                unit=top_cand.unit or (top_meta.unit if top_meta else "%"),
                 relevance_score=0.82,
                 selection_reason="Candidato primario seleccionado de series competidoras compatibles en el catálogo completo.",
             )
@@ -1323,7 +1321,7 @@ class SemanticResolutionEngine:
             temporal_info, _ = self._audit_temporal_availability(top_id, intent, trace, is_alternative_fallback=True)
             latency = (time.perf_counter() - t0) * 1000.0
             trace.append(
-                f"[Stage 3: Tier-2 Search] ALTERNATIVE_PROPOSED: Selected ID {top_id} with {len(alternatives)} alternatives (Margin: {normalized_margin:.3f})."
+                f"[Stage 3: Tier-2 Search] ALTERNATIVE_PROPOSED: Selected ID {top_id} with {len(alternatives)} alternatives."
             )
             return SemanticResolutionResponse(
                 status=ResolutionStatus.ALTERNATIVE_PROPOSED,
@@ -1333,16 +1331,16 @@ class SemanticResolutionEngine:
                 alternatives=alternatives,
                 temporal_info=temporal_info,
                 polarity_info=intent.polarity_info,
-                conversational_hint=hint,
+                conversational_hint=guard_res.conversational_hint,
                 execution_trace=trace,
                 latency_ms=latency,
             )
 
         selected = SelectedCandidate(
             indicator_id=top_id,
-            name=top_meta.name,
-            measure_type=top_meta.measure_type,
-            unit=top_meta.unit,
+            name=top_cand.name or (top_meta.name if top_meta else str(top_id)),
+            measure_type=top_meta.measure_type if top_meta else "INCIDENCIA",
+            unit=top_cand.unit or (top_meta.unit if top_meta else "%"),
             relevance_score=0.90,
             selection_reason="Resolución determinista de catálogo completo (Tier-2) por correspondencia léxica y dimensional estricta.",
         )
@@ -1350,7 +1348,7 @@ class SemanticResolutionEngine:
         temporal_info, status = self._audit_temporal_availability(top_id, intent, trace, is_alternative_fallback=False)
         latency = (time.perf_counter() - t0) * 1000.0
         trace.append(
-            f"[Stage 3: Tier-2 Search] RESOLVED: Selected ID {top_id} ('{top_meta.name}') with score {selected.relevance_score} (Status: {status.value})."
+            f"[Stage 3: Tier-2 Search] RESOLVED: Selected ID {top_id} ('{selected.name}') with score {selected.relevance_score} (Status: {status.value})."
         )
         return SemanticResolutionResponse(
             status=status,
