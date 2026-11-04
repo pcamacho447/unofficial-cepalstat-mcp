@@ -143,6 +143,7 @@ class Thesaurus:
         self._sorted_vocabulary: list[str] | None = None
         self._vocab_by_len: dict[int, list[str]] = {}
         self._suggest_cache: dict[tuple[str, int], str | None] = {}
+        self._expansion_map: dict[str, list[str]] | None = None
 
     @property
     def synsets(self) -> dict[str, list[Synset]]:
@@ -206,13 +207,99 @@ class Thesaurus:
                 if len(clean_word) >= 4 and not clean_word.isdigit():
                     self._vocabulary.add(clean_word)
 
-        # Invalidate sorted cache, length index, and suggestion cache on mutation
+        # Invalidate sorted cache, length index, suggestion cache, and expansion map on mutation
         self._sorted_vocabulary = None
         self._vocab_by_len = {}
         self._suggest_cache.clear()
+        self._expansion_map = None
 
         # Re-sort descending by term length to ensure longer phrases match first
         compiled_list.sort(key=lambda item: len(item[1]), reverse=True)
+
+    def _build_expansion_map(self) -> None:
+        """Build term-to-synonyms expansion map from all registered synsets."""
+        lookup: dict[str, set[str]] = {}
+
+        def add_pair(k: str, v: str) -> None:
+            k_c = strip_accents(k).strip()
+            v_c = strip_accents(v).strip()
+            if k_c and v_c and k_c != v_c:
+                lookup.setdefault(k_c, set()).add(v_c)
+                stopwords = {"de", "del", "la", "el", "los", "las", "en", "por", "y", "o", "a"}
+                k_words = [w for w in k_c.split() if w not in stopwords]
+                if len(k_words) > 1:
+                    lookup.setdefault(" ".join(k_words), set()).add(v_c)
+
+        for synsets in self._synsets.values():
+            for synset in synsets:
+                if synset.canonical_id == "EMPLEO_GENERAL":
+                    unemp = {"desempleo", "desocupacion", "paro"}
+                    for t1 in unemp:
+                        for t2 in unemp:
+                            add_pair(t1, t2)
+                    emp = {"empleo", "trabajo", "ocupacion", "chamba", "pega", "laburo", "camello"}
+                    for t1 in emp:
+                        for t2 in emp:
+                            add_pair(t1, t2)
+                    continue
+
+                all_terms: set[str] = set()
+                if synset.canonical_term:
+                    all_terms.add(synset.canonical_term)
+                all_terms.update(synset.synonyms)
+                for tags in synset.regional_tags.values():
+                    all_terms.update(tags)
+
+                terms_list = [strip_accents(t) for t in all_terms if t.strip()]
+                for t1 in terms_list:
+                    for t2 in terms_list:
+                        add_pair(t1, t2)
+
+        # Domain associations
+        for inf in ["inflacion", "tasa de inflacion"]:
+            add_pair(inf, "ipc")
+            add_pair(inf, "precios consumidor")
+            add_pair(inf, "indice de precios al consumidor")
+        add_pair("ipc", "inflacion")
+        add_pair("ipc", "precios al consumidor")
+        add_pair("pib", "producto interno bruto")
+        add_pair("pib", "actividad economica")
+        add_pair("producto interno bruto", "pib")
+
+        for trade in ["balanza", "balanza comercial", "balanza de bienes"]:
+            add_pair(trade, "exportaciones")
+            add_pair(trade, "importaciones")
+            add_pair(trade, "fob")
+            add_pair(trade, "comercio exterior")
+        for exp in ["exportaciones", "importaciones", "fob"]:
+            add_pair(exp, "balanza")
+            add_pair(exp, "balanza comercial")
+            add_pair(exp, "balanza de bienes")
+
+        self._expansion_map = {k: sorted(v) for k, v in lookup.items()}
+
+    def expand_query_tokens(self, tokens: list[str]) -> list[str]:
+        """Declaratively expand query tokens using registered synsets."""
+        if not tokens:
+            return []
+        if self._expansion_map is None:
+            self._build_expansion_map()
+        assert self._expansion_map is not None
+
+        expansions: list[str] = []
+        seen: set[str] = set()
+
+        clean_tokens = [strip_accents(t).strip() for t in tokens if strip_accents(t).strip()]
+        n = len(clean_tokens)
+        for length in range(n, 0, -1):
+            for i in range(n - length + 1):
+                ngram = " ".join(clean_tokens[i : i + length])
+                for syn in self._expansion_map.get(ngram, []):
+                    if syn not in seen and syn != ngram:
+                        seen.add(syn)
+                        expansions.append(syn)
+
+        return expansions
 
     def suggest_correction(self, token: str, max_distance: int = 2) -> str | None:
         """Suggest closest vocabulary term within bounded edit distance.
@@ -557,6 +644,22 @@ DEFAULT_CANONICAL_SYNSETS: list[Synset] = [
         domain="concept_macro",
         canonical_term="indice de precios al consumidor",
         synonyms=["inflacion", "tasa de inflacion", "ipc", "costo de vida", "carestia", "aumento de precios"],
+    ),
+    # concept_trade
+    Synset(
+        canonical_id="BALANZA_BIENES",
+        domain="concept_trade",
+        canonical_term="balanza de bienes",
+        synonyms=[
+            "balanza comercial",
+            "balanza de bienes",
+            "comercio exterior de bienes",
+            "exportaciones e importaciones de bienes",
+            "exportaciones totales de bienes fob",
+            "exportaciones fob",
+            "importaciones fob",
+            "balanza de pagos",
+        ],
     ),
     # measure_modifiers
     Synset(

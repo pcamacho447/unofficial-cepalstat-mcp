@@ -2,6 +2,8 @@
 
 from pydantic import BaseModel, Field
 
+from unofficial_cepalstat_mcp.dimensions import Dimension
+
 
 class CatalogIndicator(BaseModel):
     """An indicator indexed in the master catalog."""
@@ -15,6 +17,16 @@ class CatalogIndicator(BaseModel):
     full_path: str = ""
     updated_at: str = ""
     provenance: str = "curated"
+
+
+class CatalogCandidate(CatalogIndicator):
+    """Candidate indicator returned by FTS5 BM25 retrieval."""
+
+    score: float = 0.0
+    bm25_score: float = 0.0
+    unit: str = ""
+    dimensions: list[Dimension] = Field(default_factory=list)
+    member_labels: str = ""
 
 
 class CatalogStats(BaseModel):
