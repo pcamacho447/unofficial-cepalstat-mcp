@@ -7,12 +7,44 @@ import shutil
 import sqlite3
 import tempfile
 from pathlib import Path
+from typing import overload
 
+from unofficial_cepalstat_mcp import config
 from unofficial_cepalstat_mcp.bitacora.store import BitacoraStore
 from unofficial_cepalstat_mcp.catalog.store import CatalogStore
 from unofficial_cepalstat_mcp.config import get_cache_db_path
 from unofficial_cepalstat_mcp.semantic.facet_ontology import DEFAULT_FACET_ONTOLOGY
 from unofficial_cepalstat_mcp.semantic.graph_builder import GraphBuilder
+
+
+def is_sqlite_database_healthy(path: Path) -> bool:
+    """Verify if a SQLite database file exists, is well-formed, and has valid catalog tables."""
+    if not path.is_file():
+        return False
+    try:
+        if path.stat().st_size < 100:
+            return False
+        with open(path, "rb") as f:
+            header = f.read(16)
+        if header != b"SQLite format 3\x00":
+            return False
+
+        conn = sqlite3.connect(path, timeout=5.0)
+        try:
+            cursor = conn.cursor()
+            cursor.execute("PRAGMA quick_check;")
+            rows = cursor.fetchall()
+            if not rows or rows[0][0] != "ok":
+                return False
+            cursor.execute("SELECT COUNT(*) FROM master_indicators;")
+            row = cursor.fetchone()
+            if row is None or row[0] == 0:
+                return False
+            return True
+        finally:
+            conn.close()
+    except Exception:
+        return False
 
 
 def export_seed_snapshot(
@@ -140,44 +172,105 @@ def export_seed_snapshot(
     return out_path
 
 
-def ensure_seed_hydrated(target_db: Path | str, force: bool = False) -> bool:
-    """Atomically hydrate SQLite cache database from packaged seed_catalog.db.gz if target does not exist.
+@overload
+def ensure_seed_hydrated(
+    target_db: Path | str | None = None,
+    force: bool = False,
+    *,
+    db_path: Path | str,
+) -> Path: ...
+
+
+@overload
+def ensure_seed_hydrated(
+    target_db: Path | str | None = None,
+    force: bool = False,
+    *,
+    db_path: None = None,
+) -> bool: ...
+
+
+def ensure_seed_hydrated(
+    target_db: Path | str | None = None,
+    force: bool = False,
+    *,
+    db_path: Path | str | None = None,
+) -> bool | Path:
+    """Atomically hydrate SQLite cache database from packaged seed_catalog.db.gz if target
+    does not exist or is corrupted.
 
     Args:
-        target_db: Target path for the SQLite database.
+        target_db: Target path for the SQLite database. Defaults to get_cache_db_path().
         force: If True, allow hydration even if path differs from get_cache_db_path()
                or already exists.
+        db_path: Alternative keyword-only alias for target_db. When provided, returns Path.
 
     Returns:
-        True if seed was hydrated, False otherwise.
+        Path if db_path was provided; otherwise True if seed was hydrated or repaired, False otherwise.
     """
-    target = Path(target_db)
-    if target.exists() and not force:
+    effective_target = (
+        target_db if target_db is not None else (db_path if db_path is not None else config.get_cache_db_path())
+    )
+    target = Path(effective_target)
+
+    default_cache = config.get_cache_db_path()
+    if not force and target.resolve() != default_cache.resolve():
+        if db_path is not None:
+            raise ValueError(
+                f"Cannot hydrate non-default cache database '{target}' without force=True"
+            )
         return False
 
-    default_cache = get_cache_db_path()
-    if not force and target.resolve() != default_cache.resolve():
-        return False
+    if target.exists() and is_sqlite_database_healthy(target) and not force:
+        return target if db_path is not None else False
 
     try:
         data_pkg = importlib.resources.files("unofficial_cepalstat_mcp.data")
         seed_res = data_pkg.joinpath("seed_catalog.db.gz")
         if not seed_res.is_file():
+            if db_path is not None:
+                raise FileNotFoundError("Packaged seed_catalog.db.gz not found")
             return False
     except Exception:
+        if db_path is not None:
+            raise
         return False
 
     if target.parent:
         target.parent.mkdir(parents=True, exist_ok=True)
 
-    tmp_path = Path(f"{target}.{os.getpid()}.tmp")
+    tmp_file = tempfile.NamedTemporaryFile(
+        dir=target.parent,
+        prefix=f".{target.name}.",
+        suffix=".tmp",
+        delete=False,
+    )
+    tmp_path = Path(tmp_file.name)
     try:
         with seed_res.open("rb") as f_in:
             with gzip.open(f_in, "rb") as gz_in:
-                with open(tmp_path, "wb") as f_out:
-                    shutil.copyfileobj(gz_in, f_out)
+                shutil.copyfileobj(gz_in, tmp_file)
+        tmp_file.flush()
+        tmp_file.close()
+
+        # Integrity verification on decompressed temp file
+        conn = sqlite3.connect(tmp_path, timeout=5.0)
+        try:
+            cursor = conn.cursor()
+            cursor.execute("PRAGMA quick_check;")
+            rows = cursor.fetchall()
+            if not rows or rows[0][0] != "ok":
+                raise sqlite3.DatabaseError("Decompressed seed database failed PRAGMA quick_check")
+        finally:
+            conn.close()
+
+        try:
+            tmp_path.chmod(0o664)
+        except OSError:
+            pass
+
         os.replace(tmp_path, target)
-        return True
+        return target if db_path is not None else True
     except Exception:
         if tmp_path.exists():
             try:
