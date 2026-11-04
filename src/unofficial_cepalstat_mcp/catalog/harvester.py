@@ -345,9 +345,17 @@ class CatalogHarvester:
             with s._get_connection() as conn:
                 for tbl in ("master_indicators", "staging_indicators"):
                     try:
-                        rows = conn.execute(
-                            f"SELECT indicator_id, name, order_num, theme, area, subarea, full_path, provenance FROM {tbl}"
-                        ).fetchall()
+                        if tbl == "master_indicators":
+                            query = (
+                                "SELECT indicator_id, name, order_num, theme, area, subarea, "
+                                "full_path, 'curated' AS provenance FROM master_indicators"
+                            )
+                        else:
+                            query = (
+                                "SELECT indicator_id, name, order_num, theme, area, subarea, "
+                                "full_path, provenance FROM staging_indicators"
+                            )
+                        rows = conn.execute(query).fetchall()
                         for r in rows:
                             if self._matches_theme(r["theme"] or r["name"], theme_id):
                                 store_indicators.append(dict(r))
@@ -402,7 +410,7 @@ class CatalogHarvester:
                 or cand.get("provenance") == "curated"
             )
 
-            # Insert/upsert into target_store
+            # Process candidate: handle curated vs inferred
             if is_curated:
                 curated_count += 1
                 target_store.upsert_indicator(
@@ -414,41 +422,51 @@ class CatalogHarvester:
                     area=cand.get("area", ""),
                     subarea=cand.get("subarea", ""),
                     full_path=cand.get("full_path", ""),
-                )
-                target_store.upsert_indicator(
-                    indicator_id=ind_id,
-                    name=ind_name,
-                    provenance="curated",
-                    order_num=cand.get("order_num"),
-                    theme=cand.get("theme", ""),
-                    area=cand.get("area", ""),
-                    subarea=cand.get("subarea", ""),
-                    full_path=cand.get("full_path", ""),
                     staging=True,
                 )
-            else:
-                inferred_count += 1
-                target_store.upsert_indicator(
-                    indicator_id=ind_id,
-                    name=ind_name,
-                    provenance="inferred",
-                    order_num=cand.get("order_num"),
-                    theme=cand.get("theme", ""),
-                    area=cand.get("area", ""),
-                    subarea=cand.get("subarea", ""),
-                    full_path=cand.get("full_path", ""),
-                )
-                target_store.upsert_indicator(
-                    indicator_id=ind_id,
-                    name=ind_name,
-                    provenance="inferred",
-                    order_num=cand.get("order_num"),
-                    theme=cand.get("theme", ""),
-                    area=cand.get("area", ""),
-                    subarea=cand.get("subarea", ""),
-                    full_path=cand.get("full_path", ""),
-                    staging=True,
-                )
+
+                # For curated indicators: DO NOT overwrite dimensions or metadata in DB.
+                # Only write staging markdown draft if output_dir is provided.
+                if output_dir:
+                    existing_meta = target_store.get_indicator_metadata(ind_id) or (
+                        self.store.get_indicator_metadata(ind_id) if self.store is not target_store else None
+                    ) or {}
+                    existing_dims = target_store.get_indicator_dimensions(ind_id) or (
+                        self.store.get_indicator_dimensions(ind_id) if self.store is not target_store else []
+                    )
+                    out_dir_path = Path(output_dir)
+                    out_dir_path.mkdir(parents=True, exist_ok=True)
+                    draft_file = out_dir_path / f"indicator_{ind_id}.md"
+                    recipe_content = (
+                        f"# Receta CEPALSTAT Indicador {ind_id}\n\n"
+                        f"provenance: curated\n\n"
+                        f"- **Nombre:** {ind_name}\n"
+                        f"- **Tema:** {cand.get('theme', '')}\n"
+                        f"- **Área:** {cand.get('area', '')}\n"
+                        f"- **Unidad:** {existing_meta.get('unit', '')}\n"
+                        f"- **Periodicidad:** {existing_meta.get('periodicity', '')}\n"
+                        f"- **Provenance:** curated\n"
+                        f"- **Dimensiones:** {len(existing_dims)}\n"
+                    )
+                    draft_file.write_text(recipe_content, encoding="utf-8")
+
+                newly_harvested += 1
+                self._notify_progress(on_progress, idx, total_target, ind_id, "success")
+                continue
+
+            # Inferred indicator: upsert into staging and harvest dimensions/metadata
+            inferred_count += 1
+            target_store.upsert_indicator(
+                indicator_id=ind_id,
+                name=ind_name,
+                provenance="inferred",
+                order_num=cand.get("order_num"),
+                theme=cand.get("theme", ""),
+                area=cand.get("area", ""),
+                subarea=cand.get("subarea", ""),
+                full_path=cand.get("full_path", ""),
+                staging=True,
+            )
 
             # Harvest dimensions and metadata
             harvest_success = False
@@ -465,6 +483,7 @@ class CatalogHarvester:
                         dimensions=dimensions,
                         content_hash=content_hash,
                         harvested_at=harvested_at,
+                        staging=True,
                     )
 
                     parsed_meta = {"unit": "", "definition": "", "periodicity": ""}
@@ -493,13 +512,13 @@ class CatalogHarvester:
                         draft_file = out_dir_path / f"indicator_{ind_id}.md"
                         recipe_content = (
                             f"# Receta CEPALSTAT Indicador {ind_id}\n\n"
-                            f"provenance: {'curated' if is_curated else 'inferred'}\n\n"
+                            f"provenance: inferred\n\n"
                             f"- **Nombre:** {ind_name}\n"
                             f"- **Tema:** {cand.get('theme', '')}\n"
                             f"- **Área:** {cand.get('area', '')}\n"
                             f"- **Unidad:** {parsed_meta.get('unit', '')}\n"
                             f"- **Periodicidad:** {parsed_meta.get('periodicity', '')}\n"
-                            f"- **Provenance:** {'curated' if is_curated else 'inferred'}\n"
+                            f"- **Provenance:** inferred\n"
                             f"- **Dimensiones:** {len(dimensions)}\n"
                         )
                         draft_file.write_text(recipe_content, encoding="utf-8")

@@ -693,11 +693,25 @@ class CatalogStore:
         dimensions: list[Dimension],
         content_hash: str | None = None,
         harvested_at: str | None = None,
+        staging: bool = False,
     ) -> None:
         """Store dimensions and their members for an indicator."""
         if harvested_at is None:
             harvested_at = datetime.now(timezone.utc).isoformat()
         with self._get_connection() as conn:
+            if staging:
+                conn.execute("DELETE FROM staging_dimension_members WHERE indicator_id = ?", (indicator_id,))
+                for dim in dimensions:
+                    for member in dim.members:
+                        is_synth = 1 if (getattr(member, "is_synthetic", False) or member.id in SYNTHETIC_DIMENSION_MEMBER_IDS) else 0
+                        conn.execute(
+                            """
+                            INSERT OR REPLACE INTO staging_dimension_members (indicator_id, dim_id, member_id, member_name, is_synthetic)
+                            VALUES (?, ?, ?, ?, ?)
+                            """,
+                            (indicator_id, dim.id, member.id, member.name, is_synth),
+                        )
+
             conn.execute("DELETE FROM dimension_members WHERE indicator_id = ?", (indicator_id,))
             conn.execute("DELETE FROM indicator_dimensions WHERE indicator_id = ?", (indicator_id,))
             for pos, dim in enumerate(dimensions):
@@ -755,7 +769,7 @@ class CatalogStore:
         """Insert or update an indicator, strictly respecting curated provenance immutability."""
         now_str = updated_at or datetime.now(timezone.utc).isoformat()
         with self._get_connection() as conn:
-            # Check if this indicator already exists with 'curated' provenance in staging_indicators
+            # Check if this indicator already exists with 'curated' provenance in staging_indicators or master
             curated_existing = False
             try:
                 row = conn.execute(
@@ -769,38 +783,39 @@ class CatalogStore:
 
             target_provenance = "curated" if (curated_existing and provenance == "inferred") else provenance
 
-            conn.execute(
-                """
-                INSERT INTO staging_indicators (indicator_id, name, order_num, theme, area, subarea, full_path, updated_at, provenance)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-                ON CONFLICT(indicator_id) DO UPDATE SET
-                    name = excluded.name,
-                    order_num = coalesce(excluded.order_num, staging_indicators.order_num),
-                    theme = case when excluded.theme != '' then excluded.theme else staging_indicators.theme end,
-                    area = case when excluded.area != '' then excluded.area else staging_indicators.area end,
-                    subarea = case when excluded.subarea != '' then excluded.subarea else staging_indicators.subarea end,
-                    full_path = case when excluded.full_path != '' then excluded.full_path else staging_indicators.full_path end,
-                    updated_at = excluded.updated_at,
-                    provenance = case when staging_indicators.provenance = 'curated' and excluded.provenance = 'inferred' then 'curated' else excluded.provenance end
-                """,
-                (indicator_id, name, order_num, theme, area, subarea, full_path, now_str, target_provenance),
-            )
-
-            conn.execute(
-                """
-                INSERT INTO master_indicators (indicator_id, name, order_num, theme, area, subarea, full_path, updated_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                ON CONFLICT(indicator_id) DO UPDATE SET
-                    name = excluded.name,
-                    order_num = coalesce(excluded.order_num, master_indicators.order_num),
-                    theme = case when excluded.theme != '' then excluded.theme else master_indicators.theme end,
-                    area = case when excluded.area != '' then excluded.area else master_indicators.area end,
-                    subarea = case when excluded.subarea != '' then excluded.subarea else master_indicators.subarea end,
-                    full_path = case when excluded.full_path != '' then excluded.full_path else master_indicators.full_path end,
-                    updated_at = excluded.updated_at
-                """,
-                (indicator_id, name, order_num, theme, area, subarea, full_path, now_str),
-            )
+            if staging:
+                conn.execute(
+                    """
+                    INSERT INTO staging_indicators (indicator_id, name, order_num, theme, area, subarea, full_path, updated_at, provenance)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ON CONFLICT(indicator_id) DO UPDATE SET
+                        name = excluded.name,
+                        order_num = coalesce(excluded.order_num, staging_indicators.order_num),
+                        theme = case when excluded.theme != '' then excluded.theme else staging_indicators.theme end,
+                        area = case when excluded.area != '' then excluded.area else staging_indicators.area end,
+                        subarea = case when excluded.subarea != '' then excluded.subarea else staging_indicators.subarea end,
+                        full_path = case when excluded.full_path != '' then excluded.full_path else staging_indicators.full_path end,
+                        updated_at = excluded.updated_at,
+                        provenance = case when staging_indicators.provenance = 'curated' and excluded.provenance = 'inferred' then 'curated' else excluded.provenance end
+                    """,
+                    (indicator_id, name, order_num, theme, area, subarea, full_path, now_str, target_provenance),
+                )
+            else:
+                conn.execute(
+                    """
+                    INSERT INTO master_indicators (indicator_id, name, order_num, theme, area, subarea, full_path, updated_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    ON CONFLICT(indicator_id) DO UPDATE SET
+                        name = excluded.name,
+                        order_num = coalesce(excluded.order_num, master_indicators.order_num),
+                        theme = case when excluded.theme != '' then excluded.theme else master_indicators.theme end,
+                        area = case when excluded.area != '' then excluded.area else master_indicators.area end,
+                        subarea = case when excluded.subarea != '' then excluded.subarea else master_indicators.subarea end,
+                        full_path = case when excluded.full_path != '' then excluded.full_path else master_indicators.full_path end,
+                        updated_at = excluded.updated_at
+                    """,
+                    (indicator_id, name, order_num, theme, area, subarea, full_path, now_str),
+                )
 
     def get_indicator(self, indicator_id: int) -> CatalogIndicator | None:
         """Retrieve an indicator with its provenance from staging or master catalog."""

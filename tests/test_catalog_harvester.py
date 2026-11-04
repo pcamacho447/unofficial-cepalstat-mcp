@@ -469,8 +469,28 @@ def test_harvester_persists_unit_and_periodicity_from_metadata_endpoint(tmp_path
 def test_harvest_staging_isolates_synthetic_members_and_preserves_curated(tmp_path, mocker):
     store = CatalogStore(db_path=tmp_path / "test_staging.db")
     store.initialize_schema()
-    # Insert a curated indicator
+    # Insert a curated indicator with curated metadata and dimensions
     store.upsert_indicator(indicator_id=2204, name="PIB Constant", provenance="curated")
+    store.store_indicator_metadata(
+        indicator_id=2204,
+        name="PIB Constant",
+        concept="ECONOMIC_ACTIVITY",
+        measure_type="NIVEL_MONETARIO_PRECIOS_CONSTANTES",
+        unit="Millones de dólares",
+        supported_facets={"moneda", "precios"},
+        definition="PIB a precios constantes de 2018",
+        periodicity="Anual",
+    )
+    store.store_indicator_dimensions(
+        indicator_id=2204,
+        dimensions=[
+            Dimension(
+                id=208,
+                name="País__ESTANDAR",
+                members=[Member(id=1, name="América Latina y el Caribe")],
+            )
+        ],
+    )
 
     mock_client = mocker.Mock(spec=CepalStatClient)
     mock_client.get.side_effect = lambda path, **kwargs: (
@@ -517,8 +537,33 @@ def test_harvest_staging_isolates_synthetic_members_and_preserves_curated(tmp_pa
     curated = store.get_indicator(2204)
     assert curated is not None
     assert curated.provenance == "curated"
-    # Synthetic members must be flagged
+
+    # Invariant: Curated indicator metadata must remain completely intact
+    meta_2204 = store.get_indicator_metadata(2204)
+    assert meta_2204 is not None
+    assert meta_2204["concept"] == "ECONOMIC_ACTIVITY"
+    assert meta_2204["measure_type"] == "NIVEL_MONETARIO_PRECIOS_CONSTANTES"
+    assert "moneda" in meta_2204["supported_facets"]
+    assert meta_2204["unit"] == "Millones de dólares"
+
+    # Invariant: Curated dimensions must not be overwritten or deleted
+    dims_2204 = store.get_indicator_dimensions(2204)
+    assert len(dims_2204) == 1
+    assert len(dims_2204[0].members) == 1
+    assert dims_2204[0].members[0].id == 1
+
+    # Synthetic members must be flagged in database
     assert store.has_synthetic_member_flag(79578) is True
+
+    # Staging dimension members table must be populated for inferred indicators
+    with store._get_connection() as conn:
+        staging_count = conn.execute("SELECT count(*) FROM staging_dimension_members").fetchone()[0]
+        assert staging_count > 0
+        synth_stg = conn.execute(
+            "SELECT is_synthetic FROM staging_dimension_members WHERE member_id = 79578"
+        ).fetchone()
+        assert synth_stg is not None
+        assert synth_stg["is_synthetic"] == 1
 
 
 def test_harvest_staging_generates_markdown_drafts(tmp_path, mocker):
