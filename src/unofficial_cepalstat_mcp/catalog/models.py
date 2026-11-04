@@ -2,6 +2,8 @@
 
 from pydantic import BaseModel, Field
 
+from unofficial_cepalstat_mcp.dimensions import Dimension
+
 
 class CatalogIndicator(BaseModel):
     """An indicator indexed in the master catalog."""
@@ -14,6 +16,17 @@ class CatalogIndicator(BaseModel):
     subarea: str = ""
     full_path: str = ""
     updated_at: str = ""
+    provenance: str = "curated"
+
+
+class CatalogCandidate(CatalogIndicator):
+    """Candidate indicator returned by FTS5 BM25 retrieval."""
+
+    score: float = 0.0
+    bm25_score: float = 0.0
+    unit: str = ""
+    dimensions: list[Dimension] = Field(default_factory=list)
+    member_labels: str = ""
 
 
 class CatalogStats(BaseModel):
@@ -41,6 +54,8 @@ class HarvestSummary(BaseModel):
     total_target: int = 0
     already_harvested: int = 0
     newly_harvested: int = 0
+    inferred_count: int = 0
+    curated_count: int = 0
     failed_ids: list[int] = Field(default_factory=list)
     duration_seconds: float = 0.0
 

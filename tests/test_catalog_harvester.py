@@ -466,6 +466,222 @@ def test_harvester_persists_unit_and_periodicity_from_metadata_endpoint(tmp_path
     assert meta["periodicity"] == "Anual"
 
 
+def test_harvest_staging_isolates_synthetic_members_and_preserves_curated(tmp_path, mocker):
+    store = CatalogStore(db_path=tmp_path / "test_staging.db")
+    store.initialize_schema()
+    # Insert a curated indicator with curated metadata and dimensions
+    store.upsert_indicator(indicator_id=2204, name="PIB Constant", provenance="curated")
+    store.store_indicator_metadata(
+        indicator_id=2204,
+        name="PIB Constant",
+        concept="ECONOMIC_ACTIVITY",
+        measure_type="NIVEL_MONETARIO_PRECIOS_CONSTANTES",
+        unit="Millones de dólares",
+        supported_facets={"moneda", "precios"},
+        definition="PIB a precios constantes de 2018",
+        periodicity="Anual",
+    )
+    store.store_indicator_dimensions(
+        indicator_id=2204,
+        dimensions=[
+            Dimension(
+                id=208,
+                name="País__ESTANDAR",
+                members=[Member(id=1, name="América Latina y el Caribe")],
+            )
+        ],
+    )
+
+    mock_client = mocker.Mock(spec=CepalStatClient)
+    mock_client.get.side_effect = lambda path, **kwargs: (
+        {
+            "body": {
+                "name": "Clasificación temática general",
+                "children": [
+                    {
+                        "name": "Económicos",
+                        "children": [
+                            {"indicator_id": 2204, "name": "PIB Constant (API Updated)"},
+                            {"indicator_id": 2205, "name": "PIB Corriente"},
+                        ],
+                    }
+                ],
+            }
+        }
+        if "/thematic-tree" in path
+        else (
+            {
+                "body": {
+                    "dimensions": [
+                        {
+                            "id": 208,
+                            "name": "País__ESTANDAR",
+                            "members": [
+                                {"id": 1, "name": "América Latina y el Caribe"},
+                                {"id": 79578, "name": "Chile Synthetic Category"},
+                            ],
+                        }
+                    ]
+                }
+            }
+            if "/dimensions" in path
+            else {"body": {"metadata": {"unit": "%", "periodicity": "Anual", "definition": "Test"}}}
+        )
+    )
+
+    harvester = CatalogHarvester(client=mock_client, store=store, rate_limit_delay=0.0)
+    summary = harvester.harvest_staging(theme_id="economic")
+
+    assert summary.inferred_count > 0
+    # Curated indicator provenance must remain 'curated'
+    curated = store.get_indicator(2204)
+    assert curated is not None
+    assert curated.provenance == "curated"
+
+    # Invariant: Curated indicator metadata must remain completely intact
+    meta_2204 = store.get_indicator_metadata(2204)
+    assert meta_2204 is not None
+    assert meta_2204["concept"] == "ECONOMIC_ACTIVITY"
+    assert meta_2204["measure_type"] == "NIVEL_MONETARIO_PRECIOS_CONSTANTES"
+    assert "moneda" in meta_2204["supported_facets"]
+    assert meta_2204["unit"] == "Millones de dólares"
+
+    # Invariant: Curated dimensions must not be overwritten or deleted
+    dims_2204 = store.get_indicator_dimensions(2204)
+    assert len(dims_2204) == 1
+    assert len(dims_2204[0].members) == 1
+    assert dims_2204[0].members[0].id == 1
+
+    # Synthetic members must be flagged in database
+    assert store.has_synthetic_member_flag(79578) is True
+
+    # Staging dimension members table must be populated for inferred indicators
+    with store._get_connection() as conn:
+        staging_count = conn.execute("SELECT count(*) FROM staging_dimension_members").fetchone()[0]
+        assert staging_count > 0
+        synth_stg = conn.execute(
+            "SELECT is_synthetic FROM staging_dimension_members WHERE member_id = 79578"
+        ).fetchone()
+        assert synth_stg is not None
+        assert synth_stg["is_synthetic"] == 1
+
+
+def test_harvest_staging_generates_markdown_drafts(tmp_path, mocker):
+    store = CatalogStore(db_path=tmp_path / "test_staging_drafts.db")
+    store.initialize_schema()
+
+    mock_client = mocker.Mock(spec=CepalStatClient)
+    mock_client.get.side_effect = lambda path, **kwargs: (
+        {
+            "body": {
+                "name": "Clasificación temática general",
+                "children": [
+                    {
+                        "name": "Económicos",
+                        "children": [
+                            {"indicator_id": 5001, "name": "Balanza Comercial Staging"},
+                        ],
+                    }
+                ],
+            }
+        }
+        if "/thematic-tree" in path
+        else (
+            {
+                "body": {
+                    "dimensions": [
+                        {
+                            "id": 208,
+                            "name": "País__ESTANDAR",
+                            "members": [{"id": 1, "name": "Chile"}],
+                        }
+                    ]
+                }
+            }
+            if "/dimensions" in path
+            else {"body": {"metadata": {"unit": "USD", "periodicity": "Mensual", "definition": "Balanza"}}}
+        )
+    )
+
+    drafts_dir = tmp_path / "drafts"
+    harvester = CatalogHarvester(client=mock_client, store=store, rate_limit_delay=0.0)
+    summary = harvester.harvest_staging(theme_id="economic", output_dir=drafts_dir)
+
+    assert summary.inferred_count == 1
+    draft_file = drafts_dir / "indicator_5001.md"
+    assert draft_file.exists()
+    content = draft_file.read_text(encoding="utf-8")
+    assert "Balanza Comercial Staging" in content
+    assert "provenance: inferred" in content.lower()
+
+
+def test_cli_harvest_staging_success(capsys, tmp_path, monkeypatch, mocker):
+    db_path = tmp_path / "cli_staging.db"
+    store = CatalogStore(db_path=db_path)
+    store.initialize_schema()
+    store.upsert_indicator(indicator_id=2204, name="PIB Constant", provenance="curated")
+
+    mock_get = mocker.MagicMock()
+    mock_get.side_effect = lambda path, **kwargs: (
+        {
+            "body": {
+                "name": "Clasificación temática general",
+                "children": [
+                    {
+                        "name": "Económicos",
+                        "children": [
+                            {"indicator_id": 2204, "name": "PIB Constant (API)"},
+                            {"indicator_id": 2205, "name": "PIB Corriente"},
+                        ],
+                    }
+                ],
+            }
+        }
+        if "/thematic-tree" in path
+        else (
+            {
+                "body": {
+                    "dimensions": [
+                        {
+                            "id": 208,
+                            "name": "País__ESTANDAR",
+                            "members": [
+                                {"id": 1, "name": "América Latina y el Caribe"},
+                                {"id": 79578, "name": "Categoría Sintética"},
+                            ],
+                        }
+                    ]
+                }
+            }
+            if "/dimensions" in path
+            else {"body": {"metadata": {"unit": "%", "periodicity": "Anual", "definition": "Test"}}}
+        )
+    )
+
+    monkeypatch.setattr(CepalStatClient, "get", mock_get)
+
+    exit_code = main(["harvest-staging", "--theme", "economic", "--rate", "0.0", "--output-db", str(db_path)])
+    assert exit_code == 0
+
+    captured = capsys.readouterr()
+    assert "CEPALSTAT Staging Metadata Harvester" in captured.out
+    assert "Staging Harvest Complete" in captured.out
+    assert "Inferred records:  1" in captured.out
+    assert "Curated preserved: 1" in captured.out
+
+    # Test catalog subcommand with --json
+    exit_code_json = main(
+        ["catalog", "harvest-staging", "--theme", "economic", "--rate", "0.0", "--output-db", str(db_path), "--json"]
+    )
+    assert exit_code_json == 0
+    captured_json = capsys.readouterr()
+    summary_data = json.loads(captured_json.out)
+    assert summary_data["inferred_count"] >= 1
+    assert summary_data["curated_count"] >= 1
+
+
+
+
 
 
 

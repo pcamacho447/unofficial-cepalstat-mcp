@@ -70,6 +70,70 @@ def _handle_catalog_build_graph(args: argparse.Namespace) -> int:
     return 0
 
 
+def _handle_harvest_staging(args: argparse.Namespace) -> int:
+    """Handle the 'harvest-staging' CLI command."""
+    store = CatalogStore(db_path=args.output_db) if getattr(args, "output_db", None) else CatalogStore()
+    store.initialize_schema()
+    client = CepalStatClient()
+    harvester = CatalogHarvester(
+        client=client,
+        store=store,
+        rate_limit_delay=getattr(args, "rate", 0.05),
+    )
+
+    theme_val = args.theme
+    area_val = getattr(args, "area", None)
+    output_db_val = getattr(args, "output_db", None)
+    output_dir_val = getattr(args, "output_dir", None)
+    json_mode = getattr(args, "json", False)
+
+    if not json_mode:
+        print("=" * 70)
+        print("CEPALSTAT Staging Metadata Harvester")
+        print("=" * 70)
+        print(f"Theme:        {theme_val}")
+        if area_val:
+            print(f"Area filter:  {area_val}")
+        if output_db_val:
+            print(f"Output DB:    {output_db_val}")
+        if output_dir_val:
+            print(f"Output Dir:   {output_dir_val}")
+        print("=" * 70)
+
+    def on_progress(idx: int, total: int, ind_id: int, status: str) -> None:
+        if not json_mode:
+            print(f"[Staging Harvest] ({idx}/{total}) Indicator ID: {ind_id} - {status}")
+
+    try:
+        summary = harvester.harvest_staging(
+            theme_id=theme_val,
+            area_id=area_val,
+            output_db=output_db_val,
+            output_dir=output_dir_val,
+            on_progress=on_progress,
+        )
+
+        if json_mode:
+            print(summary.model_dump_json(indent=2))
+            return 0
+
+        print("=" * 70)
+        print("Staging Harvest Complete")
+        print("=" * 70)
+        print(f"Total target:      {summary.total_target}")
+        print(f"Inferred records:  {summary.inferred_count}")
+        print(f"Curated preserved: {summary.curated_count}")
+        print(f"Failed:            {summary.failed_count}")
+        print(f"Duration:          {summary.duration_seconds:.2f}s")
+        print("=" * 70)
+        if summary.failed_ids:
+            print(f"Failed indicator IDs: {summary.failed_ids}")
+        return 0
+    except Exception as err:
+        print(f"CEPALSTAT Error during harvest-staging: {err}", file=sys.stderr)
+        return 1
+
+
 def _resolve_prog(prog: str | None = None) -> str:
     """Determine the CLI program name dynamically based on invoked binary or explicit argument."""
     if prog:
@@ -283,6 +347,45 @@ def main(args: Sequence[str] | None = None, prog: str | None = None) -> int:
         help="Directory with certified recipes (default: bitacoras)",
     )
 
+    # catalog harvest-staging
+    cat_harvest_staging = catalog_subparsers.add_parser(
+        "harvest-staging",
+        help="Scan API, isolate synthetic members, and populate staging database with inferred provenance",
+        description="Ingest metadata and dimensions into SQLite staging tables with synthetic member isolation and curated provenance guard.",
+    )
+    cat_harvest_staging.add_argument(
+        "--theme",
+        required=True,
+        help="Thematic area to harvest (e.g. economic, social, environment, demographic)",
+    )
+    cat_harvest_staging.add_argument(
+        "--area",
+        help="Optional area name or numeric ID filter",
+    )
+    cat_harvest_staging.add_argument(
+        "--output-db",
+        type=Path,
+        default=None,
+        help="Optional path to output SQLite staging database",
+    )
+    cat_harvest_staging.add_argument(
+        "--output-dir",
+        type=Path,
+        default=None,
+        help="Optional output directory for staging Markdown recipe drafts",
+    )
+    cat_harvest_staging.add_argument(
+        "--rate",
+        type=float,
+        default=0.05,
+        help="Delay between API requests in seconds (default: 0.05)",
+    )
+    cat_harvest_staging.add_argument(
+        "--json",
+        action="store_true",
+        help="Output harvest summary as JSON",
+    )
+
     # analyze
     analyze_parser = subparsers.add_parser("analyze", help="Analytical workflows")
     analyze_subparsers = analyze_parser.add_subparsers(
@@ -342,6 +445,45 @@ def main(args: Sequence[str] | None = None, prog: str | None = None) -> int:
         help="Display step-by-step reasoning trace and decision audit logs",
     )
 
+    # harvest-staging (top-level)
+    harvest_staging_parser = subparsers.add_parser(
+        "harvest-staging",
+        help="Scan API, isolate synthetic members, and populate staging database with inferred provenance",
+        description="Ingest metadata and dimensions into SQLite staging tables with synthetic member isolation and curated provenance guard.",
+    )
+    harvest_staging_parser.add_argument(
+        "--theme",
+        required=True,
+        help="Thematic area to harvest (e.g. economic, social, environment, demographic)",
+    )
+    harvest_staging_parser.add_argument(
+        "--area",
+        help="Optional area name or numeric ID filter",
+    )
+    harvest_staging_parser.add_argument(
+        "--output-db",
+        type=Path,
+        default=None,
+        help="Optional path to output SQLite staging database",
+    )
+    harvest_staging_parser.add_argument(
+        "--output-dir",
+        type=Path,
+        default=None,
+        help="Optional output directory for staging Markdown recipe drafts",
+    )
+    harvest_staging_parser.add_argument(
+        "--rate",
+        type=float,
+        default=0.05,
+        help="Delay between API requests in seconds (default: 0.05)",
+    )
+    harvest_staging_parser.add_argument(
+        "--json",
+        action="store_true",
+        help="Output harvest summary as JSON",
+    )
+
     try:
         parsed = parser.parse_args(args)
     except SystemExit as exc:
@@ -350,6 +492,9 @@ def main(args: Sequence[str] | None = None, prog: str | None = None) -> int:
     if not parsed.command:
         parser.print_help()
         return 0
+
+    if parsed.command == "harvest-staging":
+        return _handle_harvest_staging(parsed)
 
     if parsed.command == "analyze":
         if not parsed.analyze_command:
@@ -664,6 +809,9 @@ def main(args: Sequence[str] | None = None, prog: str | None = None) -> int:
             )
             print(f"Exported seed snapshot: {out_path} ({out_path.stat().st_size / 1024:.1f} KB)")
             return 0
+
+        if parsed.catalog_command == "harvest-staging":
+            return _handle_harvest_staging(parsed)
 
     if parsed.command == "semantic":
         if not parsed.semantic_command:

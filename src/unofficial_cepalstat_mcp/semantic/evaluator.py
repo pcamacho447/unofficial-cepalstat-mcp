@@ -1,11 +1,22 @@
-"""Benchmark runner and statistical metrics calculator for semantic resolution."""
+"""Benchmark runner, statistical metrics calculator, and Specificity Guard for semantic resolution."""
+
+from __future__ import annotations
 
 import json
 import statistics
 import time
+from collections.abc import Sequence
 from pathlib import Path
+from typing import TYPE_CHECKING, Any
 
-from unofficial_cepalstat_mcp.semantic.engine import SemanticResolutionEngine
+from pydantic import BaseModel, Field
+
+from unofficial_cepalstat_mcp.catalog.models import CatalogCandidate
+from unofficial_cepalstat_mcp.semantic.facet_ontology import (
+    DEFAULT_FACET_ONTOLOGY,
+    FacetOntology,
+    strip_accents,
+)
 from unofficial_cepalstat_mcp.semantic.models import (
     BenchmarkCase,
     BenchmarkMetricsReport,
@@ -13,6 +24,171 @@ from unofficial_cepalstat_mcp.semantic.models import (
     RelationshipType,
     ResolutionStatus,
 )
+
+if TYPE_CHECKING:
+    from unofficial_cepalstat_mcp.semantic.engine import SemanticResolutionEngine
+
+
+class SpecificityEvaluationResult(BaseModel):
+    """Result emitted by SpecificityGuard after validating candidate granularity and facets."""
+
+    status: ResolutionStatus
+    selected_candidate: CatalogCandidate | None = None
+    alternatives: list[CatalogCandidate] = Field(default_factory=list)
+    unmatched_facets: set[str] = Field(default_factory=set)
+    abstention_reason: str | None = None
+    conversational_hint: str | None = None
+    is_aggregate_conflict: bool = False
+
+    @property
+    def indicator_id(self) -> int | None:
+        """Return primary selected candidate indicator ID if resolved."""
+        return self.selected_candidate.indicator_id if self.selected_candidate else None
+
+    @property
+    def payload_token_count(self) -> int:
+        """Calculate approximate token count of the structured payload."""
+        payload: dict[str, Any] = {
+            "status": self.status.value,
+            "selected": self.selected_candidate.indicator_id if self.selected_candidate else None,
+            "alts": [a.indicator_id for a in self.alternatives],
+            "hint": self.conversational_hint or "",
+        }
+        text = json.dumps(payload)
+        return max(len(text.split()), len(text) // 4)
+
+
+class SpecificityGuard:
+    """Granularity and facet compatibility guardrail.
+
+    Enforces Zero Facet Loss and deterministic 0.00% False Substitution Rate (FSR):
+    1. Zero Facet Loss: Rejects candidates lacking explicit requested dimensions.
+    2. Aggregate Preservation: Rejects candidates exclusively disaggregated when aggregate is requested.
+    3. Deterministic Routing: Emits RESOLVED (single unambiguous candidate),
+       ALTERNATIVE_PROPOSED (<250 tokens payload when candidates compete closely),
+       or ABSTAINED (no valid candidate).
+    """
+
+    def __init__(self, ontology: FacetOntology | None = None) -> None:
+        self.ontology = ontology or DEFAULT_FACET_ONTOLOGY
+
+    @classmethod
+    def _evaluate_impl(
+        cls,
+        ontology: FacetOntology,
+        candidates: list[CatalogCandidate],
+        intent_facets: set[str] | dict[str, str] | Sequence[str] | None = None,
+        require_aggregate: bool = False,
+    ) -> SpecificityEvaluationResult:
+        req_facets: set[str] = set()
+        is_aggregate_requested = require_aggregate
+
+        if isinstance(intent_facets, dict):
+            for fk, fv in intent_facets.items():
+                if ontology.is_critical_unhandled_facet(fk, fv):
+                    req_facets.add(strip_accents(fk).lower())
+                else:
+                    is_aggregate_requested = True
+        elif isinstance(intent_facets, (set, list, tuple)):
+            req_facets = {strip_accents(f).lower() for f in intent_facets if f}
+
+        surviving: list[CatalogCandidate] = []
+        all_unmatched: set[str] = set()
+        aggregate_conflict = False
+
+        for cand in candidates:
+            # Check A: Zero Facet Loss
+            unmatched = ontology.get_unmatched_facets(cand.dimensions, req_facets)
+            if unmatched:
+                all_unmatched.update(unmatched)
+                continue
+
+            # Check B: Aggregate vs Disaggregation
+            if is_aggregate_requested:
+                has_disagg_without_total = False
+                for d in cand.dimensions:
+                    fkey = ontology.classify_dimension(d.id, d.name)
+                    if not fkey or fkey == "__structural__":
+                        continue
+                    if d.members:
+                        has_total = any(
+                            ontology.is_aggregate_member_name(fkey, m.name)
+                            for m in d.members
+                        )
+                        if not has_total:
+                            has_disagg_without_total = True
+                            break
+                if has_disagg_without_total:
+                    aggregate_conflict = True
+                    continue
+
+            surviving.append(cand)
+
+        if not surviving:
+            if aggregate_conflict and not all_unmatched:
+                reason = "AGGREGATE_CONFLICT: Candidate series are exclusively disaggregated without total member"
+                hint = "La consulta solicita un total agregado, pero las series disponibles en el catálogo están exclusivamente desagregadas sin categoría total."
+            else:
+                facet_str = ", ".join(sorted(all_unmatched)) if all_unmatched else "especificidad"
+                reason = f"UNSUPPORTED_FACET: {facet_str}" if all_unmatched else "UNSUPPORTED_FACET"
+                hint = f"Las dimensiones solicitadas ({facet_str}) no están soportadas por las series candidatas del catálogo."
+
+            return SpecificityEvaluationResult(
+                status=ResolutionStatus.ABSTAINED,
+                selected_candidate=None,
+                alternatives=[],
+                unmatched_facets=all_unmatched,
+                abstention_reason=reason,
+                conversational_hint=hint,
+                is_aggregate_conflict=aggregate_conflict,
+            )
+
+        if len(surviving) == 1:
+            return SpecificityEvaluationResult(
+                status=ResolutionStatus.RESOLVED,
+                selected_candidate=surviving[0],
+                alternatives=[],
+                unmatched_facets=set(),
+            )
+
+        # >= 2 surviving candidates
+        top = surviving[0]
+        second = surviving[1]
+        margin = (top.score - second.score) / top.score if top.score > 0 else 0.0
+
+        if top.score > 0 and margin >= 0.15:
+            return SpecificityEvaluationResult(
+                status=ResolutionStatus.RESOLVED,
+                selected_candidate=top,
+                alternatives=[],
+                unmatched_facets=set(),
+            )
+
+        alts = surviving[1:4]
+        alt_summaries = [f"ID {a.indicator_id} ('{a.name[:40]}')" for a in alts]
+        hint = (
+            f"Candidato primario: ID {top.indicator_id} ('{top.name[:45]}'). "
+            f"Series alternativas compatibles: {', '.join(alt_summaries)}."
+        )
+        if len(hint) > 300:
+            hint = hint[:297] + "..."
+
+        return SpecificityEvaluationResult(
+            status=ResolutionStatus.ALTERNATIVE_PROPOSED,
+            selected_candidate=top,
+            alternatives=alts,
+            unmatched_facets=set(),
+            conversational_hint=hint,
+        )
+
+    def evaluate(
+        self,
+        candidates: list[CatalogCandidate],
+        intent_facets: set[str] | dict[str, str] | Sequence[str] | None = None,
+        require_aggregate: bool = False,
+    ) -> SpecificityEvaluationResult:
+        ont = getattr(self, "ontology", DEFAULT_FACET_ONTOLOGY) if not isinstance(self, type) else DEFAULT_FACET_ONTOLOGY
+        return self._evaluate_impl(ont, candidates, intent_facets, require_aggregate)
 
 
 class BenchmarkEvaluator:
@@ -32,9 +208,14 @@ class BenchmarkEvaluator:
                 / "benchmark"
                 / "semantic_benchmark_cases.json"
             )
-        is_legacy = "semantic_benchmark_cases_200.json" not in str(self.cases_path)
-        profile = "legacy_50" if is_legacy else "official_25"
-        self.engine = engine or SemanticResolutionEngine(catalog_profile=profile)
+        if engine is not None:
+            self.engine = engine
+        else:
+            from unofficial_cepalstat_mcp.semantic.engine import SemanticResolutionEngine
+
+            is_legacy = "semantic_benchmark_cases_200.json" not in str(self.cases_path)
+            profile = "legacy_50" if is_legacy else "official_25"
+            self.engine = SemanticResolutionEngine(catalog_profile=profile)
 
     def load_cases(self) -> list[BenchmarkCase]:
         if not self.cases_path.exists():
