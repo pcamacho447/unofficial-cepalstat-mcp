@@ -133,3 +133,38 @@ def test_get_cache_db_path_with_ensure_hydrated(tmp_path: Path, monkeypatch) -> 
     finally:
         conn.close()
 
+
+def test_get_cache_db_path_ensure_hydrated_is_idempotent_and_preserves_data(
+    tmp_path: Path, monkeypatch
+) -> None:
+    target_db = tmp_path / "idempotent_cache" / ".statscepal_cache.db"
+    monkeypatch.setenv("UNOFFICIAL_CEPALSTAT_MCP_CACHE_PATH", str(target_db))
+
+    # 1. Hydrate database initially
+    resolved = get_cache_db_path(ensure_hydrated=True)
+    assert resolved == target_db
+    assert target_db.exists()
+
+    # 2. Insert custom data / staging table into the healthy database
+    conn = sqlite3.connect(target_db)
+    try:
+        conn.execute("CREATE TABLE staging_indicators_custom (id INTEGER PRIMARY KEY, note TEXT);")
+        conn.execute("INSERT INTO staging_indicators_custom (id, note) VALUES (9999, 'staging preserve');")
+        conn.commit()
+    finally:
+        conn.close()
+
+    # 3. Call get_cache_db_path(ensure_hydrated=True) again
+    resolved_again = get_cache_db_path(ensure_hydrated=True)
+    assert resolved_again == target_db
+
+    # 4. Verify custom data was NOT wiped or overwritten
+    conn = sqlite3.connect(target_db)
+    try:
+        row = conn.execute("SELECT note FROM staging_indicators_custom WHERE id = 9999;").fetchone()
+        assert row is not None
+        assert row[0] == "staging preserve"
+    finally:
+        conn.close()
+
+

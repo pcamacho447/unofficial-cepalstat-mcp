@@ -38,6 +38,6 @@ def get_cache_db_path(ensure_hydrated: bool = False) -> Path:
     if ensure_hydrated:
         from unofficial_cepalstat_mcp.catalog.seed import ensure_seed_hydrated
 
-        ensure_seed_hydrated(cache_path, force=True)
+        ensure_seed_hydrated(cache_path, force=False)
 
     return cache_path
