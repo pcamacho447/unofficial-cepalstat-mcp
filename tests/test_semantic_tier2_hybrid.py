@@ -10,6 +10,44 @@ def _full_engine(tmp_path, monkeypatch) -> SemanticResolutionEngine:
     return SemanticResolutionEngine(registry=SemanticRegistry(store=store), catalog_profile="full_catalog")
 
 
+def test_unified_two_tier_orchestration(tmp_path, monkeypatch) -> None:
+    engine = _full_engine(tmp_path, monkeypatch)
+
+    # 1. Tier 1 query: resolved in-memory with curated ontology
+    t1_res = engine.resolve("tasa de desempleo juvenil femenina")
+    assert t1_res.tier == "tier1"
+    assert t1_res.status == ResolutionStatus.RESOLVED
+    assert t1_res.indicator_id == 5097
+    assert t1_res.diagnostics["tier"] == "tier1"
+
+    # 2. Tier 2 long-tail query without a Tier 1 root concept
+    t2_res = engine.resolve("índice de precios al por mayor en Chile 2022")
+    assert t2_res.tier == "tier2"
+    assert t2_res.status == ResolutionStatus.RESOLVED
+    assert t2_res.indicator_id == 544
+    assert t2_res.diagnostics["tier"] == "tier2"
+
+    # 3. Tier 2 query with root concept but unconsumed residual tokens delegated transparently
+    t2_resid = engine.resolve("pib manufacturero de chile 2022")
+    assert t2_resid.tier == "tier2"
+    assert t2_resid.status in (ResolutionStatus.RESOLVED, ResolutionStatus.ALTERNATIVE_PROPOSED)
+    assert t2_resid.indicator_id == 4353
+    assert t2_resid.diagnostics["tier"] == "tier2"
+
+    # 4. Tier 1 hard abstention (out of domain)
+    t1_adv = engine.resolve("precio del bitcoin en El Salvador 2023")
+    assert t1_adv.tier == "tier1"
+    assert t1_adv.status == ResolutionStatus.ABSTAINED
+    assert t1_adv.diagnostics["tier"] == "tier1"
+
+    # 5. Tier 2 Specificity Guard abstention (unsupported facet in catalog)
+    t2_guard = engine.resolve("índice de precios al por mayor rural en Chile 2022")
+    assert t2_guard.tier == "tier2"
+    assert t2_guard.status == ResolutionStatus.ABSTAINED
+    assert t2_guard.diagnostics["tier"] == "tier2"
+    assert "area" in t2_guard.unmatched_facets
+
+
 def test_tier2_resolves_uncurated_catalog_indicators_and_competing_alternatives(tmp_path, monkeypatch) -> None:
     engine = _full_engine(tmp_path, monkeypatch)
     # Uncurated catalog indicator (e.g. wholesale price index 544 or literacy 5683)

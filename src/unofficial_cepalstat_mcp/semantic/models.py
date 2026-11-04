@@ -172,6 +172,7 @@ class SemanticResolutionResponse(BaseModel):
     empirical_data: dict[str, Any] | None = Field(default=None, description="Observation payload fetched from CEPALSTAT")
     execution_trace: list[str] = Field(default_factory=list, description="Step-by-step reasoning trace")
     latency_ms: float = 0.0
+    tier: str = Field(default="tier1", description="Resolution tier: 'tier1' (in-memory curated) or 'tier2' (FTS5 + Specificity Guard)")
 
     def model_post_init(self, __context: Any) -> None:
         if self.unsupported_facet and not self.unmatched_facets:
@@ -183,6 +184,17 @@ class SemanticResolutionResponse(BaseModel):
     def indicator_id(self) -> int | None:
         """Convenience property returning the primary selected indicator ID if resolved."""
         return self.selected_candidate.indicator_id if self.selected_candidate else None
+
+    @property
+    def diagnostics(self) -> dict[str, Any]:
+        """Summary dictionary of diagnostic metadata for the resolution."""
+        return {
+            "tier": self.tier,
+            "status": self.status.value,
+            "latency_ms": self.latency_ms,
+            "abstention_reason": self.abstention_reason,
+            "unmatched_facets": sorted(self.unmatched_facets),
+        }
 
 
 class BenchmarkCase(BaseModel):

@@ -414,6 +414,7 @@ class SemanticResolutionEngine:
             )
 
         if not intent.root_concept:
+            tier2_attempted = False
             if (
                 self.enable_tier2_catalog
                 and not intent.unknown_concept
@@ -421,6 +422,7 @@ class SemanticResolutionEngine:
                 and not intent.period_out_of_range
                 and not intent.unsupported_frequency
             ):
+                tier2_attempted = True
                 tier2_resp = self._resolve_via_tier2_catalog(query_str, intent, applied_filters, trace, t0)
                 if tier2_resp is not None:
                     return tier2_resp
@@ -436,6 +438,7 @@ class SemanticResolutionEngine:
                 polarity_info=intent.polarity_info,
                 execution_trace=trace,
                 latency_ms=latency,
+                tier="tier2" if tier2_attempted else "tier1",
             )
 
         # ----------------------------------------------------
@@ -443,6 +446,7 @@ class SemanticResolutionEngine:
         # ----------------------------------------------------
         canonical_id = self.registry.get_canonical_default(intent.root_concept)
         if not canonical_id:
+            tier2_attempted = False
             if (
                 self.enable_tier2_catalog
                 and not intent.unknown_concept
@@ -450,6 +454,7 @@ class SemanticResolutionEngine:
                 and not intent.period_out_of_range
                 and not intent.unsupported_frequency
             ):
+                tier2_attempted = True
                 tier2_resp = self._resolve_via_tier2_catalog(query_str, intent, applied_filters, trace, t0)
                 if tier2_resp is not None:
                     return tier2_resp
@@ -463,6 +468,7 @@ class SemanticResolutionEngine:
                 polarity_info=intent.polarity_info,
                 execution_trace=trace,
                 latency_ms=latency,
+                tier="tier2" if tier2_attempted else "tier1",
             )
 
         if intent.root_concept == "POBLACION":
@@ -510,6 +516,7 @@ class SemanticResolutionEngine:
                         and uncovered_norms_early.issubset(GENERAL_AGGREGATE_FALLBACKS[canonical_id])
                     )
                     if not is_general_fallback_early:
+                        tier2_attempted = False
                         if (
                             self.enable_tier2_catalog
                             and not intent.unknown_concept
@@ -517,6 +524,7 @@ class SemanticResolutionEngine:
                             and not intent.period_out_of_range
                             and not intent.unsupported_frequency
                         ):
+                            tier2_attempted = True
                             tier2_resp = self._resolve_via_tier2_catalog(query_str, intent, applied_filters, trace, t0)
                             if tier2_resp is not None:
                                 return tier2_resp
@@ -539,6 +547,7 @@ class SemanticResolutionEngine:
                             polarity_info=intent.polarity_info,
                             execution_trace=trace,
                             latency_ms=latency,
+                            tier="tier2" if tier2_attempted else "tier1",
                         )
 
         # Handle Ambiguous Measure Proposal upfront
@@ -846,6 +855,7 @@ class SemanticResolutionEngine:
                         f"[Stage 3: Specificity Audit] DOWNGRADED to ALTERNATIVE_PROPOSED (Score: 0.65): Uncovered specificity: {uncovered_critical}."
                     )
                 else:
+                    tier2_attempted = False
                     if (
                         self.enable_tier2_catalog
                         and not intent.unknown_concept
@@ -853,6 +863,7 @@ class SemanticResolutionEngine:
                         and not intent.period_out_of_range
                         and not intent.unsupported_frequency
                     ):
+                        tier2_attempted = True
                         tier2_resp = self._resolve_via_tier2_catalog(query_str, intent, applied_filters, trace, t0)
                         if tier2_resp is not None:
                             return tier2_resp
@@ -874,6 +885,7 @@ class SemanticResolutionEngine:
                         polarity_info=intent.polarity_info,
                         execution_trace=trace,
                         latency_ms=latency,
+                        tier="tier2" if tier2_attempted else "tier1",
                     )
 
         # Frequency specificity check (Quarterly/Monthly vs Annual series)
@@ -1274,6 +1286,7 @@ class SemanticResolutionEngine:
                 polarity_info=intent.polarity_info,
                 execution_trace=trace,
                 latency_ms=latency,
+                tier="tier2",
             )
 
         assert guard_res.selected_candidate is not None
@@ -1334,6 +1347,7 @@ class SemanticResolutionEngine:
                 conversational_hint=guard_res.conversational_hint,
                 execution_trace=trace,
                 latency_ms=latency,
+                tier="tier2",
             )
 
         selected = SelectedCandidate(
@@ -1359,4 +1373,5 @@ class SemanticResolutionEngine:
             polarity_info=intent.polarity_info,
             execution_trace=trace,
             latency_ms=latency,
+            tier="tier2",
         )
